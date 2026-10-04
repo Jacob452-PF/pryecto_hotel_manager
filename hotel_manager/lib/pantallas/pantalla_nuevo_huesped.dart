@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import '../datos/productos_ejemplo.dart';
 import '../datos/tarifas_ejemplo.dart';
+import '../modelos/factura.dart';
+import '../modelos/habitacion.dart';
 import '../modelos/producto.dart';
 import '../modelos/tarifa.dart';
 import '../modelos/tipo_cuarto.dart';
+import '../servicios/servicio_habitaciones.dart';
 import '../tema/estilos_botones.dart';
+import '../tema/estilos_texto.dart';
 import '../utilidades/formato.dart';
 import '../widgets/catalogo_rapido.dart';
 import '../widgets/contador_cantidad.dart';
@@ -12,6 +16,7 @@ import '../widgets/formulario_huesped.dart';
 import '../widgets/resumen_factura.dart';
 import '../widgets/selector_opciones.dart';
 import '../widgets/tarjeta_seccion.dart';
+import 'pantalla_factura.dart';
 
 class PantallaNuevoHuesped extends StatefulWidget {
   const PantallaNuevoHuesped({super.key});
@@ -29,9 +34,10 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
 
   // Parte 4: selección de la reserva
   TipoTarifa _tarifa = TipoTarifa.porNoche;
-  TipoCuarto _cuarto = TipoCuarto.matrimonial;
-  int _camas = 1;
   int _cantidad = 1; // horas o noches, según la tarifa
+  TipoCuarto _cuarto = TipoCuarto.matrimonial;
+  int _camas = 2; // solo se elige cuando el tipo de cuarto es familiar
+  Habitacion? _habitacionSeleccionada;
 
   // Parte 3 y 5: productos agregados a la factura
   final List<Producto> _productosAgregados = [];
@@ -44,34 +50,88 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     super.dispose();
   }
 
-  double get _precioUnitario =>
-      tarifasEjemplo.firstWhere((t) => t.tipo == _tarifa).precioUnitario;
+  /// Matrimonial e individual tienen 1 cama; la familiar usa la elegida (2, 3 o 4).
+  int get _camasSeleccionadas => _cuarto == TipoCuarto.familiar ? _camas : 1;
+
+  /// El precio por hora o por noche depende de la cantidad de camas.
+  double get _precioUnitario => tarifasEjemplo
+      .firstWhere((t) => t.tipo == _tarifa)
+      .precioPara(_camasSeleccionadas);
 
   double get _montoEstadia => _precioUnitario * _cantidad;
 
   double get _total =>
       _montoEstadia + _productosAgregados.fold(0.0, (suma, p) => suma + p.precio);
 
+  /// Habitaciones libres que cumplen lo elegido: el tipo de cuarto y,
+  /// si es familiar, la cantidad de camas.
+  List<Habitacion> get _habitacionesDisponibles => ServicioHabitaciones
+      .instancia.habitaciones
+      .where((h) =>
+          h.estado == EstadoHabitacion.disponible &&
+          h.tipoCuarto == _cuarto &&
+          (_cuarto != TipoCuarto.familiar || h.camas == _camas))
+      .toList();
+
+  /// Si la habitación elegida ya no cumple los filtros, se quita la selección.
+  void _revisarSeleccion() {
+    if (_habitacionSeleccionada != null &&
+        !_habitacionesDisponibles.contains(_habitacionSeleccionada)) {
+      _habitacionSeleccionada = null;
+    }
+  }
+
+  String _textoCamas(int n) => '$n ${n == 1 ? 'cama' : 'camas'}';
+
   void _confirmar() {
+    final mensajero = ScaffoldMessenger.of(context);
+
     if (!_claveFormulario.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      mensajero.showSnackBar(
         const SnackBar(content: Text('Revisa los datos del huésped')),
       );
       return;
     }
 
-    // TODO: guardar la reserva (huésped, tarifa, cuarto, camas, productos, total).
+    final habitacionElegida = _habitacionSeleccionada;
+    if (habitacionElegida == null) {
+      mensajero.showSnackBar(
+        const SnackBar(content: Text('Selecciona una habitación')),
+      );
+      return;
+    }
 
-    final mensajero = ScaffoldMessenger.of(context);
-    Navigator.pop(context);
-    mensajero.showSnackBar(const SnackBar(content: Text('Reserva confirmada')));
+    final factura = Factura(
+      fecha: DateTime.now(),
+      huesped: _controladorNombre.text.trim(),
+      dui: _controladorDui.text,
+      telefono: _controladorTelefono.text,
+      habitacion: habitacionElegida,
+      tarifa: _tarifa,
+      cantidad: _cantidad,
+      precioUnitario: _precioUnitario,
+      productos: List.of(_productosAgregados),
+    );
+
+    // La habitación pasa a ocupada con el nombre del huésped.
+    ServicioHabitaciones.instancia.ocupar(habitacionElegida.numero, factura.huesped);
+
+    // Se reemplaza esta pantalla por la factura inicial.
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => PantallaFactura(factura: factura)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final disponibles = _habitacionesDisponibles;
+    final habitacion = _habitacionSeleccionada;
+
     final lineasFactura = <LineaFactura>[
       LineaFactura(
-        'Estadía: $_cantidad ${_tarifa.unidad(_cantidad)} × ${formatearDinero(_precioUnitario)}',
+        'Estadía (${_textoCamas(_camasSeleccionadas)}): '
+        '$_cantidad ${_tarifa.unidad(_cantidad)} × ${formatearDinero(_precioUnitario)}',
         _montoEstadia,
       ),
       for (var i = 0; i < _productosAgregados.length; i++)
@@ -138,7 +198,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                 ],
                 const SizedBox(height: 16),
 
-                // Parte 4: tarifa, tipo de cuarto y camas
+                // Parte 4: tarifa, tipo de cuarto, camas y habitaciones
                 TarjetaSeccion(
                   titulo: 'Tarifa',
                   icono: Icons.payments,
@@ -150,8 +210,11 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                         seleccionada: _tarifa,
                         etiqueta: (t) => t.etiqueta,
                         icono: (t) => t.icono,
+                        // Precio según las camas elegidas
                         detalle: (t) => formatearDinero(
-                          tarifasEjemplo.firstWhere((x) => x.tipo == t).precioUnitario,
+                          tarifasEjemplo
+                              .firstWhere((x) => x.tipo == t)
+                              .precioPara(_camasSeleccionadas),
                         ),
                         alCambiar: (t) => setState(() {
                           _tarifa = t;
@@ -176,20 +239,48 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                     seleccionada: _cuarto,
                     etiqueta: (c) => c.etiqueta,
                     icono: (c) => c.icono,
-                    alCambiar: (c) => setState(() => _cuarto = c),
+                    alCambiar: (c) => setState(() {
+                      _cuarto = c;
+                      _revisarSeleccion();
+                    }),
                   ),
                 ),
+                // Las camas solo se eligen cuando el tipo es familiar (2, 3 o 4)
+                if (_cuarto == TipoCuarto.familiar) ...[
+                  const SizedBox(height: 16),
+                  TarjetaSeccion(
+                    titulo: 'Capacidad (camas)',
+                    icono: Icons.bed,
+                    hijo: SelectorOpciones<int>(
+                      opciones: const [2, 3, 4],
+                      seleccionada: _camas,
+                      etiqueta: (n) => '$n camas',
+                      icono: (_) => Icons.bed,
+                      alCambiar: (n) => setState(() {
+                        _camas = n;
+                        _revisarSeleccion();
+                      }),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 TarjetaSeccion(
-                  titulo: 'Capacidad (camas)',
-                  icono: Icons.bed,
-                  hijo: SelectorOpciones<int>(
-                    opciones: const [1, 2, 3, 4],
-                    seleccionada: _camas,
-                    etiqueta: (n) => '$n ${n == 1 ? 'cama' : 'camas'}',
-                    icono: (_) => Icons.bed,
-                    alCambiar: (n) => setState(() => _camas = n),
-                  ),
+                  titulo: 'Habitaciones disponibles',
+                  icono: Icons.door_front_door,
+                  hijo: disponibles.isEmpty
+                      ? const Text(
+                          'No hay habitaciones disponibles con estas características',
+                          style: EstilosTexto.textoVacio,
+                        )
+                      : SelectorOpciones<Habitacion>(
+                          opciones: disponibles,
+                          seleccionada: _habitacionSeleccionada,
+                          etiqueta: (h) => 'Hab. ${h.numero}',
+                          icono: (h) => h.tipoCuarto.icono,
+                          detalle: (h) => 'Piso ${h.piso}',
+                          alCambiar: (h) =>
+                              setState(() => _habitacionSeleccionada = h),
+                        ),
                 ),
                 const SizedBox(height: 16),
 
@@ -198,8 +289,9 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                   titulo: 'Factura',
                   icono: Icons.receipt_long,
                   hijo: ResumenFactura(
-                    detalle:
-                        '${_cuarto.etiqueta} · $_camas ${_camas == 1 ? 'cama' : 'camas'}',
+                    detalle: habitacion == null
+                        ? 'Sin habitación seleccionada'
+                        : 'Habitación ${habitacion.numero} · ${habitacion.tipoCuarto.etiqueta} · ${_textoCamas(habitacion.camas)}',
                     lineas: lineasFactura,
                     total: _total,
                   ),
@@ -231,4 +323,4 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       ),
     );
   }
-} 
+}

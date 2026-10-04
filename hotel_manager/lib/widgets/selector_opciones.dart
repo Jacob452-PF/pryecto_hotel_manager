@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'opcion_recuadro.dart';
 
 /// Fila de recuadros seleccionables. Sirve para cualquier tipo de opción.
+/// Si [seleccionada] es null, no hay ninguna opción marcada.
 class SelectorOpciones<T> extends StatelessWidget {
   final List<T> opciones;
-  final T seleccionada;
+  final T? seleccionada;
   final String Function(T) etiqueta;
   final IconData? Function(T)? icono;
   final String? Function(T)? detalle;
@@ -36,4 +37,4 @@ class SelectorOpciones<T> extends StatelessWidget {
           .toList(),
     );
   }
-} 
+}

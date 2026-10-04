@@ -16,7 +16,10 @@ class CuadroResumen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ancho = (MediaQuery.of(context).size.width - 32 - 20) / 3; // 3 por fila
+    const columnas = 2;
+    // 32 = margen lateral de la pantalla, 10 = espacio entre cuadros
+    final ancho =
+        (MediaQuery.of(context).size.width - 32 - 10 * (columnas - 1)) / columnas;
     return Container(
       width: ancho,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),

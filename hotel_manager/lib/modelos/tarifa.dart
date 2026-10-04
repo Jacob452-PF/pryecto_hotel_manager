@@ -15,6 +15,16 @@ enum TipoTarifa {
 
 class Tarifa {
   final TipoTarifa tipo;
-  final double precioUnitario;
-  const Tarifa(this.tipo, this.precioUnitario);
-} 
+
+  /// Precio por unidad (hora o noche) según la cantidad de camas.
+  /// A más camas, mayor precio.
+  final Map<int, double> precioPorCamas;
+
+  const Tarifa(this.tipo, this.precioPorCamas);
+
+  double precioPara(int camas) {
+    assert(precioPorCamas.containsKey(camas),
+        'No hay precio definido para $camas camas');
+    return precioPorCamas[camas] ?? 0;
+  }
+}

@@ -23,7 +23,7 @@ class TarjetaHabitacion extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => PantallaDetalleHabitacion(habitacion: habitacion),
+              builder: (_) => PantallaDetalleHabitacion(numeroHabitacion: habitacion.numero),
             ),
           ),
           child: Container(
@@ -45,8 +45,8 @@ class TarjetaHabitacion extends StatelessWidget {
                   ],
                 ),
                 Text(
-                  habitacion.tipo == TipoHabitacion.especial ? 'Especial' : 'Estándar',
-                  style: EstilosTexto.tipoHabitacion,
+                  '${habitacion.camas} ${habitacion.camas == 1 ? 'cama' : 'camas'}',
+                  style: EstilosTexto.detalleHabitacion,
                 ),
                 Text(estado.etiqueta,
                     style: EstilosTexto.estadoHabitacion.copyWith(color: estado.color)),

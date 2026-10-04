@@ -19,8 +19,7 @@ class ColoresApp {
 
   // Estados de las habitaciones
   static const Color disponible = Colors.green;
-  static const Color ocupadaEstandar = Colors.red;
-  static const Color ocupadaEspecial = Colors.purple;
+  static const Color ocupada = Colors.red;
   static const Color limpieza = Colors.orange;
   static const Color mantenimiento = Colors.blueGrey;
 }

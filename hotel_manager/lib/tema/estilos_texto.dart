@@ -44,7 +44,7 @@ class EstilosTexto {
   // Tarjeta de habitación
   static const TextStyle numeroHabitacion =
       TextStyle(fontSize: 20, fontWeight: FontWeight.bold);
-  static const TextStyle tipoHabitacion = TextStyle(fontSize: 11);
+  static const TextStyle detalleHabitacion = TextStyle(fontSize: 11);
   static const TextStyle estadoHabitacion =
       TextStyle(fontSize: 12, fontWeight: FontWeight.w600);
 
@@ -66,4 +66,10 @@ class EstilosTexto {
       TextStyle(fontSize: 13, color: ColoresApp.textoSecundario);
   static const TextStyle totalFactura =
       TextStyle(fontSize: 18, fontWeight: FontWeight.bold);
+
+  // Detalle de habitación
+  static const TextStyle etiquetaInformacion =
+      TextStyle(fontSize: 13, color: ColoresApp.textoSecundario);
+  static const TextStyle valorInformacion =
+      TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
 }
