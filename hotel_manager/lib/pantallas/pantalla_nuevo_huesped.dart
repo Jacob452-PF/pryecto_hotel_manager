@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../datos/productos_ejemplo.dart';
 import '../datos/tarifas_ejemplo.dart';
 import '../modelos/factura.dart';
@@ -61,16 +62,20 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
   double get _montoEstadia => _precioUnitario * _cantidad;
 
   double get _total =>
-      _montoEstadia + _productosAgregados.fold(0.0, (suma, p) => suma + p.precio);
+      _montoEstadia +
+      _productosAgregados.fold(0.0, (suma, p) => suma + p.precio);
 
   /// Habitaciones libres que cumplen lo elegido: el tipo de cuarto y,
   /// si es familiar, la cantidad de camas.
   List<Habitacion> get _habitacionesDisponibles => ServicioHabitaciones
-      .instancia.habitaciones
-      .where((h) =>
-          h.estado == EstadoHabitacion.disponible &&
-          h.tipoCuarto == _cuarto &&
-          (_cuarto != TipoCuarto.familiar || h.camas == _camas))
+      .instancia
+      .habitaciones
+      .where(
+        (h) =>
+            h.estado == EstadoHabitacion.disponible &&
+            h.tipoCuarto == _cuarto &&
+            (_cuarto != TipoCuarto.familiar || h.camas == _camas),
+      )
       .toList();
 
   /// Si la habitación elegida ya no cumple los filtros, se quita la selección.
@@ -114,7 +119,10 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     );
 
     // La habitación pasa a ocupada con el nombre del huésped.
-    ServicioHabitaciones.instancia.ocupar(habitacionElegida.numero, factura.huesped);
+    ServicioHabitaciones.instancia.ocupar(
+      habitacionElegida.numero,
+      factura.huesped,
+    );
 
     // Se reemplaza esta pantalla por la factura inicial.
     Navigator.pushReplacement(
@@ -158,7 +166,8 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       icono: Icons.storefront,
       hijo: CatalogoRapido(
         productos: productosEjemplo,
-        alAgregar: (producto) => setState(() => _productosAgregados.add(producto)),
+        alAgregar: (producto) =>
+            setState(() => _productosAgregados.add(producto)),
       ),
     );
 
@@ -223,7 +232,9 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                       ),
                       const SizedBox(height: 16),
                       ContadorCantidad(
-                        etiqueta: _tarifa == TipoTarifa.porHora ? 'Horas' : 'Noches',
+                        etiqueta: _tarifa == TipoTarifa.porHora
+                            ? 'Horas'
+                            : 'Noches',
                         valor: _cantidad,
                         alCambiar: (n) => setState(() => _cantidad = n),
                       ),

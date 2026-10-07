@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
 import '../tema/estilos_texto.dart';
 
@@ -46,7 +45,7 @@ class _EstadoTarjetaEncabezado extends State<TarjetaEncabezado> {
 
     return Card(
       margin: EdgeInsets.zero,
-      color: ColoresApp.primario,
+      color: Theme.of(context).colorScheme.primary,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(Dimensiones.radioGrande)),
       ),

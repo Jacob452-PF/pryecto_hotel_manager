@@ -31,8 +31,9 @@ class FormularioHuesped extends StatelessWidget {
               labelText: 'Nombre completo',
               prefixIcon: Icon(Icons.person),
             ),
-            validator: (valor) =>
-                (valor == null || valor.trim().isEmpty) ? 'Ingresa el nombre' : null,
+            validator: (valor) => (valor == null || valor.trim().isEmpty)
+                ? 'Ingresa el nombre'
+                : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -48,8 +49,9 @@ class FormularioHuesped extends StatelessWidget {
               helperText: '9 dígitos, sin guiones',
               prefixIcon: Icon(Icons.badge),
             ),
-            validator: (valor) =>
-                (valor == null || valor.length != 9) ? 'El DUI debe tener 9 dígitos' : null,
+            validator: (valor) => (valor == null || valor.length != 9)
+                ? 'El DUI debe tener 9 dígitos'
+                : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -65,11 +67,12 @@ class FormularioHuesped extends StatelessWidget {
               helperText: '8 dígitos, sin guiones',
               prefixIcon: Icon(Icons.phone),
             ),
-            validator: (valor) =>
-                (valor == null || valor.length != 8) ? 'El teléfono debe tener 8 dígitos' : null,
+            validator: (valor) => (valor == null || valor.length != 8)
+                ? 'El teléfono debe tener 8 dígitos'
+                : null,
           ),
         ],
       ),
     );
   }
-} 
+}

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+
 import '../datos/habitaciones_ejemplo.dart';
 import '../modelos/habitacion.dart';
 
@@ -21,10 +22,17 @@ class ServicioHabitaciones extends ChangeNotifier {
     return null;
   }
 
-  void _cambiarEstado(String numero, EstadoHabitacion estado, {String? huesped}) {
+  void _cambiarEstado(
+    String numero,
+    EstadoHabitacion estado, {
+    String? huesped,
+  }) {
     final indice = _habitaciones.indexWhere((h) => h.numero == numero);
     if (indice == -1) return;
-    _habitaciones[indice] = _habitaciones[indice].conEstado(estado, huesped: huesped);
+    _habitaciones[indice] = _habitaciones[indice].conEstado(
+      estado,
+      huesped: huesped,
+    );
     notifyListeners();
   }
 

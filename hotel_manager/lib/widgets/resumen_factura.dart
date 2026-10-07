@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+
 import '../tema/estilos_texto.dart';
 import '../utilidades/formato.dart';
 
 class LineaFactura {
   final String descripcion;
   final double monto;
-  final VoidCallback? alQuitar; // si no es null, muestra una "x" para quitar la línea
+  final VoidCallback?
+  alQuitar; // si no es null, muestra una "x" para quitar la línea
   const LineaFactura(this.descripcion, this.monto, {this.alQuitar});
 }
 
@@ -37,8 +39,16 @@ class ResumenFactura extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               children: [
-                Expanded(child: Text(linea.descripcion, style: EstilosTexto.textoFactura)),
-                Text(formatearDinero(linea.monto), style: EstilosTexto.textoFactura),
+                Expanded(
+                  child: Text(
+                    linea.descripcion,
+                    style: EstilosTexto.textoFactura,
+                  ),
+                ),
+                Text(
+                  formatearDinero(linea.monto),
+                  style: EstilosTexto.textoFactura,
+                ),
                 SizedBox(
                   width: 28,
                   child: linea.alQuitar == null
@@ -65,4 +75,4 @@ class ResumenFactura extends StatelessWidget {
       ],
     );
   }
-} 
+}
