@@ -377,9 +377,7 @@ class _EstadoPantallaTienda extends State<PantallaTienda> {
                   child: FilledButton(
                     onPressed: lineas.isEmpty
                         ? null
-                        : () => Navigator.pop(
-                            context,
-                          ), // TODO: cobrar / cargar a habitación
+                        : () => Navigator.pop(context), // TODO: cobrar
                     child: const Text('Cobrar'),
                   ),
                 ),

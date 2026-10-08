@@ -6,7 +6,7 @@ class ProductoTienda {
   /// Sección donde se muestra: 'Habitaciones', 'Servicio', 'Productos del hotel'.
   final String seccion;
 
-  /// Categoría del filtro: 'Alimentos', 'Bebidas', 'Aseo', 'Lencería', 'Otros'.
+  /// Categoría del filtro: 'Alimentos', 'Bebidas', 'Aseo'.
   final String categoria;
 
   const ProductoTienda({

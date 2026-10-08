@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'pantalla_inicio.dart';
 import 'tienda/pantalla_tienda.dart';
+import 'pantalla_perfil_caja.dart';
 
 class ContenedorPrincipal extends StatefulWidget {
   const ContenedorPrincipal({super.key});
@@ -18,7 +19,7 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
     PantallaTienda(),
     _PantallaProvisional('Inventario'),
     _PantallaProvisional('Historial de cajas'),
-    _PantallaProvisional('Perfil de la caja actual'),
+    PantallaPerfilCaja(),
   ];
 
   @override
