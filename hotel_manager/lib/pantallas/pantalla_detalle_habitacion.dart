@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../modelos/habitacion.dart';
 import '../servicios/servicio_habitaciones.dart';
 import '../widgets/fila_informacion.dart';
@@ -12,7 +13,10 @@ class PantallaDetalleHabitacion extends StatelessWidget {
   final String numeroHabitacion;
   const PantallaDetalleHabitacion({super.key, required this.numeroHabitacion});
 
-  Future<void> _confirmarTerminarEstadia(BuildContext context, Habitacion habitacion) async {
+  Future<void> _confirmarTerminarEstadia(
+    BuildContext context,
+    Habitacion habitacion,
+  ) async {
     final confirmado = await showDialog<bool>(
       context: context,
       builder: (contextoDialogo) => AlertDialog(
@@ -55,17 +59,17 @@ class PantallaDetalleHabitacion extends StatelessWidget {
 
     return switch (habitacion.estado) {
       EstadoHabitacion.ocupada => [
-          FilledButton.icon(
-            onPressed: () => _confirmarTerminarEstadia(context, habitacion),
-            icon: const Icon(Icons.logout),
-            label: const Text('Terminar estadía'),
-          ),
-        ],
+        FilledButton.icon(
+          onPressed: () => _confirmarTerminarEstadia(context, habitacion),
+          icon: const Icon(Icons.logout),
+          label: const Text('Terminar estadía'),
+        ),
+      ],
       EstadoHabitacion.limpieza => [
-          botonLista,
-          const SizedBox(height: 12),
-          botonMantenimiento,
-        ],
+        botonLista,
+        const SizedBox(height: 12),
+        botonMantenimiento,
+      ],
       EstadoHabitacion.mantenimiento => [botonLista],
       EstadoHabitacion.disponible => [botonMantenimiento],
     };
@@ -76,7 +80,9 @@ class PantallaDetalleHabitacion extends StatelessWidget {
     return ListenableBuilder(
       listenable: ServicioHabitaciones.instancia,
       builder: (context, _) {
-        final habitacion = ServicioHabitaciones.instancia.buscar(numeroHabitacion);
+        final habitacion = ServicioHabitaciones.instancia.buscar(
+          numeroHabitacion,
+        );
 
         if (habitacion == null) {
           return Scaffold(

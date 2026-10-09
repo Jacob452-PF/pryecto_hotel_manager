@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../tema/colores_app.dart';
 import '../tema/estilos_texto.dart';
 
-/// Fila con ícono, etiqueta pequeña y valor. Se usa en el detalle de habitación.
+/// Fila con ícono, etiqueta pequeña y valor.
 class FilaInformacion extends StatelessWidget {
   final IconData icono;
   final String etiqueta;
@@ -23,7 +22,7 @@ class FilaInformacion extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icono, color: colorValor ?? ColoresApp.primario),
+          Icon(icono, color: colorValor ?? Theme.of(context).colorScheme.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

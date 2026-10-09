@@ -1,5 +1,7 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+
 import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
 import '../tema/estilos_texto.dart';
@@ -10,18 +12,22 @@ class FotoHabitacion extends StatelessWidget {
   const FotoHabitacion({super.key, this.rutaFoto});
 
   Widget _marcador() => Container(
-        color: ColoresApp.bordeSuave.withValues(alpha: 0.3),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.image_outlined, size: 48, color: ColoresApp.textoSecundario),
-              SizedBox(height: 8),
-              Text('Sin foto', style: EstilosTexto.textoVacio),
-            ],
+    color: ColoresApp.bordeSuave.withValues(alpha: 0.3),
+    child: const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.image_outlined,
+            size: 48,
+            color: ColoresApp.textoSecundario,
           ),
-        ),
-      );
+          SizedBox(height: 8),
+          Text('Sin foto', style: EstilosTexto.textoVacio),
+        ],
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {

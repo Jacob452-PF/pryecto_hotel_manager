@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../modelos/factura.dart';
 import '../tema/colores_app.dart';
 import '../tema/estilos_texto.dart';
@@ -15,7 +16,8 @@ class PantallaFactura extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final habitacion = factura.habitacion;
-    final camas = '${habitacion.camas} ${habitacion.camas == 1 ? 'cama' : 'camas'}';
+    final camas =
+        '${habitacion.camas} ${habitacion.camas == 1 ? 'cama' : 'camas'}';
 
     final lineas = <LineaFactura>[
       LineaFactura(
@@ -43,9 +45,16 @@ class PantallaFactura extends StatelessWidget {
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.check_circle, color: ColoresApp.disponible, size: 32),
+                    Icon(
+                      Icons.check_circle,
+                      color: ColoresApp.disponible,
+                      size: 32,
+                    ),
                     SizedBox(width: 8),
-                    Text('Reserva confirmada', style: EstilosTexto.tituloSeccion),
+                    Text(
+                      'Reserva confirmada',
+                      style: EstilosTexto.tituloSeccion,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),

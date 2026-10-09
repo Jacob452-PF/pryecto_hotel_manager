@@ -5,7 +5,7 @@ class PantallaSolicitarUsuario extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Solicitar usuario nuevo')),
-        body: const Center(child: Text('Formulario de solicitud (por hacer)')),
-      );
+    appBar: AppBar(title: const Text('Solicitar usuario nuevo')),
+    body: const Center(child: Text('Formulario de solicitud (por hacer)')),
+  );
 }

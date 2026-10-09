@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../modelos/producto.dart';
 import '../tema/colores_app.dart';
 import '../tema/estilos_texto.dart';
@@ -24,7 +25,11 @@ class CatalogoRapido extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.storefront_outlined, size: 40, color: ColoresApp.textoSecundario),
+              Icon(
+                Icons.storefront_outlined,
+                size: 40,
+                color: ColoresApp.textoSecundario,
+              ),
               SizedBox(height: 8),
               Text('Aún no hay productos', style: EstilosTexto.textoVacio),
               Text(
@@ -42,11 +47,15 @@ class CatalogoRapido extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: productos
-          .map((producto) => ActionChip(
-                avatar: const Icon(Icons.add, size: 18),
-                label: Text('${producto.nombre} · ${formatearDinero(producto.precio)}'),
-                onPressed: () => alAgregar(producto),
-              ))
+          .map(
+            (producto) => ActionChip(
+              avatar: const Icon(Icons.add, size: 18),
+              label: Text(
+                '${producto.nombre} · ${formatearDinero(producto.precio)}',
+              ),
+              onPressed: () => alAgregar(producto),
+            ),
+          )
           .toList(),
     );
   }

@@ -5,28 +5,36 @@ import 'colores_app.dart';
 class TemaApp {
   TemaApp._();
 
-  static ThemeData get claro => ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: ColoresApp.primario,
-        // Barra superior de las pantallas secundarias
-        appBarTheme: const AppBarTheme(
-          backgroundColor: ColoresApp.primario,
-          foregroundColor: ColoresApp.sobrePrimario,
+  /// Crea el tema a partir del color principal elegido por el usuario.
+  static ThemeData crear(Color colorPrimario) {
+    final esquema = ColorScheme.fromSeed(seedColor: colorPrimario).copyWith(
+      primary: colorPrimario,
+      onPrimary: ColoresApp.sobrePrimario,
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: esquema,
+      // Barra superior de las pantallas secundarias
+      appBarTheme: AppBarTheme(
+        backgroundColor: colorPrimario,
+        foregroundColor: ColoresApp.sobrePrimario,
+      ),
+      // Todos los campos de texto con borde
+      inputDecorationTheme: const InputDecorationTheme(
+        border: OutlineInputBorder(),
+      ),
+      // Todos los botones con el mismo alto
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
         ),
-        // Todos los campos de texto con borde
-        inputDecorationTheme: const InputDecorationTheme(
-          border: OutlineInputBorder(),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
         ),
-        // Todos los botones con el mismo alto
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-          ),
-        ),
-      );
+      ),
+    );
+  }
 }

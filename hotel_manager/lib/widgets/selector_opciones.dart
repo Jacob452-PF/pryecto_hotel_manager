@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'opcion_recuadro.dart';
 
 /// Fila de recuadros seleccionables. Sirve para cualquier tipo de opción.
@@ -27,13 +28,15 @@ class SelectorOpciones<T> extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: opciones
-          .map((opcion) => OpcionRecuadro(
-                etiqueta: etiqueta(opcion),
-                icono: icono?.call(opcion),
-                detalle: detalle?.call(opcion),
-                seleccionada: opcion == seleccionada,
-                alTocar: () => alCambiar(opcion),
-              ))
+          .map(
+            (opcion) => OpcionRecuadro(
+              etiqueta: etiqueta(opcion),
+              icono: icono?.call(opcion),
+              detalle: detalle?.call(opcion),
+              seleccionada: opcion == seleccionada,
+              alTocar: () => alCambiar(opcion),
+            ),
+          )
           .toList(),
     );
   }

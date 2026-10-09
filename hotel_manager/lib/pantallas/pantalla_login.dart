@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../modelos/usuario.dart';
+import '../servicios/servicio_sesion.dart';
 import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
 import '../tema/estilos_texto.dart';
@@ -29,6 +32,9 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
     if (!_claveFormulario.currentState!.validate()) return;
 
     // TODO: validar usuario y contraseña contra el servidor / base de datos.
+    ServicioSesion.instancia.iniciarSesion(
+      Usuario(nombre: _controladorUsuario.text.trim(), cargo: 'Recepción'),
+    );
 
     Navigator.pushReplacement(
       context,
@@ -62,11 +68,18 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                         height: 100,
                         errorBuilder: (context, error, stackTrace) {
                           debugPrint('Error al cargar el logo: $error');
-                          return const Icon(Icons.hotel, size: 80, color: ColoresApp.primario);
+                          return const Icon(
+                            Icons.hotel,
+                            size: 80,
+                            color: ColoresApp.primario,
+                          );
                         },
                       ),
                       const SizedBox(height: 8),
-                      const Text('Nombre del hotel', style: EstilosTexto.tituloLogin),
+                      const Text(
+                        'Nombre del hotel',
+                        style: EstilosTexto.tituloLogin,
+                      ),
                       const SizedBox(height: 24),
                       TextFormField(
                         controller: _controladorUsuario,
@@ -76,7 +89,9 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                           prefixIcon: Icon(Icons.person),
                         ),
                         validator: (valor) =>
-                            (valor == null || valor.trim().isEmpty) ? 'Ingresa tu usuario' : null,
+                            (valor == null || valor.trim().isEmpty)
+                            ? 'Ingresa tu usuario'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -87,13 +102,19 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                           labelText: 'Contraseña',
                           prefixIcon: const Icon(Icons.lock),
                           suffixIcon: IconButton(
-                            icon: Icon(_ocultarContrasena ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () =>
-                                setState(() => _ocultarContrasena = !_ocultarContrasena),
+                            icon: Icon(
+                              _ocultarContrasena
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () => setState(
+                              () => _ocultarContrasena = !_ocultarContrasena,
+                            ),
                           ),
                         ),
-                        validator: (valor) =>
-                            (valor == null || valor.isEmpty) ? 'Ingresa tu contraseña' : null,
+                        validator: (valor) => (valor == null || valor.isEmpty)
+                            ? 'Ingresa tu contraseña'
+                            : null,
                       ),
                       const SizedBox(height: 24),
                       SizedBox(
@@ -108,7 +129,8 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const PantallaSolicitarUsuario()),
+                            builder: (_) => const PantallaSolicitarUsuario(),
+                          ),
                         ),
                         child: const Text('Solicitar un usuario nuevo'),
                       ),
