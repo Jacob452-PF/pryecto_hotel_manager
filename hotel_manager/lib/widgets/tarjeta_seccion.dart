@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
 import '../tema/estilos_texto.dart';
 
@@ -31,7 +30,7 @@ class TarjetaSeccion extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icono, color: ColoresApp.primario, size: 20),
+                Icon(icono, color: Theme.of(context).colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Text(titulo, style: EstilosTexto.tituloTarjeta),
               ],

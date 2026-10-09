@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../modelos/habitacion.dart';
 import '../servicios/servicio_habitaciones.dart';
 import '../tema/colores_app.dart';
@@ -19,9 +20,10 @@ class PantallaInicio extends StatefulWidget {
 }
 
 class _EstadoPantallaInicio extends State<PantallaInicio> {
-  final _controladorBusqueda = TextEditingController();
-  EstadoHabitacion? _estado; // null = todos
-  int? _camas; // null = todas
+  final TextEditingController _controladorBusqueda = TextEditingController();
+  String _busqueda = '';
+  EstadoHabitacion? _estado;
+  int? _camas;
 
   @override
   void dispose() {
@@ -29,131 +31,146 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
     super.dispose();
   }
 
-  // El resumen cuenta todas las habitaciones, sin importar el filtro.
-  int _contar(List<Habitacion> todas, EstadoHabitacion estado) =>
-      todas.where((h) => h.estado == estado).length;
+  int _contar(List<Habitacion> habitaciones, EstadoHabitacion estado) {
+    return habitaciones
+        .where((habitacion) => habitacion.estado == estado)
+        .length;
+  }
 
-  List<Habitacion> _filtrar(List<Habitacion> todas) {
-    final texto = normalizarTexto(_controladorBusqueda.text);
-    return todas.where((h) {
-      if (_estado != null && h.estado != _estado) return false;
-      if (_camas != null && h.camas != _camas) return false;
-      if (texto.isNotEmpty) {
-        final huesped = h.huesped;
-        if (huesped == null || !normalizarTexto(huesped).contains(texto)) {
-          return false;
-        }
-      }
-      return true;
+  List<Habitacion> _filtrar(List<Habitacion> habitaciones) {
+    final busqueda = normalizarTexto(_busqueda);
+
+    return habitaciones.where((habitacion) {
+      final coincideBusqueda =
+          busqueda.isEmpty ||
+          normalizarTexto(habitacion.numero).contains(busqueda) ||
+          normalizarTexto(habitacion.huesped ?? '').contains(busqueda);
+      final coincideEstado = _estado == null || habitacion.estado == _estado;
+      final coincideCamas = _camas == null || habitacion.camas == _camas;
+
+      return coincideBusqueda && coincideEstado && coincideCamas;
     }).toList();
+  }
+
+  Map<int, List<Habitacion>> _agruparPorPiso(List<Habitacion> habitaciones) {
+    final agrupadas = <int, List<Habitacion>>{};
+    for (final habitacion in habitaciones) {
+      agrupadas.putIfAbsent(habitacion.piso, () => []).add(habitacion);
+    }
+
+    return Map.fromEntries(
+      agrupadas.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Se vuelve a dibujar solo cuando cambia el estado de alguna habitación.
     return ListenableBuilder(
       listenable: ServicioHabitaciones.instancia,
       builder: (context, _) {
         final todas = ServicioHabitaciones.instancia.habitaciones;
+        final filtradas = _filtrar(todas);
+        final habitacionesPorPiso = _agruparPorPiso(filtradas);
 
-        final resumen = <DatoResumen>[
-          DatoResumen('Disponibles', _contar(todas, EstadoHabitacion.disponible), ColoresApp.disponible, Icons.check_circle),
-          DatoResumen('Ocupadas', _contar(todas, EstadoHabitacion.ocupada), ColoresApp.ocupada, Icons.bed),
-          DatoResumen('En limpieza', _contar(todas, EstadoHabitacion.limpieza), ColoresApp.limpieza, Icons.cleaning_services),
-          DatoResumen('Mantenimiento', _contar(todas, EstadoHabitacion.mantenimiento), ColoresApp.mantenimiento, Icons.build),
+        final resumen = [
+          DatoResumen(
+            'Disponibles',
+            _contar(todas, EstadoHabitacion.disponible),
+            ColoresApp.disponible,
+            Icons.check_circle,
+          ),
+          DatoResumen(
+            'Ocupadas',
+            _contar(todas, EstadoHabitacion.ocupada),
+            ColoresApp.ocupada,
+            Icons.bed,
+          ),
+          DatoResumen(
+            'En limpieza',
+            _contar(todas, EstadoHabitacion.limpieza),
+            ColoresApp.limpieza,
+            Icons.cleaning_services,
+          ),
+          DatoResumen(
+            'Mantenimiento',
+            _contar(todas, EstadoHabitacion.mantenimiento),
+            ColoresApp.mantenimiento,
+            Icons.build,
+          ),
         ];
 
-        final filtradas = _filtrar(todas);
-        final pisos = filtradas.map((h) => h.piso).toSet().toList()..sort();
-
         return Scaffold(
-          body: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Parte 1: encabezado
-                const TarjetaEncabezado(),
-                // Parte 2: resumen
-                Padding(
+          body: Column(
+            children: [
+              const TarjetaEncabezado(),
+              Expanded(
+                child: ListView(
                   padding: const EdgeInsets.all(16),
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: resumen.map((d) => CuadroResumen(dato: d)).toList(),
-                  ),
-                ),
-                // Parte 3: botón nuevo huésped
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const PantallaNuevoHuesped()),
-                      ),
-                      icon: const Icon(Icons.person_add),
-                      label: const Text('Nuevo huésped'),
+                  children: [
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final dato in resumen) CuadroResumen(dato: dato),
+                      ],
                     ),
-                  ),
-                ),
-                // Parte 4: filtro y habitaciones por piso
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
-                  child: Text('Habitaciones', style: EstilosTexto.tituloSeccion),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: TarjetaSeccion(
-                    titulo: 'Buscar habitaciones',
-                    icono: Icons.filter_list,
-                    hijo: FiltroHabitaciones(
-                      controladorBusqueda: _controladorBusqueda,
-                      alCambiarBusqueda: (_) => setState(() {}),
-                      estado: _estado,
-                      alCambiarEstado: (e) => setState(() => _estado = e),
-                      camas: _camas,
-                      alCambiarCamas: (n) => setState(() => _camas = n),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: Text(
-                    '${filtradas.length} ${filtradas.length == 1 ? 'resultado' : 'resultados'}',
-                    style: EstilosTexto.etiquetaInformacion,
-                  ),
-                ),
-                if (filtradas.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 32),
-                    child: Center(
-                      child: Text(
-                        'No se encontraron habitaciones con esos filtros',
-                        style: EstilosTexto.textoVacio,
+                    const SizedBox(height: 16),
+                    TarjetaSeccion(
+                      titulo: 'Habitaciones',
+                      icono: Icons.hotel,
+                      hijo: FiltroHabitaciones(
+                        controladorBusqueda: _controladorBusqueda,
+                        alCambiarBusqueda: (valor) =>
+                            setState(() => _busqueda = valor),
+                        estado: _estado,
+                        alCambiarEstado: (valor) =>
+                            setState(() => _estado = valor),
+                        camas: _camas,
+                        alCambiarCamas: (valor) =>
+                            setState(() => _camas = valor),
                       ),
                     ),
-                  ),
-                for (final piso in pisos) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: Text('Piso $piso', style: EstilosTexto.subtituloSeccion),
-                  ),
-                  SizedBox(
-                    height: 120,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      children: filtradas
-                          .where((h) => h.piso == piso)
-                          .map((h) => TarjetaHabitacion(habitacion: h))
-                          .toList(),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 24),
-              ],
+                    const SizedBox(height: 16),
+                    if (filtradas.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: Text(
+                            'No hay habitaciones con esos filtros',
+                            style: EstilosTexto.textoVacio,
+                          ),
+                        ),
+                      )
+                    else
+                      for (final piso in habitacionesPorPiso.entries) ...[
+                        TarjetaSeccion(
+                          titulo: 'Piso ${piso.key}',
+                          icono: Icons.layers,
+                          hijo: SizedBox(
+                            height: 126,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                for (final habitacion in piso.value)
+                                  TarjetaHabitacion(habitacion: habitacion),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PantallaNuevoHuesped()),
             ),
+            icon: const Icon(Icons.person_add),
+            label: const Text('Nuevo huésped'),
           ),
         );
       },

@@ -3,7 +3,7 @@ import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
 import '../tema/estilos_texto.dart';
 
-/// Recuadro seleccionable (tarifa, tipo de cuarto, camas).
+/// Recuadro seleccionable (tarifa, tipo de cuarto, camas, habitaciones).
 class OpcionRecuadro extends StatelessWidget {
   final String etiqueta;
   final String? detalle;
@@ -22,14 +22,12 @@ class OpcionRecuadro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorPrimario = Theme.of(context).colorScheme.primary;
     final radio = BorderRadius.circular(Dimensiones.radioTarjeta);
-    final colorIcono =
-        seleccionada ? ColoresApp.primario : ColoresApp.textoSecundario;
+    final colorIcono = seleccionada ? colorPrimario : ColoresApp.textoSecundario;
 
     return Material(
-      color: seleccionada
-          ? ColoresApp.primario.withValues(alpha: 0.12)
-          : Colors.transparent,
+      color: seleccionada ? colorPrimario.withValues(alpha: 0.12) : Colors.transparent,
       borderRadius: radio,
       child: InkWell(
         borderRadius: radio,
@@ -40,7 +38,7 @@ class OpcionRecuadro extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: radio,
             border: Border.all(
-              color: seleccionada ? ColoresApp.primario : ColoresApp.bordeSuave,
+              color: seleccionada ? colorPrimario : ColoresApp.bordeSuave,
               width: seleccionada ? 2 : 1,
             ),
           ),
@@ -52,7 +50,7 @@ class OpcionRecuadro extends StatelessWidget {
               Text(
                 etiqueta,
                 style: EstilosTexto.etiquetaOpcion.copyWith(
-                  color: seleccionada ? ColoresApp.primario : null,
+                  color: seleccionada ? colorPrimario : null,
                 ),
               ),
               if (detalle != null) Text(detalle!, style: EstilosTexto.detalleOpcion),
@@ -62,4 +60,4 @@ class OpcionRecuadro extends StatelessWidget {
       ),
     );
   }
-} 
+}

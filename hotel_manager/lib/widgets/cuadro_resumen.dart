@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../tema/dimensiones.dart';
 import '../tema/estilos_texto.dart';
 
@@ -19,7 +20,8 @@ class CuadroResumen extends StatelessWidget {
     const columnas = 2;
     // 32 = margen lateral de la pantalla, 10 = espacio entre cuadros
     final ancho =
-        (MediaQuery.of(context).size.width - 32 - 10 * (columnas - 1)) / columnas;
+        (MediaQuery.of(context).size.width - 32 - 10 * (columnas - 1)) /
+        columnas;
     return Container(
       width: ancho,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -32,13 +34,17 @@ class CuadroResumen extends StatelessWidget {
         children: [
           Icon(dato.icono, color: dato.color),
           const SizedBox(height: 4),
-          Text('${dato.cantidad}',
-              style: EstilosTexto.numeroResumen.copyWith(color: dato.color)),
-          Text(dato.etiqueta,
-              textAlign: TextAlign.center,
-              style: EstilosTexto.etiquetaResumen,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis),
+          Text(
+            '${dato.cantidad}',
+            style: EstilosTexto.numeroResumen.copyWith(color: dato.color),
+          ),
+          Text(
+            dato.etiqueta,
+            textAlign: TextAlign.center,
+            style: EstilosTexto.etiquetaResumen,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );

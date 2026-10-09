@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../modelos/habitacion.dart';
 import '../pantallas/pantalla_detalle_habitacion.dart';
 import '../tema/dimensiones.dart';
@@ -23,7 +24,9 @@ class TarjetaHabitacion extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => PantallaDetalleHabitacion(numeroHabitacion: habitacion.numero),
+              builder: (_) => PantallaDetalleHabitacion(
+                numeroHabitacion: habitacion.numero,
+              ),
             ),
           ),
           child: Container(
@@ -40,7 +43,10 @@ class TarjetaHabitacion extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(habitacion.numero, style: EstilosTexto.numeroHabitacion),
+                    Text(
+                      habitacion.numero,
+                      style: EstilosTexto.numeroHabitacion,
+                    ),
                     Icon(estado.icono, color: estado.color, size: 20),
                   ],
                 ),
@@ -48,8 +54,12 @@ class TarjetaHabitacion extends StatelessWidget {
                   '${habitacion.camas} ${habitacion.camas == 1 ? 'cama' : 'camas'}',
                   style: EstilosTexto.detalleHabitacion,
                 ),
-                Text(estado.etiqueta,
-                    style: EstilosTexto.estadoHabitacion.copyWith(color: estado.color)),
+                Text(
+                  estado.etiqueta,
+                  style: EstilosTexto.estadoHabitacion.copyWith(
+                    color: estado.color,
+                  ),
+                ),
               ],
             ),
           ),

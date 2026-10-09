@@ -13,7 +13,7 @@ class ContenedorPrincipal extends StatefulWidget {
 class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
   int _indice = 0;
 
-  static const _paginas = <Widget>[
+  static final List<Widget> _paginas = <Widget>[
     PantallaInicio(),
     _PantallaProvisional('Tienda'),
     _PantallaProvisional('Inventario'),
@@ -34,8 +34,8 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
           label: 'Inicio',
         ),
         NavigationDestination(
-          icon: Icon(Icons.storefront_outlined),
-          selectedIcon: Icon(Icons.storefront),
+          icon: Icon(Icons.shopping_cart_outlined),
+          selectedIcon: Icon(Icons.shopping_cart),
           label: 'Tienda',
         ),
         NavigationDestination(
@@ -44,14 +44,14 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
           label: 'Inventario',
         ),
         NavigationDestination(
-          icon: Icon(Icons.receipt_long_outlined),
-          selectedIcon: Icon(Icons.receipt_long),
+          icon: Icon(Icons.access_time),
+          selectedIcon: Icon(Icons.access_time_filled),
           label: 'Historial',
         ),
         NavigationDestination(
-          icon: Icon(Icons.point_of_sale_outlined),
-          selectedIcon: Icon(Icons.point_of_sale),
-          label: 'Caja',
+          icon: Icon(Icons.person_outline),
+          selectedIcon: Icon(Icons.person),
+          label: 'Perfil',
         ),
       ],
     ),

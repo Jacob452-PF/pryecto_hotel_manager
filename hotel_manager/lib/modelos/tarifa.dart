@@ -4,7 +4,12 @@ enum TipoTarifa {
   porHora('Por hora', 'hora', 'horas', Icons.schedule),
   porNoche('Por noche', 'noche', 'noches', Icons.nights_stay);
 
-  const TipoTarifa(this.etiqueta, this.unidadSingular, this.unidadPlural, this.icono);
+  const TipoTarifa(
+    this.etiqueta,
+    this.unidadSingular,
+    this.unidadPlural,
+    this.icono,
+  );
   final String etiqueta;
   final String unidadSingular;
   final String unidadPlural;
@@ -23,8 +28,10 @@ class Tarifa {
   const Tarifa(this.tipo, this.precioPorCamas);
 
   double precioPara(int camas) {
-    assert(precioPorCamas.containsKey(camas),
-        'No hay precio definido para $camas camas');
+    assert(
+      precioPorCamas.containsKey(camas),
+      'No hay precio definido para $camas camas',
+    );
     return precioPorCamas[camas] ?? 0;
   }
 }
