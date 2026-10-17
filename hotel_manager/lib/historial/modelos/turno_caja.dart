@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'consumo_cliente.dart';
+
 enum TipoVenta {
   habitaciones('Habitaciones', Icons.bed_outlined),
   servicios('Servicios', Icons.room_service_outlined),
@@ -45,12 +47,16 @@ class TurnoCaja {
   final int habitacionesOcupadas;
   final int habitacionesTotal;
 
+  /// Clientes registrados en el turno, con todo lo que consumieron.
+  final List<ConsumoCliente> clientes;
+
   const TurnoCaja({
     required this.usuario,
     required this.ventas,
     required this.gastos,
     required this.habitacionesOcupadas,
     required this.habitacionesTotal,
+    this.clientes = const [],
   });
 
   double get totalVentas => ventas.fold(0.0, (s, v) => s + v.monto);

@@ -1,10 +1,20 @@
-/// Una línea de consumo (producto o servicio cobrado a un cliente).
+import 'turno_caja.dart';
+
+/// Una línea de consumo (habitación, servicio o producto cobrado a un cliente).
 class LineaConsumo {
   final String nombre;
   final double precio;
   final int cantidad;
 
-  const LineaConsumo(this.nombre, this.precio, [this.cantidad = 1]);
+  /// Sirve para armar "Detalle de ventas" en el cierre de caja.
+  final TipoVenta tipo;
+
+  const LineaConsumo(
+    this.nombre,
+    this.precio, [
+    this.cantidad = 1,
+    this.tipo = TipoVenta.productos,
+  ]);
 
   double get importe => precio * cantidad;
 }
@@ -13,7 +23,7 @@ class LineaConsumo {
 class ConsumoCliente {
   final String cliente;
 
-  /// Etiqueta que se muestra a la derecha, por ejemplo "#A2".
+  /// Etiqueta que se muestra a la derecha, por ejemplo "#101".
   final String codigo;
   final List<LineaConsumo> lineas;
 

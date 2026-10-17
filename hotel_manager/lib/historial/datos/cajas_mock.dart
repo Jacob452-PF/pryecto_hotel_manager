@@ -1,5 +1,6 @@
 import '../modelos/caja_cierre.dart';
 import '../modelos/consumo_cliente.dart';
+import '../modelos/turno_caja.dart';
 
 /// Datos de prueba. Las fechas son relativas a hoy para que los filtros
 /// (Hoy / Esta semana / Este mes) tengan algo que mostrar.
@@ -29,7 +30,7 @@ List<CajaCierre> crearCajasMock(DateTime ahora) {
             LineaConsumo('Papas', 2.00),
             LineaConsumo('Jugo del valle', 2.00),
             LineaConsumo('Kit de aseo', 4.90),
-            LineaConsumo('Habitación', 25.00),
+            LineaConsumo('Habitación', 25.00, 1, TipoVenta.habitaciones),
           ],
         ),
         ConsumoCliente(
@@ -39,7 +40,7 @@ List<CajaCierre> crearCajasMock(DateTime ahora) {
             LineaConsumo('Galletas', 3.50),
             LineaConsumo('Café', 5.00),
             LineaConsumo('Pan', 4.25),
-            LineaConsumo('Habitación', 25.00),
+            LineaConsumo('Habitación', 25.00, 1, TipoVenta.habitaciones),
           ],
         ),
         ConsumoCliente(
@@ -51,7 +52,7 @@ List<CajaCierre> crearCajasMock(DateTime ahora) {
             LineaConsumo('Crepa', 8.40),
             LineaConsumo('Shampoo', 35.00),
             LineaConsumo('Toallas extra', 11.95),
-            LineaConsumo('Habitación', 25.00),
+            LineaConsumo('Habitación', 25.00, 1, TipoVenta.habitaciones),
           ],
         ),
       ],

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../servicios/servicio_consumos.dart';
 import '../servicios/servicio_historial.dart';
 import '../utilidades/estilos_historial.dart';
 import '../utilidades/formato.dart';
 import '../widgets/boton_pildora.dart';
 import '../widgets/resumen_turno.dart';
 import '../widgets/seccion_tabla.dart';
+import '../widgets/tarjeta_consumo_cliente.dart';
 
-/// Pantalla "Cierre de caja": revisa ventas y gastos y cierra el turno.
+/// Pantalla "Cierre de caja": revisa ventas, gastos y los clientes del turno,
+/// y cierra el turno.
 class PantallaCierreCaja extends StatelessWidget {
   const PantallaCierreCaja({super.key});
 
@@ -16,13 +19,15 @@ class PantallaCierreCaja extends StatelessWidget {
     final turno = servicio.turnoActual;
     final messenger = ScaffoldMessenger.of(context);
     final navegador = Navigator.of(context);
+    final n = turno.clientes.length;
 
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('¿Cerrar turno?'),
         content: Text(
-          'Se registrará el cierre de caja por ${dinero(turno.totalEnCaja)}.',
+          'Se cerrará el turno con $n ${n == 1 ? 'cliente' : 'clientes'} y se '
+          'registrará el cierre de caja por ${dinero(turno.totalEnCaja)}.',
         ),
         actions: [
           TextButton(
@@ -48,6 +53,17 @@ class PantallaCierreCaja extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Se redibuja sola si se registra un cliente o cambia el turno.
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        ServicioConsumos.instancia,
+        ServicioHistorial.instancia,
+      ]),
+      builder: (context, _) => _construir(context),
+    );
+  }
+
+  Widget _construir(BuildContext context) {
     final turno = ServicioHistorial.instancia.turnoActual;
     final ahora = DateTime.now();
 
@@ -179,13 +195,62 @@ class PantallaCierreCaja extends StatelessWidget {
               etiquetaTotal: 'Total gastos',
               total: dinero(turno.totalGastos),
             ),
+            const SizedBox(height: 16),
+            // Clientes registrados durante el turno
+            Row(
+              children: [
+                const Icon(Icons.groups_outlined, size: 26),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: ColoresHistorial.borde),
+                    ),
+                    child: Text(
+                      'Clientes del día (${turno.clientes.length})',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (turno.clientes.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Center(
+                  child: Text(
+                    'Todavía no hay clientes en este turno.\n'
+                    'Registra un huésped o carga una compra desde la tienda.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            for (final c in turno.clientes) TarjetaConsumoCliente(consumo: c),
           ],
         ),
       ),
       bottomNavigationBar: BotonPildora(
         texto: 'Cerrar turno',
-        onPressed: () => _confirmarCierre(context),
+        onPressed: () {
+          // Sin clientes no hay nada que cerrar.
+          if (turno.clientes.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No hay clientes que cerrar en este turno'),
+              ),
+            );
+            return;
+          }
+          _confirmarCierre(context);
+        },
       ),
-    );
+    ); // <- esta línea es la que falta
   }
 }
