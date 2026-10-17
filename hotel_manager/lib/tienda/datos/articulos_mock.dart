@@ -2,19 +2,6 @@ import '../modelos/articulo_tienda.dart';
 
 /// Datos de prueba. Después se reemplaza por la consulta a la base de datos.
 const List<ArticuloTienda> articulosMock = [
-  // Habitaciones
-  ArticuloTienda(
-    id: 'hab-1',
-    nombre: 'Habitación familiar',
-    precio: 20,
-    seccion: SeccionTienda.habitaciones,
-  ),
-  ArticuloTienda(
-    id: 'hab-2',
-    nombre: 'Habitación matrimonial',
-    precio: 20,
-    seccion: SeccionTienda.habitaciones,
-  ),
   // Servicio
   ArticuloTienda(
     id: 'srv-1',
@@ -28,7 +15,6 @@ const List<ArticuloTienda> articulosMock = [
     nombre: 'Servicio de lavandería',
     precio: 20,
     seccion: SeccionTienda.servicio,
-    categoria: CategoriaTienda.lenceria,
   ),
   // Productos del hotel
   ArticuloTienda(
