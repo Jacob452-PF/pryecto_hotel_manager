@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../servicios/carrito_tienda.dart';
+import '../../servicios/servicio_estadias.dart';
 
 /// Abre el carrito como hoja inferior (bottom sheet).
 Future<void> mostrarCarrito(BuildContext context, CarritoTienda carrito) {
@@ -64,7 +65,12 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
     final mensaje =
         '${_dinero(_c.totalPagar)} cargados a ${huesped.nombre} (Hab. ${huesped.habitacion})';
     final messenger = ScaffoldMessenger.of(context);
-    // TODO: guardar el cargo en la base de datos.
+    ServicioEstadias.instancia.agregarCargos(
+      huesped.habitacion,
+      _c.lineas
+          .map((l) => (articulo: l.articulo, cantidad: l.cantidad))
+          .toList(),
+    );
     _c.vaciar();
     Navigator.of(context).pop();
     messenger.showSnackBar(SnackBar(content: Text(mensaje)));
