@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../modelos/habitacion.dart';
 import '../servicios/servicio_habitaciones.dart';
+import 'pantalla_factura_temporal.dart';
+import 'pantalla_finalizar_estadia.dart';
 import '../widgets/fila_informacion.dart';
 import '../widgets/foto_habitacion.dart';
 import '../widgets/tarjeta_seccion.dart';
@@ -12,35 +14,6 @@ import '../widgets/tarjeta_seccion.dart';
 class PantallaDetalleHabitacion extends StatelessWidget {
   final String numeroHabitacion;
   const PantallaDetalleHabitacion({super.key, required this.numeroHabitacion});
-
-  Future<void> _confirmarTerminarEstadia(
-    BuildContext context,
-    Habitacion habitacion,
-  ) async {
-    final confirmado = await showDialog<bool>(
-      context: context,
-      builder: (contextoDialogo) => AlertDialog(
-        title: const Text('Terminar estadía'),
-        content: Text(
-          '¿Terminar la estadía de ${habitacion.huesped ?? 'el huésped'} en la '
-          'habitación ${habitacion.numero}? La habitación pasará a limpieza.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(contextoDialogo, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(contextoDialogo, true),
-            child: const Text('Terminar'),
-          ),
-        ],
-      ),
-    );
-    if (confirmado == true) {
-      ServicioHabitaciones.instancia.terminarEstadia(habitacion.numero);
-    }
-  }
 
   /// Los botones dependen del estado actual de la habitación.
   List<Widget> _acciones(BuildContext context, Habitacion habitacion) {
@@ -59,10 +32,30 @@ class PantallaDetalleHabitacion extends StatelessWidget {
 
     return switch (habitacion.estado) {
       EstadoHabitacion.ocupada => [
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PantallaFacturaTemporal(
+                habitacion: habitacion.numero,
+                huesped: habitacion.huesped ?? 'Huésped',
+              ),
+            ),
+          ),
+          icon: const Icon(Icons.receipt_long),
+          label: const Text('Ver factura temporal y cargos'),
+        ),
+        const SizedBox(height: 12),
         FilledButton.icon(
-          onPressed: () => _confirmarTerminarEstadia(context, habitacion),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PantallaFinalizarEstadia(
+                habitacion: habitacion.numero,
+                huesped: habitacion.huesped ?? 'Huésped',
+              ),
+            ),
+          ),
           icon: const Icon(Icons.logout),
-          label: const Text('Terminar estadía'),
+          label: const Text('Finalizar estadía y cobrar'),
         ),
       ],
       EstadoHabitacion.limpieza => [

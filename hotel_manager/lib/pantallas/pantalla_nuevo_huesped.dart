@@ -8,6 +8,7 @@ import '../modelos/producto.dart';
 import '../modelos/tarifa.dart';
 import '../modelos/tipo_cuarto.dart';
 import '../servicios/servicio_habitaciones.dart';
+import '../servicios/servicio_estadias.dart';
 import '../tema/estilos_botones.dart';
 import '../tema/estilos_texto.dart';
 import '../utilidades/formato.dart';
@@ -123,6 +124,16 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     ServicioHabitaciones.instancia.ocupar(
       habitacionElegida.numero,
       factura.huesped,
+    );
+    ServicioEstadias.instancia.iniciar(
+      habitacion: habitacionElegida.numero,
+      entrada: factura.fecha,
+      tarifa: factura.tarifa,
+      cantidad: factura.cantidad,
+      precioUnitario: factura.precioUnitario,
+      productos: factura.productos
+          .map((p) => CargoEstadia(p.nombre, p.precio))
+          .toList(),
     );
 
     // Se anota el consumo del cliente para el cierre de caja.

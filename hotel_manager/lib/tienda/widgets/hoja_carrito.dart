@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../historial/historial.dart';
 import '../modelos/articulo_tienda.dart';
 import '../servicios/carrito_tienda.dart';
+import '../../servicios/servicio_estadias.dart';
+import '../../historial/servicios/servicio_consumos.dart';
 
 /// Abre el carrito como hoja inferior (bottom sheet).
 Future<void> mostrarCarrito(BuildContext context, CarritoTienda carrito) {
