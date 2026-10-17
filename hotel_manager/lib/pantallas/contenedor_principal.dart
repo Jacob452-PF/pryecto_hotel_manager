@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'pantalla_inicio.dart';
 import 'pantalla_perfil_caja.dart';
+import '../tienda/tienda.dart';
+import '../inventario/inventario.dart';
 
 class ContenedorPrincipal extends StatefulWidget {
   const ContenedorPrincipal({super.key});
@@ -15,8 +17,8 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
 
   static final List<Widget> _paginas = <Widget>[
     PantallaInicio(),
-    _PantallaProvisional('Tienda'),
-    _PantallaProvisional('Inventario'),
+    PantallaTienda(),
+    PantallaInventario(),
     _PantallaProvisional('Historial de cajas'),
     PantallaPerfilCaja(),
   ];
