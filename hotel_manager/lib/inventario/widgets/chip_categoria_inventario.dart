@@ -20,7 +20,7 @@ class ChipCategoriaInventario extends StatelessWidget {
     CategoriaInventario.alimentos: Icons.restaurant,
     CategoriaInventario.bebidas: Icons.wine_bar,
     CategoriaInventario.aseo: Icons.cleaning_services,
-    CategoriaInventario.lenceria: Icons.bed,
+
     CategoriaInventario.otros: Icons.more_horiz,
   };
 

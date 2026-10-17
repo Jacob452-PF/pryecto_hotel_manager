@@ -1,27 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../servicios/servicio_inventario.dart';
 import '../modelos/producto_inventario.dart';
+import '../servicios/servicio_inventario.dart';
+import 'dialogo_inventario.dart';
 
-/// Hoja inferior para agregar un producto nuevo.
+/// Ventana "Agregar producto" (mismo estilo que "Ajustar producto").
 Future<void> mostrarAgregarProducto(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showDialog<void>(
     context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (_) => const _HojaAgregarProducto(),
+    builder: (_) => const _DialogoAgregar(),
   );
 }
 
-class _HojaAgregarProducto extends StatefulWidget {
-  const _HojaAgregarProducto();
+class _DialogoAgregar extends StatefulWidget {
+  const _DialogoAgregar();
 
   @override
-  State<_HojaAgregarProducto> createState() => _EstadoHojaAgregar();
+  State<_DialogoAgregar> createState() => _EstadoDialogoAgregar();
 }
 
-class _EstadoHojaAgregar extends State<_HojaAgregarProducto> {
+class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
   final _nombre = TextEditingController();
   final _precio = TextEditingController();
   final _stock = TextEditingController(text: '0');
@@ -36,6 +35,21 @@ class _EstadoHojaAgregar extends State<_HojaAgregarProducto> {
     _stock.dispose();
     _maximo.dispose();
     super.dispose();
+  }
+
+  InputDecoration _decoracion(String etiqueta, {String? prefijo}) {
+    final borde = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFF9A9AA5)),
+    );
+    return InputDecoration(
+      labelText: etiqueta,
+      prefixText: prefijo,
+      filled: true,
+      fillColor: const Color(0xFFF6F6F9),
+      border: borde,
+      enabledBorder: borde,
+    );
   }
 
   void _guardar() {
@@ -81,112 +95,77 @@ class _EstadoHojaAgregar extends State<_HojaAgregarProducto> {
       (c) => c != CategoriaInventario.todos,
     );
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        0,
-        20,
-        20 + MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Agregar producto',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _nombre,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Nombre',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _precio,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-              ],
-              decoration: const InputDecoration(
-                labelText: 'Precio',
-                prefixText: '\$ ',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text('Categoría', style: TextStyle(fontSize: 14)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final c in categorias)
-                  ChoiceChip(
-                    label: Text(c.etiqueta),
-                    selected: _categoria == c,
-                    onSelected: (_) => setState(() => _categoria = c),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _stock,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: const InputDecoration(
-                      labelText: 'Stock actual',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _maximo,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: const InputDecoration(
-                      labelText: 'Stock máximo',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 10),
-              Text(_error!, style: const TextStyle(color: Color(0xFFE53935))),
+    return DialogoInventario(
+      icono: Icons.add_box_outlined,
+      titulo: 'Agregar producto',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _nombre,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: _decoracion('Nombre'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _precio,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
             ],
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancelar'),
-                  ),
+            decoration: _decoracion('Precio', prefijo: '\$ '),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Categoría',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final c in categorias)
+                ChoiceChip(
+                  label: Text(c.etiqueta),
+                  selected: _categoria == c,
+                  onSelected: (_) => setState(() => _categoria = c),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _guardar,
-                    child: const Text('Guardar'),
-                  ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _stock,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: _decoracion('Stock actual'),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _maximo,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: _decoracion('Stock máximo'),
+                ),
+              ),
+            ],
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(_error!, style: const TextStyle(color: Color(0xFFE53935))),
           ],
-        ),
+          const SizedBox(height: 20),
+          BotonesDialogo(
+            textoGuardar: 'Guardar',
+            onGuardar: _guardar,
+            onCancelar: () => Navigator.of(context).pop(),
+          ),
+        ],
       ),
     );
   }

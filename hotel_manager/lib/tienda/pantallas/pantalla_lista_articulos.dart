@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../datos/articulos_mock.dart';
+import '../../inventario/servicios/servicio_inventario.dart';
+import '../datos/articulos_de_inventario.dart';
 import '../modelos/articulo_tienda.dart';
 import '../servicios/carrito_tienda.dart';
+import '../widgets/hoja_carrito.dart';
 import '../widgets/tarjeta_articulo.dart';
 
 /// Pantalla con TODOS los artículos de una sección
-/// (Habitaciones, Servicio o Productos del hotel).
+/// (Servicio o Productos del hotel).
 /// Se abre con la flecha ">" de cada sección en PantallaTienda.
 class PantallaListaArticulos extends StatefulWidget {
   final SeccionTienda seccion;
@@ -24,16 +26,28 @@ class PantallaListaArticulos extends StatefulWidget {
 
 class _EstadoPantallaLista extends State<PantallaListaArticulos> {
   final TextEditingController _busqueda = TextEditingController();
+  final ServicioInventario _inventario = ServicioInventario.instancia;
+
+  @override
+  void initState() {
+    super.initState();
+    _inventario.addListener(_refrescar);
+  }
+
+  void _refrescar() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
+    _inventario.removeListener(_refrescar);
     _busqueda.dispose();
     super.dispose();
   }
 
   List<ArticuloTienda> get _articulos {
     final texto = _busqueda.text.trim().toLowerCase();
-    return articulosMock
+    return articulosDeTienda()
         .where(
           (a) =>
               a.seccion == widget.seccion &&
@@ -86,13 +100,7 @@ class _EstadoPantallaLista extends State<PantallaListaArticulos> {
                   AnimatedBuilder(
                     animation: widget.carrito,
                     builder: (_, __) => IconButton(
-                      onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Artículos en el carrito: ${widget.carrito.total}',
-                          ),
-                        ),
-                      ),
+                      onPressed: () => mostrarCarrito(context, widget.carrito),
                       tooltip: 'Carrito',
                       icon: Badge(
                         isLabelVisible: widget.carrito.total > 0,
