@@ -21,10 +21,10 @@ class BotonPildora extends StatelessWidget {
         child: FilledButton(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: ColoresHistorial.boton,
-            disabledBackgroundColor: const Color(0xFFD5DDE0),
-            disabledForegroundColor: Colors.black38,
-            foregroundColor: Colors.black,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            disabledBackgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            disabledForegroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(26),

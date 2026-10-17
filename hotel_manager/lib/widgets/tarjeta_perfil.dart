@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../modelos/usuario.dart';
-import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
 import '../tema/estilos_texto.dart';
 import '../utilidades/formato.dart';
@@ -29,7 +28,8 @@ class TarjetaPerfil extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorPrimario = Theme.of(context).colorScheme.primary;
+    final colores = Theme.of(context).colorScheme;
+    final colorPrimario = colores.primary;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -58,7 +58,7 @@ class TarjetaPerfil extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: ColoresApp.fondoSuave,
+                      color: colores.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(
                         Dimensiones.radioTarjeta,
                       ),
@@ -79,7 +79,9 @@ class TarjetaPerfil extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 'Sesión iniciada: ${formatearFechaHora(inicioSesion!)}',
-                style: EstilosTexto.etiquetaInformacion,
+                style: EstilosTexto.etiquetaInformacion.copyWith(
+                  color: colores.onSurfaceVariant,
+                ),
               ),
             ],
           ],

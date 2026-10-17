@@ -38,17 +38,20 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
   }
 
   InputDecoration _decoracion(String etiqueta, {String? prefijo}) {
+    final colores = Theme.of(context).colorScheme;
     final borde = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFF9A9AA5)),
+      borderSide: BorderSide(color: Theme.of(context).dividerColor),
     );
     return InputDecoration(
       labelText: etiqueta,
       prefixText: prefijo,
       filled: true,
-      fillColor: const Color(0xFFF6F6F9),
+      fillColor: colores.surfaceContainerHighest,
       border: borde,
       enabledBorder: borde,
+      labelStyle: TextStyle(color: colores.onSurfaceVariant),
+      hintStyle: TextStyle(color: colores.onSurfaceVariant),
     );
   }
 
@@ -116,9 +119,9 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
             decoration: _decoracion('Precio', prefijo: '\$ '),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Categoría',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -129,6 +132,13 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
                 ChoiceChip(
                   label: Text(c.etiqueta),
                   selected: _categoria == c,
+                  selectedColor: Theme.of(context).colorScheme.primary,
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  labelStyle: TextStyle(
+                    color: _categoria == c
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Theme.of(context).colorScheme.onSurface,
+                  ),
                   onSelected: (_) => setState(() => _categoria = c),
                 ),
             ],

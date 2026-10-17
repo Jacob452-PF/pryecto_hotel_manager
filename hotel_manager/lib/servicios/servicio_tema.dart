@@ -10,20 +10,25 @@ class ServicioTema extends ChangeNotifier {
   ServicioTema._();
 
   static final ServicioTema instancia = ServicioTema._();
-  static const _claveColor = 'tema_color';
+  static const _claveColor = 'tema_visual';
 
   PaletaTema _paleta = PaletasTema.predeterminada;
 
   PaletaTema get paleta => _paleta;
-  Color get colorPrimario => _paleta.color;
 
   /// Se llama una vez al iniciar la app, antes de dibujar la primera pantalla.
   Future<void> cargar() async {
     try {
       final preferencias = await SharedPreferences.getInstance();
-      final nombre = preferencias.getString(_claveColor);
+      // Se conserva la selección anterior cuando la app actualiza desde
+      // versiones que guardaban solo un color.
+      final nombre = preferencias.getString(_claveColor) ??
+          preferencias.getString('tema_color');
       _paleta = PaletasTema.todas.firstWhere(
-        (p) => p.nombre == nombre,
+        (p) => p.nombre == nombre ||
+            (nombre == 'Azul' && p == PaletasTema.predeterminada) ||
+            (nombre == 'Verde' && p == PaletasTema.esmeralda) ||
+            (nombre == 'Turquesa' && p == PaletasTema.turquesa),
         orElse: () => PaletasTema.predeterminada,
       );
     } catch (error) {

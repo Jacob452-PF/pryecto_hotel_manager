@@ -46,13 +46,13 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
         SnackBar(
           content: Text('${producto.nombre} eliminado'),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF0A1020),
+          backgroundColor: Theme.of(context).colorScheme.inverseSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
           action: SnackBarAction(
             label: 'Deshacer',
-            textColor: const Color(0xFF5B9BFF),
+            textColor: Theme.of(context).colorScheme.primary,
             onPressed: () => _servicio.restaurar(producto.id),
           ),
         ),
@@ -75,7 +75,6 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
     final eliminados = _servicio.eliminados;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F0F8),
       body: SafeArea(
         child: Column(
           children: [
@@ -104,8 +103,8 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF6FCFD9),
-                      foregroundColor: Colors.black,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 14,
@@ -205,10 +204,10 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                               const SizedBox(width: 8),
                               Text(
                                 'Productos eliminados (${eliminados.length})',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ],
@@ -245,7 +244,7 @@ class _FilaEliminada extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF1F6),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -259,7 +258,7 @@ class _FilaEliminada extends StatelessWidget {
                 Text(producto.nombre, style: const TextStyle(fontSize: 15)),
                 Text(
                   '\$${producto.precio.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.black54),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -269,8 +268,8 @@ class _FilaEliminada extends StatelessWidget {
             icon: const Icon(Icons.sync, size: 18),
             label: const Text('Restaurar'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF1E56A8),
-              side: const BorderSide(color: Color(0xFF3B7DE0), width: 1.5),
+              foregroundColor: Theme.of(context).colorScheme.primary,
+              side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -293,7 +292,7 @@ class _Panel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: child,

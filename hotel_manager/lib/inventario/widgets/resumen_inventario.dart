@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 
-const _azul = Color(0xFF2B8CFF);
-const _borde = Color(0xFF7FC8CC);
-
 String _fecha(DateTime d) {
   const meses = [
     'ene',
@@ -98,23 +95,24 @@ class _Tarjeta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colores.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _borde),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icono, size: 20, color: _azul),
+          Icon(icono, size: 20, color: colores.primary),
           const SizedBox(height: 4),
           Text(
             etiqueta,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 10, color: Color(0xFF2B6CB0)),
+            style: TextStyle(fontSize: 10, color: colores.onSurfaceVariant),
           ),
           const Spacer(),
           Text(

@@ -22,8 +22,6 @@ Future<void> mostrarCarrito(BuildContext context, CarritoTienda carrito) {
   );
 }
 
-const _azul = Color(0xFF3B7DE0);
-const _azulOscuro = Color(0xFF0B2A6B);
 const _rojo = Color(0xFFE53935);
 
 String _dinero(double v) => '\$${v.toStringAsFixed(2)}';
@@ -91,10 +89,11 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       child: Container(
-        color: const Color(0xFF2B2B2B),
+        color: colores.primary,
         child: AnimatedBuilder(
           animation: _c,
           builder: (context, _) {
@@ -111,7 +110,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                         width: 60,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: Colors.white38,
+                          color: colores.onPrimary.withValues(alpha: 0.45),
                           borderRadius: BorderRadius.circular(3),
                         ),
                       ),
@@ -124,10 +123,10 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Carrito',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: colores.onPrimary,
                                     fontSize: 32,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -136,8 +135,8 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                                   n == 0
                                       ? 'Tu carrito está vacío'
                                       : '$n ${n == 1 ? 'producto agregado' : 'productos agregados'}',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
+                                  style: TextStyle(
+                                    color: colores.onPrimary.withValues(alpha: 0.75),
                                     fontSize: 15,
                                   ),
                                 ),
@@ -148,8 +147,8 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                             onPressed: () => Navigator.of(context).pop(),
                             tooltip: 'Cerrar',
                             style: IconButton.styleFrom(
-                              backgroundColor: const Color(0xFFE6E6EA),
-                              foregroundColor: Colors.black,
+                              backgroundColor: colores.surfaceContainerHighest,
+                              foregroundColor: colores.onSurface,
                             ),
                             icon: const Icon(Icons.close),
                           ),
@@ -160,8 +159,8 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                     Flexible(
                       child: Container(
                         width: double.infinity,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: colores.surface,
                           borderRadius: BorderRadius.vertical(
                             top: Radius.circular(28),
                           ),
@@ -199,14 +198,14 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                                   _fila(
                                     'Subtotal',
                                     _dinero(_c.subtotal),
-                                    colorLabel: Colors.black54,
+                                    colorLabel: colores.onSurfaceVariant,
                                   ),
                                   const SizedBox(height: 6),
                                   _fila(
                                     'Total',
                                     _dinero(_c.totalPagar),
                                     negrita: true,
-                                    colorValor: _azul,
+                                    colorValor: colores.primary,
                                   ),
                                   const SizedBox(height: 18),
                                   _seccionHuesped(),
@@ -224,7 +223,8 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                                       ? null
                                       : _confirmar,
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: _azul,
+                                    backgroundColor: colores.primary,
+                                    foregroundColor: colores.onPrimary,
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 16,
                                     ),
@@ -252,7 +252,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                     right: 16,
                     bottom: 16,
                     child: Material(
-                      color: const Color(0xFF0A1020),
+                      color: colores.inverseSurface,
                       borderRadius: BorderRadius.circular(28),
                       elevation: 6,
                       child: Padding(
@@ -262,18 +262,18 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                             Expanded(
                               child: Text(
                                 '${_avisoEliminada!.articulo.nombre} eliminado',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: colores.onInverseSurface,
                                   fontSize: 16,
                                 ),
                               ),
                             ),
                             TextButton(
                               onPressed: () => _restaurar(_avisoEliminada!),
-                              child: const Text(
+                              child: Text(
                                 'Deshacer',
                                 style: TextStyle(
-                                  color: Color(0xFF5B9BFF),
+                                  color: colores.primary,
                                   fontSize: 17,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -308,7 +308,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: negrita ? FontWeight.bold : FontWeight.normal,
-              color: colorLabel ?? Colors.black,
+              color: colorLabel ?? Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ),
@@ -317,7 +317,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: colorValor ?? Colors.black,
+            color: colorValor ?? Theme.of(context).colorScheme.onSurface,
           ),
         ),
       ],
@@ -329,26 +329,26 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: const [
+        children: [
             CircleAvatar(
               radius: 16,
-              backgroundColor: _azul,
-              child: Icon(Icons.person, color: Colors.white, size: 20),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: Icon(Icons.person, color: Theme.of(context).colorScheme.onPrimary, size: 20),
             ),
             SizedBox(width: 10),
             Text(
               '¿A quién se le carga?',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
             ),
           ],
         ),
         const SizedBox(height: 12),
         if (_c.huespedes.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Text(
               'No hay huéspedes en habitaciones ocupadas.',
-              style: TextStyle(color: Colors.black54),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ),
         for (final h in _c.huespedes)
@@ -373,10 +373,10 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
             const SizedBox(width: 10),
             Text(
               'Productos eliminados (${_c.eliminadas.length})',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],
@@ -387,7 +387,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF1F6),
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -404,7 +404,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                       ),
                       Text(
                         _dinero(l.articulo.precio),
-                        style: const TextStyle(color: Colors.black54),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -414,8 +414,8 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                   icon: const Icon(Icons.sync, size: 20),
                   label: const Text('Restaurar'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF1E56A8),
-                    side: const BorderSide(color: _azul, width: 1.5),
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -439,17 +439,17 @@ class _MiniaturaProducto extends StatelessWidget {
       width: 52,
       height: 52,
       decoration: BoxDecoration(
-        color: const Color(0xFFD9D9D9),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
       ),
       clipBehavior: Clip.antiAlias,
       child: imagen == null
-          ? const Icon(Icons.image_outlined, color: Colors.black38)
+          ? Icon(Icons.image_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant)
           : Image.asset(
               imagen!,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.image_outlined, color: Colors.black38),
+                  Icon(Icons.image_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
     );
   }
@@ -474,9 +474,9 @@ class _FilaProducto extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD5D5DA)),
+        border: Border.all(color: Theme.of(context).dividerColor),
         boxShadow: const [
           BoxShadow(
             color: Color(0x14000000),
@@ -502,7 +502,7 @@ class _FilaProducto extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   _dinero(linea.articulo.precio),
-                  style: const TextStyle(color: Colors.black54),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -510,7 +510,7 @@ class _FilaProducto extends StatelessWidget {
           // Selector de cantidad
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFE0E0E6),
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -530,7 +530,7 @@ class _FilaProducto extends StatelessWidget {
                   height: 32,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -548,10 +548,10 @@ class _FilaProducto extends StatelessWidget {
                     width: 38,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: _azul,
+                      color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Icon(Icons.add, size: 22, color: Colors.white),
+                    child: Icon(Icons.add, size: 22, color: Theme.of(context).colorScheme.onPrimary),
                   ),
                 ),
               ],
@@ -591,25 +591,25 @@ class _TarjetaHuesped extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: seleccionado ? const Color(0xFFCFDDF8) : Colors.white,
+            color: seleccionado ? Theme.of(context).colorScheme.secondaryContainer : Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: seleccionado ? _azul : const Color(0xFFD5D5DA),
+              color: seleccionado ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor,
               width: seleccionado ? 2 : 1,
             ),
           ),
           child: Row(
             children: [
               seleccionado
-                  ? const CircleAvatar(
+                  ? CircleAvatar(
                       radius: 16,
-                      backgroundColor: _azul,
-                      child: Icon(Icons.check, color: Colors.white, size: 20),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      child: Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimary, size: 20),
                     )
-                  : const Icon(
+                  : Icon(
                       Icons.radio_button_unchecked,
                       size: 32,
-                      color: Colors.black38,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
               const SizedBox(width: 14),
               Expanded(
@@ -618,10 +618,10 @@ class _TarjetaHuesped extends StatelessWidget {
                   children: [
                     Text(
                       nombre,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.bold,
-                        color: _azulOscuro,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -629,13 +629,13 @@ class _TarjetaHuesped extends StatelessWidget {
                       children: [
                         Text(
                           'Habitación $habitacion',
-                          style: const TextStyle(color: Colors.black54),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(
+                        Icon(
                           Icons.bed_outlined,
                           size: 18,
-                          color: Colors.black54,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ],
                     ),

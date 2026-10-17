@@ -85,6 +85,7 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
   @override
   Widget build(BuildContext context) {
     final p = widget.producto;
+    final colores = Theme.of(context).colorScheme;
 
     return DialogoInventario(
       icono: Icons.tune,
@@ -96,7 +97,7 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF1F5),
+              color: colores.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -122,9 +123,9 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
                           const SizedBox(height: 2),
                           Text(
                             'Precio: \$${p.precio.toStringAsFixed(2)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
-                              color: Color(0xFF55555F),
+                              color: colores.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -154,7 +155,7 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
                         style: const TextStyle(fontSize: 17),
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: colores.surface,
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14,
@@ -162,14 +163,14 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF9A9AA5),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).dividerColor,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF9A9AA5),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).dividerColor,
                             ),
                           ),
                         ),
@@ -196,7 +197,7 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
           InputDecorator(
             decoration: InputDecoration(
               filled: true,
-              fillColor: const Color(0xFFF1F1F4),
+              fillColor: colores.surfaceContainerHighest,
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 14,
@@ -204,11 +205,11 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF9A9AA5)),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF9A9AA5)),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
             child: DropdownButtonHideUnderline(
@@ -216,7 +217,7 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
                 value: _motivo,
                 isExpanded: true,
                 borderRadius: BorderRadius.circular(12),
-                style: const TextStyle(fontSize: 17, color: Colors.black87),
+                style: TextStyle(fontSize: 17, color: colores.onSurface),
                 items: [
                   for (final m in _motivos)
                     DropdownMenuItem(value: m, child: Text(m)),
@@ -239,14 +240,14 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
             decoration: InputDecoration(
               hintText: 'Añade una nota sobre el ajuste...',
               filled: true,
-              fillColor: const Color(0xFFF6F6F9),
+              fillColor: colores.surfaceContainerHighest,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF9A9AA5)),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF9A9AA5)),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
           ),
@@ -274,7 +275,7 @@ class _BotonCuadrado extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -284,7 +285,7 @@ class _BotonCuadrado extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF9A9AA5)),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Icon(icono, size: 24),
         ),
@@ -306,15 +307,15 @@ class _EstadoActual extends StatelessWidget {
     if (producto.agotado) {
       texto = 'Agotado';
       color = const Color(0xFFE53935);
-      fondo = const Color(0xFFFDECEC);
+      fondo = color.withValues(alpha: 0.14);
     } else if (producto.stockBajo) {
       texto = 'Stock bajo';
       color = const Color(0xFFEF8A00);
-      fondo = const Color(0xFFFFF3E0);
+      fondo = color.withValues(alpha: 0.14);
     } else {
       texto = 'En stock';
       color = const Color(0xFF22A559);
-      fondo = const Color(0xFFE6F6EC);
+      fondo = color.withValues(alpha: 0.14);
     }
 
     Widget punto() => Container(

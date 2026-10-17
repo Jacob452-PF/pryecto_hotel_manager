@@ -12,9 +12,9 @@ class EtiquetaPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ColoresHistorial.borde),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Text(texto, style: const TextStyle(fontSize: 11)),
     );

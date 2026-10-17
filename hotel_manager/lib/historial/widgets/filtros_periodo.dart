@@ -16,6 +16,7 @@ class FiltrosPeriodo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     return Row(
       children: [
         for (final p in PeriodoHistorial.values) ...[
@@ -27,19 +28,18 @@ class FiltrosPeriodo extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 7),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: p == seleccionado
-                      ? const Color(0xFFBFDCE5)
-                      : Colors.white,
+                  color: p == seleccionado ? colores.secondaryContainer : colores.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: ColoresHistorial.borde),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     p.etiqueta,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: fuenteTitulo,
                       fontSize: 13,
+                      color: colores.onSurface,
                     ),
                   ),
                 ),

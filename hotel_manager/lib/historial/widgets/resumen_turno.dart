@@ -78,9 +78,9 @@ class _Tarjeta extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ColoresHistorial.borde),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,7 +106,7 @@ class _Tarjeta extends StatelessWidget {
           if (detalle != null)
             Text(
               detalle!,
-              style: const TextStyle(fontSize: 8.5, color: Colors.black54),
+              style: TextStyle(fontSize: 8.5, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
         ],
       ),

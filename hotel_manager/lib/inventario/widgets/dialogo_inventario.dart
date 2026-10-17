@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-const azulDialogo = Color(0xFF3B82F6);
-
 /// Ventana centrada con icono azul y título (usada para "Ajustar producto"
 /// y "Agregar producto"). El contenido va en [child].
 class DialogoInventario extends StatelessWidget {
@@ -18,8 +16,9 @@ class DialogoInventario extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: colores.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
@@ -36,7 +35,7 @@ class DialogoInventario extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: azulDialogo,
+                      color: colores.primary,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(icono, color: Colors.white, size: 28),
@@ -45,10 +44,10 @@ class DialogoInventario extends StatelessWidget {
                   Expanded(
                     child: Text(
                       titulo,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF2B2B33),
+                        color: colores.onSurface,
                       ),
                     ),
                   ),
@@ -81,6 +80,7 @@ class BotonesDialogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     final forma = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(14),
     );
@@ -90,9 +90,9 @@ class BotonesDialogo extends StatelessWidget {
           child: OutlinedButton(
             onPressed: onCancelar,
             style: OutlinedButton.styleFrom(
-              backgroundColor: const Color(0xFFEDEDF0),
-              foregroundColor: const Color(0xFF55555F),
-              side: const BorderSide(color: Color(0xFF9A9AA5)),
+              backgroundColor: colores.surfaceContainerHighest,
+              foregroundColor: colores.onSurface,
+              side: BorderSide(color: Theme.of(context).dividerColor),
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: forma,
             ),
@@ -114,7 +114,7 @@ class BotonesDialogo extends StatelessWidget {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             style: FilledButton.styleFrom(
-              backgroundColor: azulDialogo,
+              backgroundColor: colores.primary,
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: forma,
             ),

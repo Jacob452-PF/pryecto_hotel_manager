@@ -56,7 +56,6 @@ class _EstadoPantallaListaCajas extends State<PantallaListaCajas> {
     final visibles = _verTodas ? cajas : cajas.take(_vistaPrevia).toList();
 
     return Scaffold(
-      backgroundColor: ColoresHistorial.fondo,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -92,7 +91,7 @@ class _EstadoPantallaListaCajas extends State<PantallaListaCajas> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -110,14 +109,14 @@ class _EstadoPantallaListaCajas extends State<PantallaListaCajas> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(
-                          color: ColoresHistorial.borde,
+                        borderSide: BorderSide(
+                          color: Theme.of(context).dividerColor,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(
-                          color: ColoresHistorial.azulTexto,
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.primary,
                           width: 1.5,
                         ),
                       ),
@@ -160,10 +159,10 @@ class _EstadoPantallaListaCajas extends State<PantallaListaCajas> {
                         onPressed: () => setState(() => _verTodas = !_verTodas),
                         child: Text(
                           _verTodas ? 'ver menos' : 'ver todas',
-                          style: const TextStyle(
-                            color: ColoresHistorial.azulTexto,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
                             decoration: TextDecoration.underline,
-                            decorationColor: ColoresHistorial.azulTexto,
+                            decorationColor: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       ),

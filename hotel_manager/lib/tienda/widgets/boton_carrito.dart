@@ -9,6 +9,7 @@ class BotonCarrito extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -18,12 +19,12 @@ class BotonCarrito extends StatelessWidget {
           child: Ink(
             width: 52,
             height: 52,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFF1ED0F5), Color(0xFF2B8CFF)],
+                colors: [colores.primary, colores.secondary],
               ),
             ),
             child: InkWell(

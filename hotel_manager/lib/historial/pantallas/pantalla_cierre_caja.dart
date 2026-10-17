@@ -70,9 +70,9 @@ class PantallaCierreCaja extends StatelessWidget {
     final tarjetaFecha = Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ColoresHistorial.borde),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,7 +121,6 @@ class PantallaCierreCaja extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: ColoresHistorial.fondo,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
@@ -208,9 +207,9 @@ class PantallaCierreCaja extends StatelessWidget {
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ColoresHistorial.borde),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: Text(
                       'Clientes del día (${turno.clientes.length})',

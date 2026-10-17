@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../modelos/producto_inventario.dart';
 
-const _azul = Color(0xFF2B8CFF);
-const _bordeTeal = Color(0xFF7FC8CC);
-
 /// Fila del listado: imagen, nombre, precio, stock, estado y botones.
 class FilaProductoInventario extends StatelessWidget {
   final ProductoInventario producto;
@@ -20,6 +17,7 @@ class FilaProductoInventario extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
@@ -67,7 +65,7 @@ class FilaProductoInventario extends StatelessWidget {
           const SizedBox(width: 8),
           // Ajustar
           Material(
-            color: const Color(0xFFCDEBEC),
+            color: colores.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
               onTap: onAjustar,
@@ -76,12 +74,12 @@ class FilaProductoInventario extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _bordeTeal),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.add_circle, size: 16, color: _azul),
+                children: [
+                    Icon(Icons.add_circle, size: 16, color: colores.primary),
                     SizedBox(width: 4),
                     Text(
                       'Ajustar',
@@ -140,7 +138,7 @@ class MiniaturaProducto extends StatelessWidget {
       width: tamano,
       height: tamano,
       decoration: BoxDecoration(
-        color: const Color(0xFFD9D9D9),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
       ),
       clipBehavior: Clip.antiAlias,
@@ -171,13 +169,13 @@ class _EstadoStock extends StatelessWidget {
       color = const Color(0xFFEF8A00);
     } else {
       texto = 'En stock';
-      color = Colors.black87;
+      color = Theme.of(context).colorScheme.primary;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color == Colors.black87 ? _bordeTeal : color),
+        border: Border.all(color: color == Theme.of(context).colorScheme.primary ? Theme.of(context).dividerColor : color),
       ),
       child: Text(
         texto,

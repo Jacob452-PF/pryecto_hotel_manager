@@ -23,7 +23,9 @@ class TarjetaCaja extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: destacada ? ColoresHistorial.azulClaro : Colors.white,
+        color: destacada
+            ? Theme.of(context).colorScheme.secondaryContainer
+            : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: onTap,
@@ -32,7 +34,7 @@ class TarjetaCaja extends StatelessWidget {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: ColoresHistorial.borde),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,

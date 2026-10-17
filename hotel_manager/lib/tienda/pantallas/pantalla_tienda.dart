@@ -106,7 +106,6 @@ class _EstadoPantallaTienda extends State<PantallaTienda> {
         .toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F0F8),
       body: SafeArea(
         child: Column(
           children: [
@@ -217,7 +216,7 @@ class _Panel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: child,

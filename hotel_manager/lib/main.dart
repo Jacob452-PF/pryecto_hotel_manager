@@ -20,7 +20,7 @@ class MiApp extends StatelessWidget {
       listenable: ServicioTema.instancia,
       builder: (context, _) => MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: TemaApp.crear(ServicioTema.instancia.colorPrimario),
+        theme: TemaApp.crear(ServicioTema.instancia.paleta),
         home: const PantallaLogin(),
       ),
     );

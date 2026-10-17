@@ -24,6 +24,7 @@ class ChipCategoria extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -31,24 +32,22 @@ class ChipCategoria extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: seleccionada
-                ? const Color(0xFF9FD8DC)
-                : const Color(0xFFCDEBEC),
+            color: seleccionada ? colores.secondaryContainer : colores.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(10),
             border: seleccionada
-                ? Border.all(color: const Color(0xFF1E56A8), width: 1.5)
+                ? Border.all(color: colores.primary, width: 1.5)
                 : null,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(_iconos[categoria], size: 26, color: Colors.black87),
+              Icon(_iconos[categoria], size: 26, color: colores.onSurface),
               const SizedBox(height: 4),
               Text(
                 categoria.etiqueta,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11),
+                style: TextStyle(fontSize: 11, color: colores.onSurface),
               ),
             ],
           ),

@@ -14,7 +14,6 @@ class PantallaDetalleCaja extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ColoresHistorial.fondo,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
@@ -44,9 +43,9 @@ class PantallaDetalleCaja extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: ColoresHistorial.azulClaro,
+                      color: Theme.of(context).colorScheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: ColoresHistorial.borde),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,9 +107,9 @@ class PantallaDetalleCaja extends StatelessWidget {
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ColoresHistorial.borde),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: const Text(
                       'Clientes y consumo',

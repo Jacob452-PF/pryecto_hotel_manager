@@ -73,7 +73,6 @@ class _EstadoPantallaLista extends State<PantallaListaArticulos> {
     final articulos = _articulos;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F0F8),
       body: SafeArea(
         child: Column(
           children: [
@@ -125,19 +124,19 @@ class _EstadoPantallaLista extends State<PantallaListaArticulos> {
                   hintText: 'Buscar...',
                   isDense: true,
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: Theme.of(context).colorScheme.surface,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 14,
                     vertical: 12,
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFF7FC8CC)),
+                    borderSide: BorderSide(color: Theme.of(context).dividerColor),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF1E56A8),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
                       width: 1.5,
                     ),
                   ),
@@ -149,8 +148,8 @@ class _EstadoPantallaLista extends State<PantallaListaArticulos> {
               child: Container(
                 width: double.infinity,
                 margin: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 child: articulos.isEmpty
