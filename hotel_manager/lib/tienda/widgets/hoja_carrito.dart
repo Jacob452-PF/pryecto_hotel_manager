@@ -2,8 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../historial/historial.dart';
+import '../modelos/articulo_tienda.dart';
 import '../servicios/carrito_tienda.dart';
 import '../../servicios/servicio_estadias.dart';
+import '../../historial/servicios/servicio_consumos.dart';
 
 /// Abre el carrito como hoja inferior (bottom sheet).
 Future<void> mostrarCarrito(BuildContext context, CarritoTienda carrito) {
@@ -65,11 +68,21 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
     final mensaje =
         '${_dinero(_c.totalPagar)} cargados a ${huesped.nombre} (Hab. ${huesped.habitacion})';
     final messenger = ScaffoldMessenger.of(context);
-    ServicioEstadias.instancia.agregarCargos(
-      huesped.habitacion,
-      _c.lineas
-          .map((l) => (articulo: l.articulo, cantidad: l.cantidad))
-          .toList(),
+    // TODO: guardar el cargo en la base de datos.
+    ServicioConsumos.instancia.registrar(
+      cliente: huesped.nombre,
+      habitacion: huesped.habitacion,
+      lineas: [
+        for (final l in _c.lineas)
+          LineaConsumo(
+            l.articulo.nombre,
+            l.articulo.precio,
+            l.cantidad,
+            l.articulo.seccion == SeccionTienda.servicio
+                ? TipoVenta.servicios
+                : TipoVenta.productos,
+          ),
+      ],
     );
     _c.vaciar();
     Navigator.of(context).pop();

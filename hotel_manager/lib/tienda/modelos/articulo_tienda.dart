@@ -3,8 +3,7 @@ enum CategoriaTienda {
   todos('Todos'),
   alimentos('Alimentos'),
   bebidas('Bebidas'),
-  aseo('Aseo'),
-  lenceria('Lencería');
+  aseo('Aseo');
 
   final String etiqueta;
   const CategoriaTienda(this.etiqueta);

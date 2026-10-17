@@ -19,6 +19,7 @@ import '../widgets/resumen_factura.dart';
 import '../widgets/selector_opciones.dart';
 import '../widgets/tarjeta_seccion.dart';
 import 'pantalla_factura.dart';
+import '../historial/historial.dart';
 
 class PantallaNuevoHuesped extends StatefulWidget {
   const PantallaNuevoHuesped({super.key});
@@ -133,6 +134,22 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       productos: factura.productos
           .map((p) => CargoEstadia(p.nombre, p.precio))
           .toList(),
+    );
+
+    // Se anota el consumo del cliente para el cierre de caja.
+    ServicioConsumos.instancia.registrar(
+      cliente: factura.huesped,
+      habitacion: habitacionElegida.numero,
+      lineas: [
+        LineaConsumo(
+          'Habitación ${habitacionElegida.numero}',
+          factura.precioUnitario,
+          factura.cantidad,
+          TipoVenta.habitaciones,
+        ),
+        for (final p in factura.productos)
+          LineaConsumo(p.nombre, p.precio, 1, TipoVenta.productos),
+      ],
     );
 
     // Se reemplaza esta pantalla por la factura inicial.

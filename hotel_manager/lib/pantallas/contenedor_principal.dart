@@ -4,6 +4,7 @@ import 'pantalla_inicio.dart';
 import 'pantalla_perfil_caja.dart';
 import '../tienda/tienda.dart';
 import '../inventario/inventario.dart';
+import '../historial/historial.dart';
 
 class ContenedorPrincipal extends StatefulWidget {
   const ContenedorPrincipal({super.key});
@@ -19,7 +20,7 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
     PantallaInicio(),
     PantallaTienda(),
     PantallaInventario(),
-    _PantallaProvisional('Historial de cajas'),
+    PantallaHistorial(),
     PantallaPerfilCaja(),
   ];
 

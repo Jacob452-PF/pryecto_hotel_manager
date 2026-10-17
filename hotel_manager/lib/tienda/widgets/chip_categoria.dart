@@ -20,7 +20,6 @@ class ChipCategoria extends StatelessWidget {
     CategoriaTienda.alimentos: Icons.restaurant,
     CategoriaTienda.bebidas: Icons.wine_bar,
     CategoriaTienda.aseo: Icons.cleaning_services,
-    CategoriaTienda.lenceria: Icons.bed,
   };
 
   @override

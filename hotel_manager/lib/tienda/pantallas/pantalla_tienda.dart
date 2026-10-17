@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../inventario/servicios/servicio_inventario.dart';
 import '../../servicios/servicio_habitaciones.dart';
-import '../datos/articulos_mock.dart';
+import '../datos/articulos_de_inventario.dart';
 import '../datos/huespedes_desde_habitaciones.dart';
 import '../modelos/articulo_tienda.dart';
 import '../servicios/carrito_tienda.dart';
@@ -23,6 +24,7 @@ class PantallaTienda extends StatefulWidget {
 class _EstadoPantallaTienda extends State<PantallaTienda> {
   final TextEditingController _busqueda = TextEditingController();
   final ServicioHabitaciones _habitaciones = ServicioHabitaciones.instancia;
+  final ServicioInventario _inventario = ServicioInventario.instancia;
   late final CarritoTienda _carrito = CarritoTienda(
     huespedes: huespedesDeHabitaciones(_habitaciones.habitaciones),
   );
@@ -32,6 +34,7 @@ class _EstadoPantallaTienda extends State<PantallaTienda> {
   void initState() {
     super.initState();
     _habitaciones.addListener(_alCambiarHabitaciones);
+    _inventario.addListener(_alCambiarInventario);
   }
 
   /// Check-in / check-out: la lista de "¿A quién se le carga?" se actualiza sola.
@@ -39,9 +42,15 @@ class _EstadoPantallaTienda extends State<PantallaTienda> {
     huespedesDeHabitaciones(_habitaciones.habitaciones),
   );
 
+  /// Se agregó, eliminó o restauró un producto en el inventario.
+  void _alCambiarInventario() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     _habitaciones.removeListener(_alCambiarHabitaciones);
+    _inventario.removeListener(_alCambiarInventario);
     _busqueda.dispose();
     _carrito.dispose();
     super.dispose();
@@ -53,7 +62,7 @@ class _EstadoPantallaTienda extends State<PantallaTienda> {
     final texto = _busqueda.text.trim().toLowerCase();
     final sinFiltros = texto.isEmpty && _categoria == CategoriaTienda.todos;
 
-    final lista = articulosMock.where((a) {
+    final lista = articulosDeTienda().where((a) {
       if (a.seccion != seccion) return false;
       if (_categoria != CategoriaTienda.todos && a.categoria != _categoria) {
         return false;
