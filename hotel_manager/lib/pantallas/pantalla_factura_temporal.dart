@@ -23,6 +23,9 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
   @override
   void initState() {
     super.initState();
+    ServicioEstadias.instancia.asegurarEstadiaPredeterminada(
+      widget.habitacion,
+    );
     _reloj = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
     });

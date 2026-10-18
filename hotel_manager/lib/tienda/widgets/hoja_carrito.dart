@@ -82,6 +82,16 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
           ),
       ],
     );
+    ServicioEstadias.instancia.asegurarEstadiaPredeterminada(
+      huesped.habitacion,
+    );
+    ServicioEstadias.instancia.agregarCargos(
+      huesped.habitacion,
+      [
+        for (final linea in _c.lineas)
+          (articulo: linea.articulo, cantidad: linea.cantidad),
+      ],
+    );
     _c.vaciar();
     Navigator.of(context).pop();
     messenger.showSnackBar(SnackBar(content: Text(mensaje)));

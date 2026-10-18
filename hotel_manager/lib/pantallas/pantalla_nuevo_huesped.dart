@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../datos/productos_ejemplo.dart';
 import '../datos/tarifas_ejemplo.dart';
+import '../inventario/servicios/servicio_inventario.dart';
 import '../modelos/factura.dart';
 import '../modelos/habitacion.dart';
 import '../modelos/producto.dart';
@@ -45,8 +45,26 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
   // Parte 3 y 5: productos agregados a la factura
   final List<Producto> _productosAgregados = [];
 
+  List<Producto> get _productosCatalogo => ServicioInventario
+      .instancia
+      .productos
+      .where((producto) => producto.stock > 0)
+      .map((producto) => Producto(producto.nombre, producto.precio))
+      .toList(growable: false);
+
+  @override
+  void initState() {
+    super.initState();
+    ServicioInventario.instancia.addListener(_actualizarCatalogo);
+  }
+
+  void _actualizarCatalogo() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    ServicioInventario.instancia.removeListener(_actualizarCatalogo);
     _controladorNombre.dispose();
     _controladorDui.dispose();
     _controladorTelefono.dispose();
@@ -193,7 +211,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       titulo: 'Catálogo rápido',
       icono: Icons.storefront,
       hijo: CatalogoRapido(
-        productos: productosEjemplo,
+        productos: _productosCatalogo,
         alAgregar: (producto) =>
             setState(() => _productosAgregados.add(producto)),
       ),

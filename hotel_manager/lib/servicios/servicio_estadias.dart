@@ -1,7 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 import '../tienda/modelos/articulo_tienda.dart';
+import '../datos/tarifas_ejemplo.dart';
+import '../modelos/habitacion.dart';
 import '../modelos/tarifa.dart';
+import '../modelos/tipo_cuarto.dart';
+import 'servicio_habitaciones.dart';
 
 class CargoEstadia {
   final String nombre;
@@ -34,6 +38,33 @@ class ServicioEstadias extends ChangeNotifier {
   static final instancia = ServicioEstadias._();
   final Map<String, DatosEstadia> _estadias = {};
   DatosEstadia? buscar(String habitacion) => _estadias[habitacion];
+
+  /// Las habitaciones ocupadas de demostración no tienen check-in en esta
+  /// sesión. Al abrir su factura se les asigna una noche a la tarifa vigente.
+  void asegurarEstadiaPredeterminada(String numeroHabitacion) {
+    if (_estadias.containsKey(numeroHabitacion)) return;
+    final habitacion = ServicioHabitaciones.instancia.buscar(
+      numeroHabitacion,
+    );
+    if (habitacion == null || habitacion.estado != EstadoHabitacion.ocupada) {
+      return;
+    }
+
+    final camas = habitacion.tipoCuarto == TipoCuarto.familiar
+        ? habitacion.camas
+        : 1;
+    final precio = tarifasEjemplo
+        .firstWhere((tarifa) => tarifa.tipo == TipoTarifa.porNoche)
+        .precioPara(camas);
+    final entrada = DateTime.now();
+    _estadias[numeroHabitacion] = DatosEstadia(
+      entrada: entrada,
+      salida: entrada.add(const Duration(days: 1)),
+      precioEstadia: precio,
+      cargosIniciales: const [],
+    );
+    notifyListeners();
+  }
 
   void iniciar({
     required String habitacion,
