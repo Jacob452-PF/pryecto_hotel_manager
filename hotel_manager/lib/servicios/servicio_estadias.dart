@@ -37,6 +37,7 @@ class ServicioEstadias extends ChangeNotifier {
   ServicioEstadias._();
   static final instancia = ServicioEstadias._();
   final Map<String, DatosEstadia> _estadias = {};
+  Map<String, DatosEstadia> get todas => Map.unmodifiable(_estadias);
   DatosEstadia? buscar(String habitacion) => _estadias[habitacion];
 
   /// Las habitaciones ocupadas de demostración no tienen check-in en esta

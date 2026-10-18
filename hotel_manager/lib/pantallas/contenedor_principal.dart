@@ -5,6 +5,9 @@ import 'pantalla_perfil_caja.dart';
 import '../tienda/tienda.dart';
 import '../inventario/inventario.dart';
 import '../historial/historial.dart';
+import '../modelos/notificacion_app.dart';
+import '../servicios/servicio_notificaciones.dart';
+import 'pantalla_notificaciones.dart';
 
 class ContenedorPrincipal extends StatefulWidget {
   const ContenedorPrincipal({super.key});
@@ -15,6 +18,8 @@ class ContenedorPrincipal extends StatefulWidget {
 
 class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
   int _indice = 0;
+  final ServicioNotificaciones _notificaciones = ServicioNotificaciones.instancia;
+  String? _ultimaNotificacionId;
 
   static final List<Widget> _paginas = <Widget>[
     PantallaInicio(),
@@ -25,7 +30,113 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _ultimaNotificacionId = _notificaciones.notificaciones.isEmpty
+        ? null
+        : _notificaciones.notificaciones.first.id;
+    _notificaciones.addListener(_mostrarAvisoNuevo);
+  }
+
+  @override
+  void dispose() {
+    _notificaciones.removeListener(_mostrarAvisoNuevo);
+    super.dispose();
+  }
+
+  void _mostrarAvisoNuevo() {
+    final lista = _notificaciones.notificaciones;
+    if (!mounted || lista.isEmpty || lista.first.id == _ultimaNotificacionId) {
+      return;
+    }
+    final notificacion = lista.first;
+    _ultimaNotificacionId = notificacion.id;
+    final urgente = notificacion.severidad == SeveridadNotificacion.urgente;
+    final color = urgente
+        ? const Color(0xFFD32F2F)
+        : const Color(0xFFF57C00);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.inverseSurface,
+          content: Row(
+            children: [
+              Icon(
+                urgente ? Icons.error : Icons.warning_amber_rounded,
+                color: color,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('${notificacion.titulo}: ${notificacion.mensaje}'),
+              ),
+            ],
+          ),
+          action: SnackBarAction(
+            label: 'Ver',
+            onPressed: _abrirNotificaciones,
+          ),
+        ),
+      );
+  }
+
+  void _abrirNotificaciones() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const PantallaNotificaciones(),
+      ),
+    );
+  }
+
   Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text('Hotel Manager'),
+      actions: [
+        ListenableBuilder(
+          listenable: ServicioNotificaciones.instancia,
+          builder: (context, _) {
+            final cantidad = ServicioNotificaciones.instancia.noLeidas;
+            return IconButton(
+              tooltip: 'Notificaciones',
+              onPressed: _abrirNotificaciones,
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.notifications_outlined),
+                  if (cantidad > 0)
+                    Positioned(
+                      right: -8,
+                      top: -7,
+                      child: Container(
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFD32F2F),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          cantidad > 99 ? '99+' : '$cantidad',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(width: 8),
+      ],
+    ),
     body: IndexedStack(index: _indice, children: _paginas),
     bottomNavigationBar: NavigationBar(
       selectedIndex: _indice,
