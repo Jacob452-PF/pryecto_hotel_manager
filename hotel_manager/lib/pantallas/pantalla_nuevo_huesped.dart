@@ -170,6 +170,10 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
           LineaConsumo(p.nombre, p.precio, 1, TipoVenta.productos),
       ],
     );
+    // Baja el stock de los productos del catálogo rápido.
+    ServicioInventario.instancia.descontarPorNombre([
+      for (final p in factura.productos) (nombre: p.nombre, cantidad: 1),
+    ]);
 
     // Se reemplaza esta pantalla por la factura inicial.
     Navigator.pushReplacement(

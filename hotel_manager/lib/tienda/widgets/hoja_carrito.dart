@@ -7,6 +7,7 @@ import '../../servicios/servicio_estadias.dart';
 import '../modelos/articulo_tienda.dart';
 import '../servicios/carrito_tienda.dart';
 import '../../historial/servicios/servicio_consumos.dart';
+import '../../inventario/servicios/servicio_inventario.dart';
 
 /// Abre el carrito como hoja inferior (bottom sheet).
 Future<void> mostrarCarrito(BuildContext context, CarritoTienda carrito) {
@@ -63,9 +64,23 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
   void _confirmar() {
     final huesped = _c.huesped;
     if (huesped == null || _c.lineas.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+
+    // NUEVO: se revisa que alcance el stock del inventario.
+    final items = [
+      for (final l in _c.lineas) (id: l.articulo.id, cantidad: l.cantidad),
+    ];
+    final problema = ServicioInventario.instancia.verificarStock(items);
+    if (problema != null) {
+      Navigator.of(context).pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('$problema. Ajusta la cantidad en el carrito.')),
+      );
+      return;
+    }
+
     final mensaje =
         '${_dinero(_c.totalPagar)} cargados a ${huesped.nombre} (Hab. ${huesped.habitacion})';
-    final messenger = ScaffoldMessenger.of(context);
     // TODO: guardar el cargo en la base de datos.
     ServicioConsumos.instancia.registrar(
       cliente: huesped.nombre,
@@ -89,6 +104,10 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
       for (final linea in _c.lineas)
         (articulo: linea.articulo, cantidad: linea.cantidad),
     ]);
+
+    // NUEVO: baja el stock en el inventario.
+    ServicioInventario.instancia.descontarVenta(items);
+
     _c.vaciar();
     Navigator.of(context).pop();
     messenger.showSnackBar(SnackBar(content: Text(mensaje)));

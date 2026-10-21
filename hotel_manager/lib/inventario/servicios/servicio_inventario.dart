@@ -62,6 +62,65 @@ class ServicioInventario extends ChangeNotifier {
     _cambio();
   }
 
+  /// Revisa que alcance el stock para una venta. Devuelve el mensaje del
+  /// primer problema, o null si todo está bien. Los artículos que no son del
+  /// inventario (por ejemplo los servicios) se ignoran.
+  String? verificarStock(List<({String id, int cantidad})> items) {
+    for (final item in items) {
+      final i = _productos.indexWhere((p) => p.id == item.id);
+      if (i == -1) continue;
+      final p = _productos[i];
+      if (item.cantidad > p.stock) {
+        return p.stock == 0
+            ? '${p.nombre} está agotado'
+            : 'Solo quedan ${p.stock} de ${p.nombre}';
+      }
+    }
+    return null;
+  }
+
+  /// Baja el stock por una venta hecha en la tienda (busca por id).
+  /// Guarda un movimiento con el motivo "Venta". Nunca baja de 0.
+  void descontarVenta(List<({String id, int cantidad})> items) {
+    var hubo = false;
+    for (final item in items) {
+      final i = _productos.indexWhere((p) => p.id == item.id);
+      if (_descontar(i, item.cantidad)) hubo = true;
+    }
+    if (hubo) _cambio();
+  }
+
+  /// Igual que [descontarVenta], pero buscando por nombre (para los productos
+  /// del catálogo rápido de "Nuevo huésped", que no traen id).
+  void descontarPorNombre(List<({String nombre, int cantidad})> items) {
+    var hubo = false;
+    for (final item in items) {
+      final i = _productos.indexWhere((p) => p.nombre == item.nombre);
+      if (_descontar(i, item.cantidad)) hubo = true;
+    }
+    if (hubo) _cambio();
+  }
+
+  bool _descontar(int i, int cantidad) {
+    if (i == -1) return false;
+    final anterior = _productos[i];
+    final nuevo = anterior.stock - cantidad < 0 ? 0 : anterior.stock - cantidad;
+    if (nuevo == anterior.stock) return false;
+    _productos[i] = anterior.copyWith(stock: nuevo);
+    _movimientos.add(
+      MovimientoInventario(
+        productoId: anterior.id,
+        producto: anterior.nombre,
+        stockAnterior: anterior.stock,
+        stockNuevo: nuevo,
+        motivo: 'Venta',
+        nota: '',
+        fecha: DateTime.now(),
+      ),
+    );
+    return true;
+  }
+
   void eliminar(String id) {
     final i = _productos.indexWhere((p) => p.id == id);
     if (i == -1) return;
