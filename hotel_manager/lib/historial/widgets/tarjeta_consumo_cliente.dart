@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../modelos/consumo_cliente.dart';
+import '../pantallas/pantalla_factura_cliente.dart';
 import '../utilidades/estilos_historial.dart';
 import '../utilidades/formato.dart';
 import 'etiqueta_pill.dart';
 
-/// Tarjeta de "Clientes y consumo": nombre, resumen y recuadro con las líneas.
+/// Tarjeta de "Clientes y consumo": nombre, resumen, recuadro con las líneas
+/// y botón para ver la factura completa del cliente.
 class TarjetaConsumoCliente extends StatelessWidget {
   final ConsumoCliente consumo;
   const TarjetaConsumoCliente({super.key, required this.consumo});
@@ -18,9 +20,9 @@ class TarjetaConsumoCliente extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        border: Border.all(color: ColoresHistorial.borde),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,9 +84,9 @@ class TarjetaConsumoCliente extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              color: ColoresHistorial.cajaProductos,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Theme.of(context).dividerColor),
+              border: Border.all(color: ColoresHistorial.borde),
             ),
             child: Column(
               children: [
@@ -114,6 +116,21 @@ class TarjetaConsumoCliente extends StatelessWidget {
                     ),
                   ),
               ],
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => PantallaFacturaCliente(consumo: consumo),
+                ),
+              ),
+              icon: const Icon(Icons.receipt_long_outlined, size: 18),
+              label: const Text('Ver factura completa'),
+              style: TextButton.styleFrom(
+                foregroundColor: ColoresHistorial.azulTexto,
+              ),
             ),
           ),
         ],

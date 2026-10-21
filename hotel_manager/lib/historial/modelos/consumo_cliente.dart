@@ -1,3 +1,4 @@
+import '../../modelos/factura.dart';
 import 'turno_caja.dart';
 
 /// Una línea de consumo (habitación, servicio o producto cobrado a un cliente).
@@ -27,10 +28,19 @@ class ConsumoCliente {
   final String codigo;
   final List<LineaConsumo> lineas;
 
+  /// Factura completa del registro del huésped: DUI, teléfono, habitación,
+  /// tarifa, etc. Es null en los datos de ejemplo.
+  final Factura? factura;
+
+  /// Usuario que tenía la sesión abierta cuando se registró al cliente.
+  final String registradoPor;
+
   const ConsumoCliente({
     required this.cliente,
     required this.codigo,
     required this.lineas,
+    this.factura,
+    this.registradoPor = '',
   });
 
   int get articulos => lineas.fold(0, (s, l) => s + l.cantidad);

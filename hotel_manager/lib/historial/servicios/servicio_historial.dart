@@ -7,6 +7,7 @@ import '../datos/gastos_mock.dart';
 import '../modelos/caja_cierre.dart';
 import '../modelos/consumo_cliente.dart';
 import '../modelos/turno_caja.dart';
+import '../utilidades/sesion_actual.dart';
 import 'servicio_consumos.dart';
 
 /// Guarda el historial de cierres de caja y arma el turno actual.
@@ -15,9 +16,6 @@ class ServicioHistorial extends ChangeNotifier {
   ServicioHistorial._();
 
   static final ServicioHistorial instancia = ServicioHistorial._();
-
-  // TODO: tomar el nombre del cajero de ServicioSesion (usuario que inició sesión).
-  static const _cajero = 'Jose A.';
 
   final List<CajaCierre> _cajas = crearCajasMock(DateTime.now());
   final List<GastoTurno> _gastos = crearGastosMock();
@@ -35,7 +33,7 @@ class ServicioHistorial extends ChangeNotifier {
     final clientes = ServicioConsumos.instancia.clientes;
     final habitaciones = ServicioHabitaciones.instancia.habitaciones;
     return TurnoCaja(
-      usuario: _cajero,
+      usuario: nombreUsuarioActual(),
       ventas: _ventasDe(clientes),
       gastos: List.unmodifiable(_gastos),
       habitacionesOcupadas: habitaciones
