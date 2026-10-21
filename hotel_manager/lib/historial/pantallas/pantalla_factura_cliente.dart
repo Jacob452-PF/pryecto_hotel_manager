@@ -5,6 +5,7 @@ import '../modelos/consumo_cliente.dart';
 import '../modelos/turno_caja.dart';
 import '../utilidades/estilos_historial.dart';
 import '../utilidades/formato.dart';
+import '../widgets/estado_pago_pill.dart';
 
 /// Factura completa de un cliente: sus datos, la habitación, todo lo que se
 /// le cobró y quién lo registró. Se abre desde "Ver factura completa".
@@ -19,7 +20,10 @@ class PantallaFacturaCliente extends StatelessWidget {
       return 'Estadía ($camas ${camas == 1 ? 'cama' : 'camas'}): '
           '${l.cantidad} ${f.tarifa.unidad(l.cantidad)} × ${dinero(l.precio)}';
     }
-    return l.cantidad > 1 ? '${l.nombre} × ${l.cantidad}' : l.nombre;
+    final base = l.cantidad > 1 ? '${l.nombre} × ${l.cantidad}' : l.nombre;
+    return consumo.lineasAnadidas.contains(l)
+        ? '$base (añadido después)'
+        : base;
   }
 
   @override
@@ -97,6 +101,11 @@ class PantallaFacturaCliente extends StatelessWidget {
                           style: const TextStyle(fontSize: 13),
                         ),
                       ],
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: EstadoPagoPill(pagado: consumo.pagado),
+                      ),
                       if (consumo.registradoPor.isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Row(

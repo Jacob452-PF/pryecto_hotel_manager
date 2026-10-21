@@ -22,11 +22,18 @@ class LineaConsumo {
 
 /// Todo lo que consumió un cliente durante el turno.
 class ConsumoCliente {
+  /// Identifica la cuenta del cliente (habitación + nombre).
+  final String id;
   final String cliente;
 
   /// Etiqueta que se muestra a la derecha, por ejemplo "#101".
   final String codigo;
-  final List<LineaConsumo> lineas;
+
+  /// Lo cobrado al registrar al cliente: estadía y productos iniciales.
+  final List<LineaConsumo> lineasIniciales;
+
+  /// Productos o servicios que se le añadieron DESPUÉS (por ejemplo desde la tienda).
+  final List<LineaConsumo> lineasAnadidas;
 
   /// Factura completa del registro del huésped: DUI, teléfono, habitación,
   /// tarifa, etc. Es null en los datos de ejemplo.
@@ -35,14 +42,38 @@ class ConsumoCliente {
   /// Usuario que tenía la sesión abierta cuando se registró al cliente.
   final String registradoPor;
 
+  /// ¿El cliente ya canceló (pagó) su cuenta?
+  final bool pagado;
+  final DateTime? pagadoEn;
+
+  /// Cómo pagó: Efectivo, Tarjeta o Transferencia (vacío si no se indicó).
+  final String metodoPago;
+
+  /// [lineas] son las líneas iniciales (las del registro).
   const ConsumoCliente({
+    this.id = '',
     required this.cliente,
     required this.codigo,
-    required this.lineas,
+    required List<LineaConsumo> lineas,
+    this.lineasAnadidas = const [],
     this.factura,
     this.registradoPor = '',
-  });
+    this.pagado = true,
+    this.pagadoEn,
+    this.metodoPago = '',
+  }) : lineasIniciales = lineas;
+
+  /// Todas las líneas: iniciales + añadidas después.
+  List<LineaConsumo> get lineas => [...lineasIniciales, ...lineasAnadidas];
 
   int get articulos => lineas.fold(0, (s, l) => s + l.cantidad);
   double get total => lineas.fold(0.0, (s, l) => s + l.importe);
+
+  /// Lo que gastó al registrarse.
+  double get totalInicial => lineasIniciales.fold(0.0, (s, l) => s + l.importe);
+
+  /// Lo que gastó después, al añadir más productos.
+  double get totalAnadido => lineasAnadidas.fold(0.0, (s, l) => s + l.importe);
+
+  int get productosAnadidos => lineasAnadidas.fold(0, (s, l) => s + l.cantidad);
 }
