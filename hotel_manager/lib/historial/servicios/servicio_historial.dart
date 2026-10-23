@@ -4,7 +4,7 @@ import '../../inventario/servicios/servicio_inventario.dart';
 import '../../modelos/habitacion.dart';
 import '../../servicios/servicio_habitaciones.dart';
 import '../datos/cajas_mock.dart';
-import '../datos/gastos_mock.dart';
+//import '../datos/gastos_mock.dart';
 import '../modelos/caja_cierre.dart';
 import '../modelos/consumo_cliente.dart';
 import '../modelos/turno_caja.dart';
@@ -22,7 +22,7 @@ class ServicioHistorial extends ChangeNotifier {
   static final ServicioHistorial instancia = ServicioHistorial._();
 
   final List<CajaCierre> _cajas = crearCajasMock(DateTime.now());
-  final List<GastoTurno> _gastos = crearGastosMock();
+  //final List<GastoTurno> _gastos = crearGastosMock();
 
   /// Cierres ordenados del más reciente al más antiguo.
   List<CajaCierre> get cajas {
@@ -31,15 +31,15 @@ class ServicioHistorial extends ChangeNotifier {
     return lista;
   }
 
-  /// Turno que se va a cerrar: ventas y clientes salen de lo que se
-  /// registró desde el último cierre.
+  //Turno que se va a cerrar: ventas y clientes salen de lo que se
+  //registró desde el último cierre.
   TurnoCaja get turnoActual {
     final clientes = ServicioConsumos.instancia.clientes;
     final habitaciones = ServicioHabitaciones.instancia.habitaciones;
     return TurnoCaja(
       usuario: nombreUsuarioActual(),
       ventas: _ventasDe(clientes),
-      gastos: List.unmodifiable(_gastos),
+      gastos: const [],
       habitacionesOcupadas: habitaciones
           .where((h) => h.estado == EstadoHabitacion.ocupada)
           .length,
@@ -49,7 +49,10 @@ class ServicioHistorial extends ChangeNotifier {
         for (final c in ServicioInventario.instancia.comprasDelTurno)
           GastoInventarioTurno(
             c.producto,
-            '${c.esNuevo ? 'Nuevo' : 'Reposición'} · ${c.paquetes} ${c.paquetes == 1 ? 'paquete' : 'paquetes'} (${c.cantidad} uds)',
+            '${c.esNuevo ? 'Nuevo' : 'Reposición'} · '
+            '${c.paquetes} '
+            '${c.paquetes == 1 ? 'paquete' : 'paquetes'} '
+            '(${c.cantidad} uds)',
             c.total,
           ),
       ],
@@ -92,7 +95,7 @@ class ServicioHistorial extends ChangeNotifier {
       totalRegistrado: turno.totalEnCaja,
     );
     _cajas.add(caja);
-    _gastos.clear();
+    //_gastos.clear();
     ServicioInventario.instancia.cerrarCompras(caja.numero);
     ServicioConsumos.instancia.vaciar();
     notifyListeners();

@@ -248,21 +248,21 @@ class PantallaCierreCaja extends StatelessWidget {
               total: dinero(turno.totalVentas),
             ),
             const SizedBox(height: 12),
-            SeccionTabla(
-              icono: Icons.receipt_long,
-              titulo: 'Detalle de gastos',
-              encabezados: const ['Categoría', 'Descripción', 'Monto'],
-              filas: [
-                for (final g in turno.gastos)
-                  FilaTabla(
-                    CeldaIcono(g.categoria.icono, g.categoria.etiqueta),
-                    g.descripcion,
-                    dinero(g.monto),
-                  ),
-              ],
-              etiquetaTotal: 'Total gastos',
-              total: dinero(turno.totalGastos),
-            ),
+            // SeccionTabla(
+            // icono: Icons.receipt_long,
+            //titulo: 'Detalle de gastos',
+            // encabezados: const ['Categoría', 'Descripción', 'Monto'],
+            // filas: [
+            //for (final g in turno.gastos)
+            //FilaTabla(
+            // CeldaIcono(g.categoria.icono, g.categoria.etiqueta),
+            // g.descripcion,
+            //dinero(g.monto),
+            // ),
+            // ],
+            // etiquetaTotal: 'Total gastos',
+            // total: dinero(turno.totalGastos),
+            // ),
             const SizedBox(height: 12),
             // Lo que el hotel gastó comprando productos o reponiendo stock
             SeccionTabla(
