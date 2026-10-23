@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../datos/informacion_app.dart';
 import '../modelos/usuario.dart';
 import '../servicios/servicio_sesion.dart';
 import '../tema/colores_app.dart';
@@ -8,6 +7,7 @@ import '../widgets/tarjeta_opcion_perfil.dart';
 import '../widgets/tarjeta_perfil.dart';
 import 'pantalla_configuracion.dart';
 import 'pantalla_estado_red.dart';
+import 'pantalla_acerca_app.dart';
 import 'pantalla_login.dart';
 import 'pantalla_tema.dart';
 
@@ -17,16 +17,6 @@ class PantallaPerfilCaja extends StatelessWidget {
 
   void _abrir(BuildContext context, Widget pantalla) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => pantalla));
-  }
-
-  void _mostrarAcerca(BuildContext context) {
-    showAboutDialog(
-      context: context,
-      applicationName: nombreApp,
-      applicationVersion: versionApp,
-      applicationIcon: const Icon(Icons.hotel, size: 40),
-      children: const [Text('Soporte técnico: $contactoSoporte')],
-    );
   }
 
   Future<void> _confirmarCerrarSesion(BuildContext context) async {
@@ -101,7 +91,7 @@ class PantallaPerfilCaja extends StatelessWidget {
                 icono: Icons.info_outline,
                 titulo: 'Acerca de la app',
                 subtitulo: 'Versión de la aplicación y soporte técnico',
-                alTocar: () => _mostrarAcerca(context),
+                alTocar: () => _abrir(context, const PantallaAcercaApp()),
               ),
               const SizedBox(height: 12),
               TarjetaOpcionPerfil(

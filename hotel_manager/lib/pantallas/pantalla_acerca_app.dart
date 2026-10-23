@@ -14,6 +14,7 @@ class PantallaAcercaApp extends StatelessWidget {
       appBar: AppBar(title: const Text('Acerca de la app')),
       body: SafeArea(
         child: ListView(
+          key: const PageStorageKey<String>('pantalla-acerca-app'),
           padding: const EdgeInsets.all(16),
           children: const [
             _FilaVersion(),
@@ -27,6 +28,10 @@ class PantallaAcercaApp extends StatelessWidget {
               titulo: 'Visión',
               texto: 'Posicionarnos como la solución tecnológica referente en el sector hotelero local y regional, reconocida por transformar la administración tradicional en un ecosistema digital inteligente. Aspiramos a establecer un modelo de innovación donde la automatización, el diseño accesible y la eficiencia operativa potencien el crecimiento continuo del negocio y la fidelización de cada visitante.',
             ),
+            SizedBox(height: 18),
+            Text('Programadores', style: EstilosTexto.subtituloSeccion),
+            SizedBox(height: 8),
+            _TarjetaProgramadores(),
             SizedBox(height: 18),
             Text('Soporte técnico', style: EstilosTexto.subtituloSeccion),
             SizedBox(height: 8),
@@ -105,13 +110,37 @@ class _TarjetaSoporte extends StatelessWidget {
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Tecnología López', style: EstilosTexto.subtituloSeccion),
+          Text('Grupo de tecnología', style: EstilosTexto.subtituloSeccion),
           SizedBox(height: 10),
           Text('Oscar Moisés', style: EstilosTexto.valorInformacion),
           Text(
             'Contacto: +503 7733 0170',
             style: EstilosTexto.valorInformacion,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TarjetaProgramadores extends StatelessWidget {
+  const _TarjetaProgramadores();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: ColoresApp.superficieSuave,
+        borderRadius: BorderRadius.circular(Dimensiones.radioTarjeta),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Grupo de tecnología', style: EstilosTexto.subtituloSeccion),
+          SizedBox(height: 10),
+          Text('Oscar Moisés', style: EstilosTexto.valorInformacion),
         ],
       ),
     );
