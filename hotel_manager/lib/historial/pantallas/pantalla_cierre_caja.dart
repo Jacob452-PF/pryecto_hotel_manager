@@ -225,8 +225,8 @@ class PantallaCierreCaja extends StatelessWidget {
             ResumenTurno(
               ventas: turno.totalVentas,
               cantidadVentas: turno.cantidadVentas,
-              gastos: turno.totalGastos,
-              cantidadGastos: turno.gastos.length,
+              gastos: turno.gastosTotales,
+              cantidadGastos: turno.cantidadGastos,
               habitacionesOcupadas: turno.habitacionesOcupadas,
               habitacionesTotal: turno.habitacionesTotal,
               totalEnCaja: turno.totalEnCaja,
@@ -262,6 +262,23 @@ class PantallaCierreCaja extends StatelessWidget {
               ],
               etiquetaTotal: 'Total gastos',
               total: dinero(turno.totalGastos),
+            ),
+            const SizedBox(height: 12),
+            // Lo que el hotel gastó comprando productos o reponiendo stock
+            SeccionTabla(
+              icono: Icons.inventory_2_outlined,
+              titulo: 'Gastos de inventario',
+              encabezados: const ['Producto', 'Detalle', 'Monto'],
+              filas: [
+                for (final g in turno.gastosInventario)
+                  FilaTabla(
+                    CeldaIcono(Icons.inventory_2_outlined, g.producto),
+                    g.detalle,
+                    dinero(g.monto),
+                  ),
+              ],
+              etiquetaTotal: 'Total inventario',
+              total: dinero(turno.totalGastosInventario),
             ),
             const SizedBox(height: 16),
             // Clientes registrados durante el turno

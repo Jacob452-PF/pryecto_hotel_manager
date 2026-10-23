@@ -1,6 +1,7 @@
 import '../modelos/producto_inventario.dart';
 
 /// Datos de prueba. Después se reemplaza por la base de datos.
+/// El precio de venta = costo por unidad + 30%.
 const List<ProductoInventario> productosInventarioMock = [
   ProductoInventario(
     id: 'inv-1',
@@ -9,6 +10,8 @@ const List<ProductoInventario> productosInventarioMock = [
     categoria: CategoriaInventario.bebidas,
     stock: 48,
     stockMaximo: 50,
+    unidadesPorPaquete: 12,
+    costoPaquete: 13.80,
   ),
   ProductoInventario(
     id: 'inv-2',
@@ -17,6 +20,8 @@ const List<ProductoInventario> productosInventarioMock = [
     categoria: CategoriaInventario.bebidas,
     stock: 30,
     stockMaximo: 50,
+    unidadesPorPaquete: 12,
+    costoPaquete: 9.24,
   ),
   ProductoInventario(
     id: 'inv-3',
@@ -25,6 +30,8 @@ const List<ProductoInventario> productosInventarioMock = [
     categoria: CategoriaInventario.bebidas,
     stock: 8,
     stockMaximo: 50,
+    unidadesPorPaquete: 24,
+    costoPaquete: 13.92,
   ),
   ProductoInventario(
     id: 'inv-4',
@@ -33,6 +40,8 @@ const List<ProductoInventario> productosInventarioMock = [
     categoria: CategoriaInventario.bebidas,
     stock: 25,
     stockMaximo: 50,
+    unidadesPorPaquete: 12,
+    costoPaquete: 9.24,
   ),
   ProductoInventario(
     id: 'inv-5',
@@ -41,6 +50,8 @@ const List<ProductoInventario> productosInventarioMock = [
     categoria: CategoriaInventario.alimentos,
     stock: 5,
     stockMaximo: 50,
+    unidadesPorPaquete: 12,
+    costoPaquete: 9.24,
   ),
   ProductoInventario(
     id: 'inv-6',
@@ -49,5 +60,7 @@ const List<ProductoInventario> productosInventarioMock = [
     categoria: CategoriaInventario.alimentos,
     stock: 40,
     stockMaximo: 50,
+    unidadesPorPaquete: 12,
+    costoPaquete: 9.24,
   ),
 ];

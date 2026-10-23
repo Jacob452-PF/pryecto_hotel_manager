@@ -4,6 +4,7 @@ import '../servicios/servicio_inventario.dart';
 import '../modelos/producto_inventario.dart';
 import '../widgets/chip_categoria_inventario.dart';
 import '../widgets/fila_producto_inventario.dart';
+import '../widgets/gastos_inventario.dart';
 import '../widgets/hoja_agregar_producto.dart';
 import '../widgets/hoja_ajustar_stock.dart';
 import '../widgets/resumen_inventario.dart';
@@ -46,13 +47,13 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
         SnackBar(
           content: Text('${producto.nombre} eliminado'),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: Theme.of(context).colorScheme.inverseSurface,
+          backgroundColor: const Color(0xFF0A1020),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
           action: SnackBarAction(
             label: 'Deshacer',
-            textColor: Theme.of(context).colorScheme.primary,
+            textColor: const Color(0xFF5B9BFF),
             onPressed: () => _servicio.restaurar(producto.id),
           ),
         ),
@@ -75,6 +76,7 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
     final eliminados = _servicio.eliminados;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF3F0F8),
       body: SafeArea(
         child: Column(
           children: [
@@ -103,8 +105,8 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     style: FilledButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      backgroundColor: const Color(0xFF6FCFD9),
+                      foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 14,
@@ -166,6 +168,9 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                     ultimaActualizacion: _servicio.ultimaActualizacion,
                   ),
                   const SizedBox(height: 10),
+                  // Cuánto gastó el hotel en comprar productos / reponer stock
+                  const GastosInventario(),
+                  const SizedBox(height: 10),
                   // Listado
                   _Panel(
                     child: Column(
@@ -204,10 +209,10 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                               const SizedBox(width: 8),
                               Text(
                                 'Productos eliminados (${eliminados.length})',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color: Colors.black87,
                                 ),
                               ),
                             ],
@@ -244,7 +249,7 @@ class _FilaEliminada extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: const Color(0xFFEFF1F6),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -258,7 +263,7 @@ class _FilaEliminada extends StatelessWidget {
                 Text(producto.nombre, style: const TextStyle(fontSize: 15)),
                 Text(
                   '\$${producto.precio.toStringAsFixed(2)}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  style: const TextStyle(color: Colors.black54),
                 ),
               ],
             ),
@@ -268,8 +273,8 @@ class _FilaEliminada extends StatelessWidget {
             icon: const Icon(Icons.sync, size: 18),
             label: const Text('Restaurar'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.primary,
-              side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5),
+              foregroundColor: const Color(0xFF1E56A8),
+              side: const BorderSide(color: Color(0xFF3B7DE0), width: 1.5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -292,7 +297,7 @@ class _Panel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
       child: child,

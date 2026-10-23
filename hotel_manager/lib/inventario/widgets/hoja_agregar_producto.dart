@@ -5,7 +5,9 @@ import '../modelos/producto_inventario.dart';
 import '../servicios/servicio_inventario.dart';
 import 'dialogo_inventario.dart';
 
-/// Ventana "Agregar producto" (mismo estilo que "Ajustar producto").
+/// Ventana "Agregar producto". Se escribe lo que cuesta el PAQUETE y cuántos
+/// paquetes se compraron: el precio de venta de cada unidad sale solo
+/// (costo por unidad + 30%) y el gasto queda en Inventario y Cierre de caja.
 Future<void> mostrarAgregarProducto(BuildContext context) {
   return showDialog<void>(
     context: context,
@@ -22,8 +24,9 @@ class _DialogoAgregar extends StatefulWidget {
 
 class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
   final _nombre = TextEditingController();
-  final _precio = TextEditingController();
-  final _stock = TextEditingController(text: '0');
+  final _costoPaquete = TextEditingController();
+  final _paquetes = TextEditingController(text: '1');
+  final _unidades = TextEditingController(text: '1');
   final _maximo = TextEditingController(text: '50');
   CategoriaInventario _categoria = CategoriaInventario.alimentos;
   String? _error;
@@ -31,63 +34,83 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
   @override
   void dispose() {
     _nombre.dispose();
-    _precio.dispose();
-    _stock.dispose();
+    _costoPaquete.dispose();
+    _paquetes.dispose();
+    _unidades.dispose();
     _maximo.dispose();
     super.dispose();
   }
 
-  InputDecoration _decoracion(String etiqueta, {String? prefijo}) {
-    final colores = Theme.of(context).colorScheme;
+  double? _leerDinero(String texto) =>
+      double.tryParse(texto.trim().replaceAll(',', '.'));
+
+  int get _numPaquetes => int.tryParse(_paquetes.text.trim()) ?? 0;
+  int get _numUnidades => int.tryParse(_unidades.text.trim()) ?? 0;
+  double? get _costo => _leerDinero(_costoPaquete.text);
+
+  String _d(double v) => '\$${v.toStringAsFixed(2)}';
+
+  InputDecoration _decoracion(
+    String etiqueta, {
+    String? prefijo,
+    String? ayuda,
+  }) {
     final borde = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: Theme.of(context).dividerColor),
+      borderSide: const BorderSide(color: Color(0xFF9A9AA5)),
     );
     return InputDecoration(
       labelText: etiqueta,
       prefixText: prefijo,
+      helperText: ayuda,
+      helperMaxLines: 2,
       filled: true,
-      fillColor: colores.surfaceContainerHighest,
+      fillColor: const Color(0xFFF6F6F9),
       border: borde,
       enabledBorder: borde,
-      labelStyle: TextStyle(color: colores.onSurfaceVariant),
-      hintStyle: TextStyle(color: colores.onSurfaceVariant),
     );
   }
 
   void _guardar() {
     final nombre = _nombre.text.trim();
-    final precio = double.tryParse(_precio.text.trim().replaceAll(',', '.'));
-    final stock = int.tryParse(_stock.text.trim());
-    final maximo = int.tryParse(_maximo.text.trim());
+    final paquetes = _numPaquetes;
+    final unidades = _numUnidades;
+    final costo = _costo;
 
     if (nombre.isEmpty) {
       setState(() => _error = 'Escribe el nombre del producto.');
       return;
     }
-    if (precio == null || precio < 0) {
-      setState(() => _error = 'Escribe un precio válido.');
+    if (costo == null || costo <= 0) {
+      setState(() => _error = 'Escribe cuánto cuesta el paquete.');
       return;
     }
-    if (stock == null || maximo == null || maximo < 1) {
-      setState(() => _error = 'Revisa el stock actual y el máximo.');
+    if (paquetes < 1) {
+      setState(() => _error = 'Escribe cuántos paquetes compraste.');
       return;
     }
-    if (stock > maximo) {
-      setState(() => _error = 'El stock actual no puede superar el máximo.');
+    if (unidades < 1) {
+      setState(() => _error = 'Escribe cuántas unidades trae cada paquete.');
       return;
     }
+
+    final stock = paquetes * unidades;
+    var maximo = int.tryParse(_maximo.text.trim()) ?? 50;
+    if (maximo < stock) maximo = stock; // el máximo nunca es menor al stock
 
     final servicio = ServicioInventario.instancia;
     servicio.agregar(
       ProductoInventario(
         id: servicio.nuevoId(),
         nombre: nombre,
-        precio: precio,
+        precio: precioDeVenta(costo / unidades), // costo por unidad + 30%
         categoria: _categoria,
         stock: stock,
         stockMaximo: maximo,
+        unidadesPorPaquete: unidades,
+        costoPaquete: costo,
       ),
+      paquetes: paquetes,
     );
     Navigator.of(context).pop();
   }
@@ -97,6 +120,12 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
     final categorias = CategoriaInventario.values.where(
       (c) => c != CategoriaInventario.todos,
     );
+
+    final costo = _costo ?? 0.0;
+    final unidades = _numUnidades;
+    final paquetes = _numPaquetes;
+    final hayDatos = costo > 0 && unidades > 0;
+    final costoUnidad = hayDatos ? costo / unidades : 0.0;
 
     return DialogoInventario(
       icono: Icons.add_box_outlined,
@@ -109,19 +138,10 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
             textCapitalization: TextCapitalization.sentences,
             decoration: _decoracion('Nombre'),
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _precio,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-            ],
-            decoration: _decoracion('Precio', prefijo: '\$ '),
-          ),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'Categoría',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -132,36 +152,74 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
                 ChoiceChip(
                   label: Text(c.etiqueta),
                   selected: _categoria == c,
-                  selectedColor: Theme.of(context).colorScheme.primary,
-                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  labelStyle: TextStyle(
-                    color: _categoria == c
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Theme.of(context).colorScheme.onSurface,
-                  ),
                   onSelected: (_) => setState(() => _categoria = c),
                 ),
             ],
           ),
           const SizedBox(height: 16),
+          const Text(
+            'Compra del paquete',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _costoPaquete,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            ],
+            onChanged: (_) => setState(() {}),
+            decoration: _decoracion(
+              'Costo del paquete',
+              prefijo: '\$ ',
+              ayuda: 'Lo que le costó al hotel cada paquete.',
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: TextField(
-                  controller: _stock,
+                  controller: _paquetes,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: _decoracion('Stock actual'),
+                  onChanged: (_) => setState(() {}),
+                  decoration: _decoracion('Paquetes comprados'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
-                  controller: _maximo,
+                  controller: _unidades,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: _decoracion('Stock máximo'),
+                  onChanged: (_) => setState(() {}),
+                  decoration: _decoracion('Unidades por paquete'),
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _maximo,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: _decoracion('Stock máximo'),
+          ),
+          const SizedBox(height: 14),
+          // Cuentas automáticas
+          ResumenCompra(
+            filas: [
+              FilaResumen('Unidades que entran', '${paquetes * unidades}'),
+              FilaResumen('Costo por unidad', hayDatos ? _d(costoUnidad) : '—'),
+              FilaResumen(
+                'Gasto total ($paquetes × ${costo > 0 ? _d(costo) : '—'})',
+                hayDatos ? _d(paquetes * costo) : '—',
+              ),
+              FilaResumen(
+                'Precio de venta por unidad (+20%)',
+                hayDatos ? _d(precioDeVenta(costoUnidad)) : '—',
+                destacar: true,
               ),
             ],
           ),
