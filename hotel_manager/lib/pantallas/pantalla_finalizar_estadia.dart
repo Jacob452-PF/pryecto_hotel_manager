@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../historial/historial.dart';
 import '../servicios/servicio_estadias.dart';
 import '../servicios/servicio_habitaciones.dart';
 import '../utilidades/formato.dart';
@@ -24,6 +25,14 @@ class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
   double _precioHabitacion = 0;
   String _restante = '';
   List<CargoEstadia> _lineasFinales = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Las habitaciones ocupadas de ejemplo no tienen estadía creada: sin esto
+    // el total sale en $0.00. Si ya existe, no hace nada.
+    ServicioEstadias.instancia.asegurarEstadiaPredeterminada(widget.habitacion);
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -104,12 +113,31 @@ class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
                       final e = ServicioEstadias.instancia.buscar(
                         widget.habitacion,
                       );
+                      final cargos = e == null
+                          ? <CargoEstadia>[]
+                          : [...e.cargosIniciales, ...e.cargosTienda];
+
+                      // Se registra el cobro en el Cierre de caja (antes de
+                      // borrar la estadía): el cliente pasa a "Pagado".
+                      ServicioConsumos.instancia.registrarPago(
+                        habitacion: widget.habitacion,
+                        cliente: widget.huesped,
+                        metodo: _metodo!,
+                        precioEstadia: e?.precioEstadia ?? 0,
+                        cargos: [
+                          for (final c in cargos)
+                            (
+                              nombre: c.nombre,
+                              precio: c.precio,
+                              cantidad: c.cantidad,
+                            ),
+                        ],
+                      );
+
                       setState(() {
                         _total = e?.total ?? total;
                         _precioHabitacion = e?.precioEstadia ?? 0;
-                        _lineasFinales = e == null
-                            ? []
-                            : [...e.cargosIniciales, ...e.cargosTienda];
+                        _lineasFinales = cargos;
                         _restante = e == null
                             ? 'Estadía finalizada'
                             : _tiempo(e.salida);

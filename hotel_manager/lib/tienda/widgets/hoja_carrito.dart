@@ -3,10 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../historial/historial.dart';
+import '../../servicios/servicio_estadias.dart';
 import '../modelos/articulo_tienda.dart';
 import '../servicios/carrito_tienda.dart';
-import '../../servicios/servicio_estadias.dart';
 import '../../historial/servicios/servicio_consumos.dart';
+import '../../inventario/servicios/servicio_inventario.dart';
 
 /// Abre el carrito como hoja inferior (bottom sheet).
 Future<void> mostrarCarrito(BuildContext context, CarritoTienda carrito) {
@@ -63,9 +64,23 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
   void _confirmar() {
     final huesped = _c.huesped;
     if (huesped == null || _c.lineas.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+
+    // NUEVO: se revisa que alcance el stock del inventario.
+    final items = [
+      for (final l in _c.lineas) (id: l.articulo.id, cantidad: l.cantidad),
+    ];
+    final problema = ServicioInventario.instancia.verificarStock(items);
+    if (problema != null) {
+      Navigator.of(context).pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('$problema. Ajusta la cantidad en el carrito.')),
+      );
+      return;
+    }
+
     final mensaje =
         '${_dinero(_c.totalPagar)} cargados a ${huesped.nombre} (Hab. ${huesped.habitacion})';
-    final messenger = ScaffoldMessenger.of(context);
     // TODO: guardar el cargo en la base de datos.
     ServicioConsumos.instancia.registrar(
       cliente: huesped.nombre,
@@ -85,13 +100,14 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
     ServicioEstadias.instancia.asegurarEstadiaPredeterminada(
       huesped.habitacion,
     );
-    ServicioEstadias.instancia.agregarCargos(
-      huesped.habitacion,
-      [
-        for (final linea in _c.lineas)
-          (articulo: linea.articulo, cantidad: linea.cantidad),
-      ],
-    );
+    ServicioEstadias.instancia.agregarCargos(huesped.habitacion, [
+      for (final linea in _c.lineas)
+        (articulo: linea.articulo, cantidad: linea.cantidad),
+    ]);
+
+    // NUEVO: baja el stock en el inventario.
+    ServicioInventario.instancia.descontarVenta(items);
+
     _c.vaciar();
     Navigator.of(context).pop();
     messenger.showSnackBar(SnackBar(content: Text(mensaje)));
@@ -146,7 +162,9 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                                       ? 'Tu carrito está vacío'
                                       : '$n ${n == 1 ? 'producto agregado' : 'productos agregados'}',
                                   style: TextStyle(
-                                    color: colores.onPrimary.withValues(alpha: 0.75),
+                                    color: colores.onPrimary.withValues(
+                                      alpha: 0.75,
+                                    ),
                                     fontSize: 15,
                                   ),
                                 ),
@@ -339,16 +357,24 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-        children: [
+          children: [
             CircleAvatar(
               radius: 16,
               backgroundColor: Theme.of(context).colorScheme.primary,
-              child: Icon(Icons.person, color: Theme.of(context).colorScheme.onPrimary, size: 20),
+              child: Icon(
+                Icons.person,
+                color: Theme.of(context).colorScheme.onPrimary,
+                size: 20,
+              ),
             ),
             SizedBox(width: 10),
             Text(
               '¿A quién se le carga?',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
           ],
         ),
@@ -358,7 +384,9 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Text(
               'No hay huéspedes en habitaciones ocupadas.',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         for (final h in _c.huespedes)
@@ -414,7 +442,9 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                       ),
                       Text(
                         _dinero(l.articulo.precio),
-                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -425,7 +455,10 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                   label: const Text('Restaurar'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.primary,
-                    side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1.5,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -454,12 +487,17 @@ class _MiniaturaProducto extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: imagen == null
-          ? Icon(Icons.image_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant)
+          ? Icon(
+              Icons.image_outlined,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            )
           : Image.asset(
               imagen!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Icon(Icons.image_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.image_outlined,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
     );
   }
@@ -512,7 +550,9 @@ class _FilaProducto extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   _dinero(linea.articulo.precio),
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -561,7 +601,11 @@ class _FilaProducto extends StatelessWidget {
                       color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Icon(Icons.add, size: 22, color: Theme.of(context).colorScheme.onPrimary),
+                    child: Icon(
+                      Icons.add,
+                      size: 22,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
                   ),
                 ),
               ],
@@ -601,10 +645,14 @@ class _TarjetaHuesped extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: seleccionado ? Theme.of(context).colorScheme.secondaryContainer : Theme.of(context).colorScheme.surface,
+            color: seleccionado
+                ? Theme.of(context).colorScheme.secondaryContainer
+                : Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: seleccionado ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor,
+              color: seleccionado
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).dividerColor,
               width: seleccionado ? 2 : 1,
             ),
           ),
@@ -614,7 +662,11 @@ class _TarjetaHuesped extends StatelessWidget {
                   ? CircleAvatar(
                       radius: 16,
                       backgroundColor: Theme.of(context).colorScheme.primary,
-                      child: Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimary, size: 20),
+                      child: Icon(
+                        Icons.check,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        size: 20,
+                      ),
                     )
                   : Icon(
                       Icons.radio_button_unchecked,
@@ -639,7 +691,11 @@ class _TarjetaHuesped extends StatelessWidget {
                       children: [
                         Text(
                           'Habitación $habitacion',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
                         ),
                         const SizedBox(width: 6),
                         Icon(

@@ -6,9 +6,10 @@ import 'articulos_mock.dart';
 /// Todo lo que se muestra en la tienda:
 ///  - los servicios (Limpieza, etc.) que siguen en `articulos_mock.dart`
 ///  - los PRODUCTOS, que vienen del inventario (los que ya estaban y los
-///    que se agreguen después; los eliminados desaparecen de la tienda).
+///    que se agreguen después). Los eliminados y los agotados no se muestran.
 List<ArticuloTienda> articulosDeTienda() {
   final delInventario = ServicioInventario.instancia.productos
+      .where((p) => !p.agotado) // sin stock no se vende
       .map(_aArticulo)
       .toList();
 

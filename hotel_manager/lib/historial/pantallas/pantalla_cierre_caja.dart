@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../modelos/consumo_cliente.dart';
 import '../servicios/servicio_consumos.dart';
 import '../servicios/servicio_historial.dart';
 import '../utilidades/estilos_historial.dart';
@@ -9,8 +10,8 @@ import '../widgets/resumen_turno.dart';
 import '../widgets/seccion_tabla.dart';
 import '../widgets/tarjeta_consumo_cliente.dart';
 
-/// Pantalla "Cierre de caja": revisa ventas, gastos y los clientes del turno,
-/// y cierra el turno.
+/// Pantalla "Cierre de caja": revisa ventas, gastos y los clientes del turno
+/// (quiénes ya pagaron y quiénes no), y cierra el turno.
 class PantallaCierreCaja extends StatelessWidget {
   const PantallaCierreCaja({super.key});
 
@@ -20,6 +21,7 @@ class PantallaCierreCaja extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     final navegador = Navigator.of(context);
     final n = turno.clientes.length;
+    final pendientes = turno.clientes.where((c) => !c.pagado).length;
 
     final confirmar = await showDialog<bool>(
       context: context,
@@ -27,7 +29,8 @@ class PantallaCierreCaja extends StatelessWidget {
         title: const Text('¿Cerrar turno?'),
         content: Text(
           'Se cerrará el turno con $n ${n == 1 ? 'cliente' : 'clientes'} y se '
-          'registrará el cierre de caja por ${dinero(turno.totalEnCaja)}.',
+          'registrará el cierre de caja por ${dinero(turno.totalEnCaja)}.'
+          '${pendientes > 0 ? '\n\n$pendientes ${pendientes == 1 ? 'cliente no ha cancelado su cuenta y quedará' : 'clientes no han cancelado su cuenta y quedarán'} como pendiente en esta caja.' : ''}',
         ),
         actions: [
           TextButton(
@@ -63,16 +66,81 @@ class PantallaCierreCaja extends StatelessWidget {
     );
   }
 
+  /// Encabezado de un grupo ("Pendientes de pago (2)").
+  Widget _tituloGrupo(String texto, Color color) => Padding(
+    padding: const EdgeInsets.only(bottom: 8, top: 4),
+    child: Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          texto,
+          style: const TextStyle(
+            fontFamily: fuenteTitulo,
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _resumenPago(String titulo, int cantidad, double monto, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(titulo, style: TextStyle(fontSize: 11, color: color)),
+            const SizedBox(height: 2),
+            Text(
+              dinero(monto),
+              style: const TextStyle(
+                fontFamily: fuenteTitulo,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '$cantidad ${cantidad == 1 ? 'cliente' : 'clientes'}',
+              style: const TextStyle(fontSize: 10),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _construir(BuildContext context) {
     final turno = ServicioHistorial.instancia.turnoActual;
     final ahora = DateTime.now();
 
+    final pendientes = turno.clientes.where((c) => !c.pagado).toList();
+    final pagados = turno.clientes.where((c) => c.pagado).toList();
+    double suma(List<ConsumoCliente> l) => l.fold(0.0, (s, c) => s + c.total);
+
+    Widget tarjeta(ConsumoCliente c) => TarjetaConsumoCliente(
+      consumo: c,
+      onCambiarPago: () =>
+          ServicioConsumos.instancia.cambiarPago(c.id, !c.pagado),
+    );
+
     final tarjetaFecha = Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        border: Border.all(color: ColoresHistorial.borde),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,6 +189,7 @@ class PantallaCierreCaja extends StatelessWidget {
     );
 
     return Scaffold(
+      backgroundColor: ColoresHistorial.fondo,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
@@ -156,8 +225,8 @@ class PantallaCierreCaja extends StatelessWidget {
             ResumenTurno(
               ventas: turno.totalVentas,
               cantidadVentas: turno.cantidadVentas,
-              gastos: turno.totalGastos,
-              cantidadGastos: turno.gastos.length,
+              gastos: turno.gastosTotales,
+              cantidadGastos: turno.cantidadGastos,
               habitacionesOcupadas: turno.habitacionesOcupadas,
               habitacionesTotal: turno.habitacionesTotal,
               totalEnCaja: turno.totalEnCaja,
@@ -194,6 +263,23 @@ class PantallaCierreCaja extends StatelessWidget {
               etiquetaTotal: 'Total gastos',
               total: dinero(turno.totalGastos),
             ),
+            const SizedBox(height: 12),
+            // Lo que el hotel gastó comprando productos o reponiendo stock
+            SeccionTabla(
+              icono: Icons.inventory_2_outlined,
+              titulo: 'Gastos de inventario',
+              encabezados: const ['Producto', 'Detalle', 'Monto'],
+              filas: [
+                for (final g in turno.gastosInventario)
+                  FilaTabla(
+                    CeldaIcono(Icons.inventory_2_outlined, g.producto),
+                    g.detalle,
+                    dinero(g.monto),
+                  ),
+              ],
+              etiquetaTotal: 'Total inventario',
+              total: dinero(turno.totalGastosInventario),
+            ),
             const SizedBox(height: 16),
             // Clientes registrados durante el turno
             Row(
@@ -207,9 +293,9 @@ class PantallaCierreCaja extends StatelessWidget {
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Theme.of(context).dividerColor),
+                      border: Border.all(color: ColoresHistorial.borde),
                     ),
                     child: Text(
                       'Clientes del día (${turno.clientes.length})',
@@ -230,8 +316,42 @@ class PantallaCierreCaja extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                 ),
+              )
+            else ...[
+              // Resumen: cuánto está cobrado y cuánto falta por cobrar
+              Row(
+                children: [
+                  _resumenPago(
+                    'Ya pagaron',
+                    pagados.length,
+                    suma(pagados),
+                    const Color(0xFF22A559),
+                  ),
+                  const SizedBox(width: 8),
+                  _resumenPago(
+                    'Sin pagar',
+                    pendientes.length,
+                    suma(pendientes),
+                    const Color(0xFFEF8A00),
+                  ),
+                ],
               ),
-            for (final c in turno.clientes) TarjetaConsumoCliente(consumo: c),
+              const SizedBox(height: 14),
+              if (pendientes.isNotEmpty) ...[
+                _tituloGrupo(
+                  'Sin cancelar (${pendientes.length})',
+                  const Color(0xFFEF8A00),
+                ),
+                for (final c in pendientes) tarjeta(c),
+              ],
+              if (pagados.isNotEmpty) ...[
+                _tituloGrupo(
+                  'Ya cancelaron (${pagados.length})',
+                  const Color(0xFF22A559),
+                ),
+                for (final c in pagados) tarjeta(c),
+              ],
+            ],
           ],
         ),
       ),
@@ -250,6 +370,6 @@ class PantallaCierreCaja extends StatelessWidget {
           _confirmarCierre(context);
         },
       ),
-    ); // <- esta línea es la que falta
+    );
   }
 }

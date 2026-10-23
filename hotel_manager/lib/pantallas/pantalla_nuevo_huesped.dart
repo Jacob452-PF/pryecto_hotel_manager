@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../datos/tarifas_ejemplo.dart';
+import '../historial/historial.dart';
 import '../inventario/servicios/servicio_inventario.dart';
 import '../modelos/factura.dart';
 import '../modelos/habitacion.dart';
 import '../modelos/producto.dart';
 import '../modelos/tarifa.dart';
 import '../modelos/tipo_cuarto.dart';
-import '../servicios/servicio_habitaciones.dart';
 import '../servicios/servicio_estadias.dart';
+import '../servicios/servicio_habitaciones.dart';
 import '../tema/estilos_botones.dart';
 import '../tema/estilos_texto.dart';
 import '../utilidades/formato.dart';
@@ -19,7 +20,6 @@ import '../widgets/resumen_factura.dart';
 import '../widgets/selector_opciones.dart';
 import '../widgets/tarjeta_seccion.dart';
 import 'pantalla_factura.dart';
-import '../historial/historial.dart';
 
 class PantallaNuevoHuesped extends StatefulWidget {
   const PantallaNuevoHuesped({super.key});
@@ -154,10 +154,11 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
           .toList(),
     );
 
-    // Se anota el consumo del cliente para el cierre de caja.
+    // Se anota el consumo del cliente y su factura para el cierre de caja.
     ServicioConsumos.instancia.registrar(
       cliente: factura.huesped,
       habitacion: habitacionElegida.numero,
+      factura: factura, // guarda la factura completa
       lineas: [
         LineaConsumo(
           'Habitación ${habitacionElegida.numero}',
@@ -169,6 +170,10 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
           LineaConsumo(p.nombre, p.precio, 1, TipoVenta.productos),
       ],
     );
+    // Baja el stock de los productos del catálogo rápido.
+    ServicioInventario.instancia.descontarPorNombre([
+      for (final p in factura.productos) (nombre: p.nombre, cantidad: 1),
+    ]);
 
     // Se reemplaza esta pantalla por la factura inicial.
     Navigator.pushReplacement(

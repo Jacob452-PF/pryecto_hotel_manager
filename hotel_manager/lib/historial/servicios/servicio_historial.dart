@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../inventario/servicios/servicio_inventario.dart';
 import '../../modelos/habitacion.dart';
 import '../../servicios/servicio_habitaciones.dart';
 import '../datos/cajas_mock.dart';
@@ -7,17 +8,18 @@ import '../datos/gastos_mock.dart';
 import '../modelos/caja_cierre.dart';
 import '../modelos/consumo_cliente.dart';
 import '../modelos/turno_caja.dart';
+import '../utilidades/sesion_actual.dart';
 import 'servicio_consumos.dart';
 
 /// Guarda el historial de cierres de caja y arma el turno actual.
 /// Vive en memoria; cuando haya base de datos, solo se cambia este archivo.
 class ServicioHistorial extends ChangeNotifier {
-  ServicioHistorial._();
+  ServicioHistorial._() {
+    // Si cambia el inventario (compras, stock), el cierre se actualiza solo.
+    ServicioInventario.instancia.addListener(notifyListeners);
+  }
 
   static final ServicioHistorial instancia = ServicioHistorial._();
-
-  // TODO: tomar el nombre del cajero de ServicioSesion (usuario que inició sesión).
-  static const _cajero = 'Jose A.';
 
   final List<CajaCierre> _cajas = crearCajasMock(DateTime.now());
   final List<GastoTurno> _gastos = crearGastosMock();
@@ -35,7 +37,7 @@ class ServicioHistorial extends ChangeNotifier {
     final clientes = ServicioConsumos.instancia.clientes;
     final habitaciones = ServicioHabitaciones.instancia.habitaciones;
     return TurnoCaja(
-      usuario: _cajero,
+      usuario: nombreUsuarioActual(),
       ventas: _ventasDe(clientes),
       gastos: List.unmodifiable(_gastos),
       habitacionesOcupadas: habitaciones
@@ -43,6 +45,14 @@ class ServicioHistorial extends ChangeNotifier {
           .length,
       habitacionesTotal: habitaciones.length,
       clientes: clientes,
+      gastosInventario: [
+        for (final c in ServicioInventario.instancia.comprasDelTurno)
+          GastoInventarioTurno(
+            c.producto,
+            '${c.esNuevo ? 'Nuevo' : 'Reposición'} · ${c.paquetes} ${c.paquetes == 1 ? 'paquete' : 'paquetes'} (${c.cantidad} uds)',
+            c.total,
+          ),
+      ],
     );
   }
 
@@ -83,6 +93,7 @@ class ServicioHistorial extends ChangeNotifier {
     );
     _cajas.add(caja);
     _gastos.clear();
+    ServicioInventario.instancia.cerrarCompras(caja.numero);
     ServicioConsumos.instancia.vaciar();
     notifyListeners();
     return caja;

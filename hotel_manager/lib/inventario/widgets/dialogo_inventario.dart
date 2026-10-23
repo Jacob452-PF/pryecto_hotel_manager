@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+const azulDialogo = Color(0xFF3B82F6);
+
 /// Ventana centrada con icono azul y título (usada para "Ajustar producto"
 /// y "Agregar producto"). El contenido va en [child].
 class DialogoInventario extends StatelessWidget {
@@ -16,9 +18,8 @@ class DialogoInventario extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colores = Theme.of(context).colorScheme;
     return Dialog(
-      backgroundColor: colores.surface,
+      backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
@@ -35,7 +36,7 @@ class DialogoInventario extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: colores.primary,
+                      color: azulDialogo,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(icono, color: Colors.white, size: 28),
@@ -44,10 +45,10 @@ class DialogoInventario extends StatelessWidget {
                   Expanded(
                     child: Text(
                       titulo,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: colores.onSurface,
+                        color: Color(0xFF2B2B33),
                       ),
                     ),
                   ),
@@ -80,7 +81,6 @@ class BotonesDialogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colores = Theme.of(context).colorScheme;
     final forma = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(14),
     );
@@ -90,9 +90,9 @@ class BotonesDialogo extends StatelessWidget {
           child: OutlinedButton(
             onPressed: onCancelar,
             style: OutlinedButton.styleFrom(
-              backgroundColor: colores.surfaceContainerHighest,
-              foregroundColor: colores.onSurface,
-              side: BorderSide(color: Theme.of(context).dividerColor),
+              backgroundColor: const Color(0xFFEDEDF0),
+              foregroundColor: const Color(0xFF55555F),
+              side: const BorderSide(color: Color(0xFF9A9AA5)),
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: forma,
             ),
@@ -114,13 +114,65 @@ class BotonesDialogo extends StatelessWidget {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             style: FilledButton.styleFrom(
-              backgroundColor: colores.primary,
+              backgroundColor: azulDialogo,
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: forma,
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Recuadro azul claro con las cuentas de una compra (costo por unidad,
+/// precio de venta, gasto total...). Se usa en "Agregar" y en "Ajustar".
+class ResumenCompra extends StatelessWidget {
+  final List<FilaResumen> filas;
+  const ResumenCompra({super.key, required this.filas});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F1FE),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFB9D3FA)),
+      ),
+      child: Column(children: filas),
+    );
+  }
+}
+
+class FilaResumen extends StatelessWidget {
+  final String etiqueta;
+  final String valor;
+  final bool destacar;
+
+  const FilaResumen(
+    this.etiqueta,
+    this.valor, {
+    super.key,
+    this.destacar = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final estilo = TextStyle(
+      fontSize: destacar ? 15 : 13,
+      fontWeight: destacar ? FontWeight.bold : FontWeight.normal,
+      color: destacar ? azulDialogo : Colors.black87,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(etiqueta, style: estilo)),
+          Text(valor, style: estilo),
+        ],
+      ),
     );
   }
 }
