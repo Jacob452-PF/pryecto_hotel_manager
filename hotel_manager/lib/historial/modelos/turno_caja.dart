@@ -13,7 +13,7 @@ enum TipoVenta {
 }
 
 enum CategoriaGasto {
-  alimentos('Alimentos', Icons.restaurant),
+  alimentos('Productos', Icons.restaurant),
   aseo('Aseo', Icons.cleaning_services),
   mantenimiento('Mantenimiento', Icons.build),
   otros('Otros', Icons.more_horiz);
