@@ -4,7 +4,7 @@ enum CategoriaInventario {
   alimentos('Alimentos'),
   bebidas('Bebidas'),
   aseo('Aseo'),
-  lenceria('Lencería'),
+
   otros('Otros');
 
   final String etiqueta;
