@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../historial/historial.dart';
 import '../../servicios/servicio_estadias.dart';
+import '../../servicios/servicio_habitaciones.dart';
 import '../modelos/articulo_tienda.dart';
 import '../servicios/carrito_tienda.dart';
 import '../../historial/servicios/servicio_consumos.dart';
@@ -104,6 +105,13 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
       for (final linea in _c.lineas)
         (articulo: linea.articulo, cantidad: linea.cantidad),
     ]);
+
+    final solicitoLimpieza = _c.lineas.any((l) =>
+        l.articulo.seccion == SeccionTienda.servicio &&
+        l.articulo.nombre.toLowerCase().contains('limpieza'));
+    if (solicitoLimpieza) {
+      ServicioHabitaciones.instancia.solicitarLimpieza(huesped.habitacion);
+    }
 
     // NUEVO: baja el stock en el inventario.
     ServicioInventario.instancia.descontarVenta(items);
@@ -715,3 +723,5 @@ class _TarjetaHuesped extends StatelessWidget {
     );
   }
 }
+
+

@@ -89,12 +89,18 @@ class PantallaCierreCaja extends StatelessWidget {
     ),
   );
 
-  Widget _resumenPago(String titulo, int cantidad, double monto, Color color) {
+  Widget _resumenPago(
+    BuildContext context,
+    String titulo,
+    int cantidad,
+    double monto,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: color),
         ),
@@ -138,9 +144,9 @@ class PantallaCierreCaja extends StatelessWidget {
     final tarjetaFecha = Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ColoresHistorial.borde),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,7 +195,7 @@ class PantallaCierreCaja extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: ColoresHistorial.fondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
@@ -293,9 +299,9 @@ class PantallaCierreCaja extends StatelessWidget {
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ColoresHistorial.borde),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: Text(
                       'Clientes del día (${turno.clientes.length})',
@@ -322,6 +328,7 @@ class PantallaCierreCaja extends StatelessWidget {
               Row(
                 children: [
                   _resumenPago(
+                    context,
                     'Ya pagaron',
                     pagados.length,
                     suma(pagados),
@@ -329,6 +336,7 @@ class PantallaCierreCaja extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   _resumenPago(
+                    context,
                     'Sin pagar',
                     pendientes.length,
                     suma(pendientes),

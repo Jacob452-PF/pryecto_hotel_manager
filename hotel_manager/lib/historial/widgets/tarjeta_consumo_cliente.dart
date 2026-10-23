@@ -83,9 +83,9 @@ class TarjetaConsumoCliente extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ColoresHistorial.borde),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,9 +164,9 @@ class TarjetaConsumoCliente extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: ColoresHistorial.cajaProductos,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: ColoresHistorial.borde),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,7 +227,7 @@ class TarjetaConsumoCliente extends StatelessWidget {
                 icon: const Icon(Icons.receipt_long_outlined, size: 18),
                 label: const Text('Ver factura completa'),
                 style: TextButton.styleFrom(
-                  foregroundColor: ColoresHistorial.azulTexto,
+                  foregroundColor: Theme.of(context).colorScheme.primary,
                 ),
               ),
               if (onCambiarPago != null)
@@ -251,3 +251,5 @@ class TarjetaConsumoCliente extends StatelessWidget {
     );
   }
 }
+
+

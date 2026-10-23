@@ -44,6 +44,29 @@ class ServicioHabitaciones extends ChangeNotifier {
   void terminarEstadia(String numero) =>
       _cambiarEstado(numero, EstadoHabitacion.limpieza);
 
+  /// Solicita limpieza sin cambiar la ocupación de la habitación.
+  void solicitarLimpieza(String numero) {
+    final indice = _habitaciones.indexWhere((h) => h.numero == numero);
+    if (indice == -1) return;
+    final habitacion = _habitaciones[indice];
+    if (habitacion.estado == EstadoHabitacion.ocupada) {
+      if (habitacion.limpiezaSolicitada) return;
+      _habitaciones[indice] = Habitacion(
+        habitacion.numero,
+        habitacion.piso,
+        habitacion.tipoCuarto,
+        habitacion.estado,
+        camas: habitacion.camas,
+        huesped: habitacion.huesped,
+        rutaFoto: habitacion.rutaFoto,
+        limpiezaSolicitada: true,
+      );
+      notifyListeners();
+    } else if (habitacion.estado == EstadoHabitacion.disponible) {
+      _cambiarEstado(numero, EstadoHabitacion.limpieza);
+    }
+  }
+
   /// Limpieza o reparación terminada: vuelve a estar disponible.
   void marcarLista(String numero) =>
       _cambiarEstado(numero, EstadoHabitacion.disponible);
@@ -51,3 +74,5 @@ class ServicioHabitaciones extends ChangeNotifier {
   void enviarAMantenimiento(String numero) =>
       _cambiarEstado(numero, EstadoHabitacion.mantenimiento);
 }
+
+

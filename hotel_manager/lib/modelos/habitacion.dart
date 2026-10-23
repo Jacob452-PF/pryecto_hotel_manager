@@ -29,6 +29,9 @@ class Habitacion {
   /// Nombre del huésped que la ocupa (solo si el estado es ocupada).
   final String? huesped;
 
+  /// Servicio de limpieza solicitado durante una estadía activa.
+  final bool limpiezaSolicitada;
+
   /// Ruta de la foto de la habitación. Es null hasta que se tome la foto
   /// al agregar la habitación al catálogo.
   final String? rutaFoto;
@@ -40,6 +43,7 @@ class Habitacion {
     this.estado, {
     this.camas = 1,
     this.huesped,
+    this.limpiezaSolicitada = false,
     this.rutaFoto,
   });
 
@@ -53,7 +57,12 @@ class Habitacion {
       nuevoEstado,
       camas: camas,
       huesped: huesped,
+      limpiezaSolicitada: nuevoEstado == EstadoHabitacion.ocupada
+          ? limpiezaSolicitada
+          : false,
       rutaFoto: rutaFoto,
     );
   }
 }
+
+

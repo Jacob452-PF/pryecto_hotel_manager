@@ -25,13 +25,33 @@ class PantallaDetalleHabitacion extends StatelessWidget {
       label: const Text('Marcar como lista'),
     );
     final botonMantenimiento = OutlinedButton.icon(
-      onPressed: () => servicio.enviarAMantenimiento(habitacion.numero),
+      onPressed: habitacion.estado == EstadoHabitacion.ocupada
+          ? null
+          : () => servicio.enviarAMantenimiento(habitacion.numero),
       icon: const Icon(Icons.build),
-      label: const Text('Enviar a mantenimiento'),
+      label: const Text('Mantenimiento'),
     );
 
     return switch (habitacion.estado) {
       EstadoHabitacion.ocupada => [
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: habitacion.limpiezaSolicitada
+                    ? null
+                    : () => servicio.solicitarLimpieza(habitacion.numero),
+                icon: const Icon(Icons.cleaning_services),
+                label: Text(
+                  habitacion.limpiezaSolicitada ? 'Solicitada' : 'Limpieza',
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: botonMantenimiento),
+          ],
+        ),
+        const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute(
@@ -58,13 +78,23 @@ class PantallaDetalleHabitacion extends StatelessWidget {
           label: const Text('Finalizar estadía y cobrar'),
         ),
       ],
-      EstadoHabitacion.limpieza => [
-        botonLista,
-        const SizedBox(height: 12),
-        botonMantenimiento,
-      ],
+      EstadoHabitacion.limpieza => [botonLista],
       EstadoHabitacion.mantenimiento => [botonLista],
-      EstadoHabitacion.disponible => [botonMantenimiento],
+      EstadoHabitacion.disponible => [
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => servicio.solicitarLimpieza(habitacion.numero),
+                icon: const Icon(Icons.cleaning_services),
+                label: const Text('Limpieza'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: botonMantenimiento),
+          ],
+        ),
+      ],
     };
   }
 
@@ -107,6 +137,14 @@ class PantallaDetalleHabitacion extends StatelessWidget {
                         valor: estado.etiqueta,
                         colorValor: estado.color,
                       ),
+                      if (habitacion.limpiezaSolicitada) ...[
+                        const Divider(height: 1),
+                        const FilaInformacion(
+                          icono: Icons.cleaning_services,
+                          etiqueta: 'Limpieza',
+                          valor: 'Solicitada',
+                        ),
+                      ],
                       if (ocupada) ...[
                         const Divider(height: 1),
                         FilaInformacion(
@@ -148,3 +186,11 @@ class PantallaDetalleHabitacion extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+
+
+
