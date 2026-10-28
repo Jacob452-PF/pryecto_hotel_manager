@@ -32,7 +32,7 @@ class GastosInventario extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFF7FC8CC)),
           ),
@@ -41,13 +41,13 @@ class GastosInventario extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.shopping_cart_checkout,
                     size: 22,
-                    color: Color(0xFF2B8CFF),
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Gastos de inventario',
                       style: TextStyle(
@@ -65,9 +65,12 @@ class GastosInventario extends StatelessWidget {
                   ),
                 ],
               ),
-              const Text(
+              Text(
                 'Lo que el hotel gastó en productos desde el último cierre de caja',
-                style: TextStyle(fontSize: 11, color: Colors.black54),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 8),
               if (compras.isEmpty)
@@ -86,7 +89,7 @@ class GastosInventario extends StatelessWidget {
                       Icon(
                         c.esNuevo ? Icons.fiber_new : Icons.add_box_outlined,
                         size: 20,
-                        color: Colors.black54,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -97,24 +100,31 @@ class GastosInventario extends StatelessWidget {
                               c.producto,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             Text(
                               '${c.esNuevo ? 'Producto nuevo' : 'Reposición'} · '
                               '${c.paquetes} ${c.paquetes == 1 ? 'paquete' : 'paquetes'} × ${_dinero(c.costoPaquete)} · ${_hora(c.fecha)}',
-                              style: const TextStyle(fontSize: 11),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       Text(
                         _dinero(c.total),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ],
@@ -125,7 +135,10 @@ class GastosInventario extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     'y ${compras.length - _maxFilas} más (todas se ven en Cierre de caja)',
-                    style: const TextStyle(fontSize: 11, color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
             ],

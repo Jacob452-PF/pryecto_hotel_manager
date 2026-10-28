@@ -76,7 +76,7 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
     final eliminados = _servicio.eliminados;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F0F8),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -85,15 +85,15 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Row(
                 children: [
-                  const Icon(Icons.inventory_2_outlined, size: 34),
+                  Icon(Icons.inventory_2_outlined, size: 34, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Inventario',
                       style: TextStyle(
-                        fontFamily: 'serif',
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -105,8 +105,8 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF6FCFD9),
-                      foregroundColor: Colors.black,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 14,
@@ -176,12 +176,12 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Listado de productos',
-                          style: TextStyle(
-                            fontFamily: 'serif',
+                            style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -209,10 +209,10 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                               const SizedBox(width: 8),
                               Text(
                                 'Productos eliminados (${eliminados.length})',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ],
@@ -249,7 +249,7 @@ class _FilaEliminada extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF1F6),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -260,10 +260,10 @@ class _FilaEliminada extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(producto.nombre, style: const TextStyle(fontSize: 15)),
+                Text(producto.nombre, style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
                 Text(
                   '\$${producto.precio.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.black54),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ],
             ),

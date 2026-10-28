@@ -18,8 +18,9 @@ class DialogoInventario extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: colores.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
@@ -45,10 +46,10 @@ class DialogoInventario extends StatelessWidget {
                   Expanded(
                     child: Text(
                       titulo,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF2B2B33),
+                        color: colores.onSurface,
                       ),
                     ),
                   ),
@@ -81,6 +82,7 @@ class BotonesDialogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     final forma = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(14),
     );
@@ -90,9 +92,9 @@ class BotonesDialogo extends StatelessWidget {
           child: OutlinedButton(
             onPressed: onCancelar,
             style: OutlinedButton.styleFrom(
-              backgroundColor: const Color(0xFFEDEDF0),
-              foregroundColor: const Color(0xFF55555F),
-              side: const BorderSide(color: Color(0xFF9A9AA5)),
+              backgroundColor: colores.surfaceContainerHighest,
+              foregroundColor: colores.onSurface,
+              side: BorderSide(color: colores.outline),
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: forma,
             ),
@@ -114,7 +116,8 @@ class BotonesDialogo extends StatelessWidget {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             style: FilledButton.styleFrom(
-              backgroundColor: azulDialogo,
+              backgroundColor: colores.primary,
+              foregroundColor: colores.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: forma,
             ),
@@ -133,13 +136,14 @@ class ResumenCompra extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F1FE),
+        color: colores.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFB9D3FA)),
+        border: Border.all(color: colores.outlineVariant),
       ),
       child: Column(children: filas),
     );
@@ -160,10 +164,11 @@ class FilaResumen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     final estilo = TextStyle(
       fontSize: destacar ? 15 : 13,
       fontWeight: destacar ? FontWeight.bold : FontWeight.normal,
-      color: destacar ? azulDialogo : Colors.black87,
+      color: destacar ? colores.primary : colores.onSurface,
     );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),

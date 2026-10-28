@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
-import '../tema/estilos_texto.dart';
 
 class PantallaAcercaApp extends StatelessWidget {
   const PantallaAcercaApp({super.key});
@@ -10,7 +8,7 @@ class PantallaAcercaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ColoresApp.fondoSuave,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Acerca de la app')),
       body: SafeArea(
         child: ListView(
@@ -29,11 +27,11 @@ class PantallaAcercaApp extends StatelessWidget {
               texto: 'Posicionarnos como la solución tecnológica referente en el sector hotelero local y regional, reconocida por transformar la administración tradicional en un ecosistema digital inteligente. Aspiramos a establecer un modelo de innovación donde la automatización, el diseño accesible y la eficiencia operativa potencien el crecimiento continuo del negocio y la fidelización de cada visitante.',
             ),
             SizedBox(height: 18),
-            Text('Programadores', style: EstilosTexto.subtituloSeccion),
+            Text('Programadores'),
             SizedBox(height: 8),
             _TarjetaProgramadores(),
             SizedBox(height: 18),
-            Text('Soporte técnico', style: EstilosTexto.subtituloSeccion),
+            Text('Soporte técnico'),
             SizedBox(height: 8),
             _TarjetaSoporte(),
           ],
@@ -51,13 +49,13 @@ class _FilaVersion extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(Dimensiones.radioGrande),
       ),
       child: const Row(
         children: [
-          Expanded(child: Text('Versión', style: EstilosTexto.etiquetaOpcion)),
-          Text('1.0.0.1', style: EstilosTexto.valorInformacion),
+          Expanded(child: Text('Versión')),
+          Text('1.0.0.1'),
         ],
       ),
     );
@@ -72,22 +70,25 @@ class _BloqueTexto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tema = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(titulo, style: EstilosTexto.subtituloSeccion),
+        Text(titulo, style: tema.textTheme.titleMedium),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: ColoresApp.superficieSuave,
+            color: tema.colorScheme.surface,
             borderRadius: BorderRadius.circular(Dimensiones.radioTarjeta),
           ),
           child: Text(
             texto,
             textAlign: TextAlign.center,
-            style: EstilosTexto.parrafoSeccion,
+            style: tema.textTheme.bodyMedium?.copyWith(
+              color: tema.colorScheme.onSurface,
+            ),
           ),
         ),
       ],
@@ -100,23 +101,21 @@ class _TarjetaSoporte extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tema = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: ColoresApp.superficieSuave,
+        color: tema.colorScheme.surface,
         borderRadius: BorderRadius.circular(Dimensiones.radioTarjeta),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Grupo de tecnología', style: EstilosTexto.subtituloSeccion),
-          SizedBox(height: 10),
-          Text('Oscar Moisés', style: EstilosTexto.valorInformacion),
-          Text(
-            'Contacto: +503 7733 0170',
-            style: EstilosTexto.valorInformacion,
-          ),
+          Text('Información de contacto', style: tema.textTheme.titleSmall),
+          const SizedBox(height: 10),
+          const Text('Jacob Perez'),
+          const Text('7978-5112'),
         ],
       ),
     );
@@ -128,19 +127,22 @@ class _TarjetaProgramadores extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tema = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: ColoresApp.superficieSuave,
+        color: tema.colorScheme.surface,
         borderRadius: BorderRadius.circular(Dimensiones.radioTarjeta),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Grupo de tecnología', style: EstilosTexto.subtituloSeccion),
-          SizedBox(height: 10),
-          Text('Oscar Moisés', style: EstilosTexto.valorInformacion),
+          Text('Grupo de Programadores', style: tema.textTheme.titleSmall),
+          const SizedBox(height: 10),
+          const Text('Jacob Perez'),
+          const Text('Gisela Cortes'),
+          const Text('Steven Lopez'),
         ],
       ),
     );
