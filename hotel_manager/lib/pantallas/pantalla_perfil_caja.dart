@@ -10,6 +10,9 @@ import 'pantalla_estado_red.dart';
 import 'pantalla_acerca_app.dart';
 import 'pantalla_login.dart';
 import 'pantalla_tema.dart';
+import '../servicios/servicio_caja.dart';
+import '../historial/pantallas/pantalla_cierre_caja.dart';
+import 'pantalla_apertura_caja.dart';
 
 /// Perfil de la caja actual: datos de la sesión abierta y ajustes de la app.
 class PantallaPerfilCaja extends StatelessWidget {
@@ -20,6 +23,13 @@ class PantallaPerfilCaja extends StatelessWidget {
   }
 
   Future<void> _confirmarCerrarSesion(BuildContext context) async {
+    if (ServicioSesion.instancia.usuario?.rol == RolUsuario.recepcion &&
+        ServicioCaja.instancia.cajaActual != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cierra la caja antes de cerrar sesión.')),
+      );
+      return;
+    }
     final confirmado = await showDialog<bool>(
       context: context,
       builder: (contextoDialogo) => AlertDialog(
@@ -52,7 +62,7 @@ class PantallaPerfilCaja extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sesion = ServicioSesion.instancia;
-    final usuario = sesion.usuario ?? const Usuario(nombre: '—', cargo: '—');
+    final usuario = sesion.usuario ?? Usuario(nombre: '—', cargo: '—');
 
     return Scaffold(
       body: SafeArea(
@@ -65,6 +75,28 @@ class PantallaPerfilCaja extends StatelessWidget {
                 usuario: usuario,
                 inicioSesion: sesion.inicioSesion,
               ),
+              const SizedBox(height: 16),
+              if (usuario.rol == RolUsuario.recepcion ||
+                  usuario.rol == RolUsuario.admin)
+                ListenableBuilder(
+                  listenable: ServicioCaja.instancia,
+                  builder: (context, _) {
+                    final abierta = ServicioCaja.instancia.cajaActual != null;
+                    return TarjetaOpcionPerfil(
+                      icono: abierta ? Icons.point_of_sale : Icons.lock_open,
+                      titulo: abierta ? 'Cerrar caja' : 'Abrir caja',
+                      subtitulo: abierta
+                          ? 'Cuenta abierta en este turno'
+                          : 'Registra el fondo inicial en USD',
+                      alTocar: () => _abrir(
+                        context,
+                        abierta
+                            ? const PantallaCierreCaja()
+                            : const PantallaAperturaCaja(),
+                      ),
+                    );
+                  },
+                ),
               const SizedBox(height: 16),
               TarjetaOpcionPerfil(
                 icono: Icons.settings,

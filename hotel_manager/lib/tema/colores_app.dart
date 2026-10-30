@@ -27,4 +27,5 @@ class ColoresApp {
   static const Color ocupada = Colors.red;
   static const Color limpieza = Colors.orange;
   static const Color mantenimiento = Colors.blueGrey;
+  static const Color reservada = Color(0xFF7E57C2);
 }

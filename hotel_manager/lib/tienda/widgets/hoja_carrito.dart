@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../historial/historial.dart';
 import '../../servicios/servicio_estadias.dart';
-import '../../servicios/servicio_habitaciones.dart';
+import '../../servicios/servicio_tareas.dart';
 import '../modelos/articulo_tienda.dart';
 import '../servicios/carrito_tienda.dart';
 import '../../historial/servicios/servicio_consumos.dart';
@@ -62,7 +62,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
     if (_avisoEliminada == linea) setState(() => _avisoEliminada = null);
   }
 
-  void _confirmar() {
+  Future<void> _confirmar() async {
     final huesped = _c.huesped;
     if (huesped == null || _c.lineas.isEmpty) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -106,12 +106,26 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
         (articulo: linea.articulo, cantidad: linea.cantidad),
     ]);
 
-    final solicitoLimpieza = _c.lineas.any((l) =>
-        l.articulo.seccion == SeccionTienda.servicio &&
-        l.articulo.nombre.toLowerCase().contains('limpieza'));
+    final solicitoLimpieza = _c.lineas.any(
+      (l) =>
+          l.articulo.seccion == SeccionTienda.servicio &&
+          l.articulo.nombre.toLowerCase().contains('limpieza'),
+    );
     if (solicitoLimpieza) {
-      ServicioHabitaciones.instancia.solicitarLimpieza(huesped.habitacion);
+      try {
+        await ServicioTareas.instancia.solicitarLimpiezaHuesped(
+          huesped.habitacion,
+        );
+      } on Object catch (e) {
+        if (mounted)
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceFirst('Bad state: ', '')),
+            ),
+          );
+      }
     }
+    if (!mounted) return;
 
     // NUEVO: baja el stock en el inventario.
     ServicioInventario.instancia.descontarVenta(items);
@@ -723,5 +737,3 @@ class _TarjetaHuesped extends StatelessWidget {
     );
   }
 }
-
-

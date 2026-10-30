@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../historial/historial.dart';
 import '../servicios/servicio_estadias.dart';
 import '../servicios/servicio_habitaciones.dart';
+import '../servicios/servicio_tareas.dart';
+import '../modelos/solicitud_limpieza.dart';
 import '../utilidades/formato.dart';
 
 class PantallaFinalizarEstadia extends StatefulWidget {
@@ -109,7 +111,7 @@ class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
             FilledButton(
               onPressed: _metodo == null
                   ? null
-                  : () {
+                  : () async {
                       final e = ServicioEstadias.instancia.buscar(
                         widget.habitacion,
                       );
@@ -119,20 +121,32 @@ class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
 
                       // Se registra el cobro en el Cierre de caja (antes de
                       // borrar la estadía): el cliente pasa a "Pagado".
-                      ServicioConsumos.instancia.registrarPago(
-                        habitacion: widget.habitacion,
-                        cliente: widget.huesped,
-                        metodo: _metodo!,
-                        precioEstadia: e?.precioEstadia ?? 0,
-                        cargos: [
-                          for (final c in cargos)
-                            (
-                              nombre: c.nombre,
-                              precio: c.precio,
-                              cantidad: c.cantidad,
+                      try {
+                        await ServicioConsumos.instancia.registrarPago(
+                          habitacion: widget.habitacion,
+                          cliente: widget.huesped,
+                          metodo: _metodo!,
+                          precioEstadia: e?.precioEstadia ?? 0,
+                          cargos: [
+                            for (final c in cargos)
+                              (
+                                nombre: c.nombre,
+                                precio: c.precio,
+                                cantidad: c.cantidad,
+                              ),
+                          ],
+                        );
+                      } catch (error) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              error.toString().replaceFirst('Bad state: ', ''),
                             ),
-                        ],
-                      );
+                          ),
+                        );
+                        return;
+                      }
 
                       setState(() {
                         _total = e?.total ?? total;
@@ -146,6 +160,14 @@ class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
                       ServicioHabitaciones.instancia.terminarEstadia(
                         widget.habitacion,
                       );
+                      try {
+                        await ServicioTareas.instancia.solicitarLimpieza(
+                          widget.habitacion,
+                          origen: OrigenLimpieza.recepcion,
+                        );
+                      } on StateError {
+                        // Una solicitud previa conserva su asignación.
+                      }
                       ServicioEstadias.instancia.limpiar(widget.habitacion);
                     },
               child: const Text('Confirmar pago'),

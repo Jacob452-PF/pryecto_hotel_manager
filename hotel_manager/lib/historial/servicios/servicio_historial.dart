@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../../inventario/servicios/servicio_inventario.dart';
 import '../../modelos/habitacion.dart';
 import '../../servicios/servicio_habitaciones.dart';
+import '../../servicios/servicio_caja.dart';
+import '../../servicios/servicio_sesion.dart';
 import '../datos/cajas_mock.dart';
 //import '../datos/gastos_mock.dart';
 import '../modelos/caja_cierre.dart';
@@ -27,6 +29,27 @@ class ServicioHistorial extends ChangeNotifier {
   /// Cierres ordenados del más reciente al más antiguo.
   List<CajaCierre> get cajas {
     final lista = List.of(_cajas);
+    for (final c in ServicioCaja.instancia.cajasCerradas) {
+      if (lista.any((x) => x.numero == c.id)) continue;
+      final actual = ServicioSesion.instancia.usuario;
+      final nombre = c.usuarioId == actual?.id
+          ? actual?.nombre
+          : switch (c.usuarioId) {
+              'u-admin' => 'Administración de prueba',
+              'u-recep' => 'Recepción de prueba',
+              'u-limp' => 'Limpieza de prueba',
+              'u-mant' => 'Mantenimiento de prueba',
+              _ => c.usuarioId,
+            };
+      lista.add(
+        CajaCierre(
+          numero: c.id,
+          fecha: c.cierreAt!,
+          cajero: nombre ?? c.usuarioId,
+          totalRegistrado: c.montoCierre ?? 0,
+        ),
+      );
+    }
     lista.sort((a, b) => b.fecha.compareTo(a.fecha));
     return lista;
   }
@@ -80,7 +103,7 @@ class ServicioHistorial extends ChangeNotifier {
 
   /// Cierra el turno: guarda la caja con el detalle de clientes y deja
   /// el turno en cero para el siguiente.
-  CajaCierre registrarCierre() {
+  CajaCierre registrarCierre({String? numero, double? totalRegistrado}) {
     final turno = turnoActual;
     var mayor = 0;
     for (final c in _cajas) {
@@ -88,11 +111,11 @@ class ServicioHistorial extends ChangeNotifier {
       if (n > mayor) mayor = n;
     }
     final caja = CajaCierre(
-      numero: (mayor + 1).toString().padLeft(3, '0'),
+      numero: numero ?? (mayor + 1).toString().padLeft(3, '0'),
       fecha: DateTime.now(),
       cajero: turno.usuario,
       clientes: turno.clientes,
-      totalRegistrado: turno.totalEnCaja,
+      totalRegistrado: totalRegistrado ?? turno.totalEnCaja,
     );
     _cajas.add(caja);
     //_gastos.clear();

@@ -239,7 +239,9 @@ class TarjetaConsumoCliente extends StatelessWidget {
                     : FilledButton.icon(
                         onPressed: onCambiarPago,
                         icon: const Icon(Icons.check_circle_outline, size: 18),
-                        label: const Text('Marcar como pagado'),
+                        label: Text(
+                          'Registrar abono · ${dinero(consumo.saldo)}',
+                        ),
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF22A559),
                         ),
@@ -251,5 +253,3 @@ class TarjetaConsumoCliente extends StatelessWidget {
     );
   }
 }
-
-

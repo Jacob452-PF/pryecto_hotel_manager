@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../modelos/usuario.dart';
 import '../servicios/servicio_sesion.dart';
+import '../servicios/servicio_auth.dart';
 import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
 import '../tema/estilos_texto.dart';
@@ -20,6 +20,7 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
   final _controladorUsuario = TextEditingController();
   final _controladorContrasena = TextEditingController();
   bool _ocultarContrasena = true;
+  String? _errorAcceso;
 
   @override
   void dispose() {
@@ -28,13 +29,19 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
     super.dispose();
   }
 
-  void _iniciarSesion() {
+  Future<void> _iniciarSesion() async {
     if (!_claveFormulario.currentState!.validate()) return;
-
-    // TODO: validar usuario y contraseña contra el servidor / base de datos.
-    ServicioSesion.instancia.iniciarSesion(
-      Usuario(nombre: _controladorUsuario.text.trim(), cargo: 'Recepción'),
+    final usuario = await ServicioAuth.instancia.iniciarSesion(
+      _controladorUsuario.text,
+      _controladorContrasena.text,
     );
+    if (!mounted) return;
+    if (usuario == null) {
+      setState(() => _errorAcceso = 'Usuario o contraseña incorrectos.');
+      return;
+    }
+    setState(() => _errorAcceso = null);
+    ServicioSesion.instancia.iniciarSesion(usuario);
 
     Navigator.pushReplacement(
       context,
@@ -93,6 +100,13 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                             ? 'Ingresa tu usuario'
                             : null,
                       ),
+                      if (_errorAcceso != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          _errorAcceso!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _controladorContrasena,

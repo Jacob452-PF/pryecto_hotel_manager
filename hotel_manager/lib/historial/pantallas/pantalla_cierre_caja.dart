@@ -9,6 +9,12 @@ import '../widgets/boton_pildora.dart';
 import '../widgets/resumen_turno.dart';
 import '../widgets/seccion_tabla.dart';
 import '../widgets/tarjeta_consumo_cliente.dart';
+import '../../modelos/caja.dart';
+import '../../servicios/servicio_caja.dart';
+import '../../widgets/formulario_desglose_efectivo.dart';
+import '../../servicios/servicio_abonos.dart';
+import '../../modelos/abono.dart';
+import '../modelos/turno_caja.dart';
 
 /// Pantalla "Cierre de caja": revisa ventas, gastos y los clientes del turno
 /// (quiénes ya pagaron y quiénes no), y cierra el turno.
@@ -18,6 +24,12 @@ class PantallaCierreCaja extends StatelessWidget {
   Future<void> _confirmarCierre(BuildContext context) async {
     final servicio = ServicioHistorial.instancia;
     final turno = servicio.turnoActual;
+    final cajaService = ServicioCaja.instancia;
+    final efectivoDelTurno =
+        ServicioAbonos.instancia.efectivoRecibidoEnCaja(
+          cajaService.cajaActual?.id ?? '',
+        ) -
+        turno.gastosTotales;
     final messenger = ScaffoldMessenger.of(context);
     final navegador = Navigator.of(context);
     final n = turno.clientes.length;
@@ -29,7 +41,7 @@ class PantallaCierreCaja extends StatelessWidget {
         title: const Text('¿Cerrar turno?'),
         content: Text(
           'Se cerrará el turno con $n ${n == 1 ? 'cliente' : 'clientes'} y se '
-          'registrará el cierre de caja por ${dinero(turno.totalEnCaja)}.'
+          'registrará el efectivo esperado de ${dinero(cajaService.esperadoAlCerrar(efectivoDelTurno))}.'
           '${pendientes > 0 ? '\n\n$pendientes ${pendientes == 1 ? 'cliente no ha cancelado su cuenta y quedará' : 'clientes no han cancelado su cuenta y quedarán'} como pendiente en esta caja.' : ''}',
         ),
         actions: [
@@ -45,9 +57,66 @@ class PantallaCierreCaja extends StatelessWidget {
       ),
     );
 
-    if (confirmar != true) return;
-    // TODO: guardar el cierre en la base de datos.
-    final caja = servicio.registrarCierre();
+    if (confirmar != true || !context.mounted) return;
+    if (cajaService.cajaActual == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Abre una caja antes de cerrar el turno.'),
+        ),
+      );
+      return;
+    }
+    final conteo = await showDialog<DesgloseEfectivo>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: SingleChildScrollView(
+          child: FormularioDesgloseEfectivo(
+            titulo: 'Desglose de cierre (USD)',
+            boton: 'Continuar al cierre',
+            montoEsperado: cajaService.esperadoAlCerrar(efectivoDelTurno),
+            alCancelar: () => Navigator.pop(ctx),
+            alConfirmar: (d) => Navigator.pop(ctx, d),
+          ),
+        ),
+      ),
+    );
+    if (conteo == null || !context.mounted) return;
+    final esperado = cajaService.esperadoAlCerrar(efectivoDelTurno);
+    final diferencia = ((conteo.total - esperado) * 100).round() / 100;
+    var confirmarDiferencia = diferencia == 0;
+    if (diferencia != 0) {
+      confirmarDiferencia =
+          await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Diferencia de caja'),
+              content: Text(
+                'Esperado: ${dinero(esperado)}\nContado: ${dinero(conteo.total)}\nDiferencia: ${dinero(diferencia)}. ¿Confirmas el cierre con esta diferencia?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Revisar conteo'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Confirmar diferencia'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+    }
+    if (!confirmarDiferencia || !context.mounted) return;
+    final cajaCerrada = await cajaService.cerrar(
+      desglose: conteo,
+      netoTurno: efectivoDelTurno,
+      confirmarDiferencia: true,
+    );
+    final caja = servicio.registrarCierre(
+      numero: cajaCerrada.id,
+      totalRegistrado: cajaCerrada.montoCierre,
+    );
     navegador.pop();
     messenger.showSnackBar(
       SnackBar(content: Text('Caja #${caja.numero} cerrada correctamente')),
@@ -137,8 +206,7 @@ class PantallaCierreCaja extends StatelessWidget {
 
     Widget tarjeta(ConsumoCliente c) => TarjetaConsumoCliente(
       consumo: c,
-      onCambiarPago: () =>
-          ServicioConsumos.instancia.cambiarPago(c.id, !c.pagado),
+      onCambiarPago: c.pagado ? null : () => _registrarAbono(context, c),
     );
 
     final tarjetaFecha = Container(
@@ -364,13 +432,14 @@ class PantallaCierreCaja extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: BotonPildora(
-        texto: 'Cerrar turno',
+        texto: ServicioCaja.instancia.cajaActual == null
+            ? 'Caja cerrada'
+            : 'Cerrar turno',
         onPressed: () {
-          // Sin clientes no hay nada que cerrar.
-          if (turno.clientes.isEmpty) {
+          if (ServicioCaja.instancia.cajaActual == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('No hay clientes que cerrar en este turno'),
+                content: Text('Abre tu caja antes de cerrar el turno.'),
               ),
             );
             return;
@@ -379,5 +448,89 @@ class PantallaCierreCaja extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<void> _registrarAbono(
+    BuildContext context,
+    ConsumoCliente cliente,
+  ) async {
+    final input = TextEditingController();
+    var metodo = MetodoAbono.efectivo;
+    final valor = await showDialog<(double, MetodoAbono)?>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          title: Text('Abono · ${cliente.cliente}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Saldo: ${dinero(cliente.saldo)}'),
+              TextField(
+                controller: input,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(labelText: 'Monto'),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<MetodoAbono>(
+                initialValue: metodo,
+                items: [
+                  for (final m in MetodoAbono.values)
+                    DropdownMenuItem(value: m, child: Text(m.name)),
+                ],
+                onChanged: (v) {
+                  if (v != null) setDialog(() => metodo = v);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final m = double.tryParse(
+                  input.text.trim().replaceAll(',', '.'),
+                );
+                if (m != null) Navigator.pop(ctx, (m, metodo));
+              },
+              child: const Text('Registrar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    input.dispose();
+    if (valor == null) return;
+    try {
+      final habitacion = cliente.codigo.replaceFirst('#', '');
+      final cargos = [
+        for (final l in cliente.lineas.where(
+          (l) => l.tipo != TipoVenta.habitaciones,
+        ))
+          (nombre: l.nombre, precio: l.precio, cantidad: l.cantidad),
+      ];
+      final precio = cliente.lineas
+          .where((l) => l.tipo == TipoVenta.habitaciones)
+          .fold<double>(0, (s, l) => s + l.importe);
+      await ServicioConsumos.instancia.registrarAbonoFactura(
+        habitacion: habitacion,
+        cliente: cliente.cliente,
+        monto: valor.$1,
+        metodo: valor.$2,
+        precioEstadia: precio,
+        cargos: cargos,
+      );
+    } catch (error) {
+      if (context.mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Bad state: ', '')),
+          ),
+        );
+    }
   }
 }

@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 
 import '../inventario/servicios/servicio_inventario.dart';
 import '../modelos/notificacion_app.dart';
+import '../modelos/habitacion.dart';
+import 'servicio_configuracion.dart';
+import 'servicio_habitaciones.dart';
 import 'servicio_estadias.dart';
 
 /// Vigila estadías e inventario mientras la app está abierta.
@@ -45,6 +48,16 @@ class ServicioNotificaciones extends ChangeNotifier {
     notifyListeners();
   }
 
+  void notificarEvento({
+    required String id,
+    required String titulo,
+    required String mensaje,
+    required SeveridadNotificacion severidad,
+  }) {
+    if (_notificaciones.any((n) => n.id == id)) return;
+    _agregar(id: id, titulo: titulo, mensaje: mensaje, severidad: severidad);
+  }
+
   void _revisar() {
     final ahora = DateTime.now();
     for (final entrada in ServicioEstadias.instancia.todas.entries) {
@@ -54,14 +67,30 @@ class ServicioNotificaciones extends ChangeNotifier {
       final restante = estadia.salida.difference(ahora);
 
       if (restante <= Duration.zero) {
-        final id = 'estadia-finalizada-$clave';
-        if (_eventosEstadia.add(id)) {
-          _agregar(
-            id: id,
-            titulo: 'Estadía finalizada',
-            mensaje: 'La estadía de la habitación $habitacion llegó a su fin.',
-            severidad: SeveridadNotificacion.urgente,
-          );
+        final espera = Duration(
+          minutes: ServicioConfiguracion.instancia.valor.toleranciaCheckoutMin,
+        );
+        final habitacionActual = ServicioHabitaciones.instancia.buscar(
+          habitacion,
+        );
+        if (ahora.isAfter(estadia.salida.add(espera)) &&
+            habitacionActual?.estado == EstadoHabitacion.ocupada) {
+          final repeticion =
+              ServicioConfiguracion.instancia.valor.repeticionAvisoEstadiaMin;
+          final transcurrido = ahora
+              .difference(estadia.salida.add(espera))
+              .inMinutes;
+          final id =
+              'estadia-vencida-$clave-${transcurrido ~/ (repeticion < 1 ? 1 : repeticion)}';
+          if (_eventosEstadia.add(id)) {
+            _agregar(
+              id: id,
+              titulo: 'Estadía vencida',
+              mensaje:
+                  'La habitación $habitacion supera el check-out esperado.',
+              severidad: SeveridadNotificacion.urgente,
+            );
+          }
         }
       } else if (restante <= const Duration(minutes: 30)) {
         final id = 'estadia-proxima-$clave';
