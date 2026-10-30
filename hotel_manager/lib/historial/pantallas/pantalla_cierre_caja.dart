@@ -5,6 +5,7 @@ import '../servicios/servicio_consumos.dart';
 import '../servicios/servicio_historial.dart';
 import '../utilidades/estilos_historial.dart';
 import '../utilidades/formato.dart';
+import '../widgets/aviso_ediciones_gastos.dart';
 import '../widgets/boton_pildora.dart';
 import '../widgets/resumen_turno.dart';
 import '../widgets/seccion_tabla.dart';
@@ -248,21 +249,21 @@ class PantallaCierreCaja extends StatelessWidget {
               total: dinero(turno.totalVentas),
             ),
             const SizedBox(height: 12),
-            // SeccionTabla(
-            // icono: Icons.receipt_long,
-            //titulo: 'Detalle de gastos',
-            // encabezados: const ['Categoría', 'Descripción', 'Monto'],
-            // filas: [
-            //for (final g in turno.gastos)
-            //FilaTabla(
-            // CeldaIcono(g.categoria.icono, g.categoria.etiqueta),
-            // g.descripcion,
-            //dinero(g.monto),
-            // ),
-            // ],
-            // etiquetaTotal: 'Total gastos',
-            // total: dinero(turno.totalGastos),
-            // ),
+            SeccionTabla(
+              icono: Icons.receipt_long,
+              titulo: 'Detalle de gastos',
+              encabezados: const ['Categoría', 'Descripción', 'Monto'],
+              filas: [
+                for (final g in turno.gastos)
+                  FilaTabla(
+                    CeldaIcono(g.categoria.icono, g.categoria.etiqueta),
+                    g.descripcion,
+                    dinero(g.monto),
+                  ),
+              ],
+              etiquetaTotal: 'Total gastos',
+              total: dinero(turno.totalGastos),
+            ),
             const SizedBox(height: 12),
             // Lo que el hotel gastó comprando productos o reponiendo stock
             SeccionTabla(
@@ -280,6 +281,9 @@ class PantallaCierreCaja extends StatelessWidget {
               etiquetaTotal: 'Total inventario',
               total: dinero(turno.totalGastosInventario),
             ),
+            // Si se corrigió algún gasto: lo que se anotó antes y lo que quedó
+            const SizedBox(height: 8),
+            AvisoEdicionesGastos(gastos: turno.gastosInventario),
             const SizedBox(height: 16),
             // Clientes registrados durante el turno
             Row(

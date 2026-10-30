@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../servicios/servicio_inventario.dart';
+import 'hoja_editar_compra.dart';
 
 String _dinero(double v) => '\$${v.toStringAsFixed(2)}';
 
@@ -12,6 +13,7 @@ String _hora(DateTime d) {
 
 /// Apartado "Gastos de inventario": cuánto ha gastado el hotel en comprar
 /// productos nuevos o reponer stock desde el último cierre de caja.
+/// Cada compra tiene su botón de editar por si hubo un error.
 class GastosInventario extends StatelessWidget {
   const GastosInventario({super.key});
 
@@ -82,11 +84,15 @@ class GastosInventario extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 5),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        c.esNuevo ? Icons.fiber_new : Icons.add_box_outlined,
-                        size: 20,
-                        color: Colors.black54,
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Icon(
+                          c.esNuevo ? Icons.fiber_new : Icons.add_box_outlined,
+                          size: 20,
+                          color: Colors.black54,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -107,14 +113,41 @@ class GastosInventario extends StatelessWidget {
                               '${c.paquetes} ${c.paquetes == 1 ? 'paquete' : 'paquetes'} × ${_dinero(c.costoPaquete)} · ${_hora(c.fecha)}',
                               style: const TextStyle(fontSize: 11),
                             ),
+                            // Si se corrigió: lo que se gastó antes y ahora
+                            if (c.editada)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  'Editado: se había anotado ${_dinero(c.totalOriginal)} y ahora son ${_dinero(c.total)}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFEF8A00),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
+                      const SizedBox(width: 6),
                       Text(
                         _dinero(c.total),
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Botón de editar, a la par de la compra
+                      SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: IconButton(
+                          onPressed: () => mostrarEditarCompra(context, c),
+                          tooltip: 'Editar',
+                          padding: EdgeInsets.zero,
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          color: const Color(0xFF2B8CFF),
                         ),
                       ),
                     ],
