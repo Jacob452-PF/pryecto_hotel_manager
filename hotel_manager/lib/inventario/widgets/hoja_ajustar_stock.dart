@@ -296,7 +296,11 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
               children: [
                 Row(
                   children: [
-                    MiniaturaProducto(imagen: p.imagen, tamano: 56),
+                    MiniaturaProducto(
+                      imagen: p.imagen,
+                      imagenBytes: p.imagenBytes,
+                      tamano: 56,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(

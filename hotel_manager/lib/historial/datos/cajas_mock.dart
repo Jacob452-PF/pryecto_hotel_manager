@@ -18,7 +18,7 @@ List<CajaCierre> crearCajasMock(DateTime ahora) {
     CajaCierre(
       numero: '001',
       fecha: dia(0, 14, 15),
-      cajero: 'Reinaldo Reyes',
+      cajero: 'Recepción de prueba',
       // Total = 168.40 (se suma desde el detalle)
       clientes: const [
         ConsumoCliente(
@@ -60,25 +60,25 @@ List<CajaCierre> crearCajasMock(DateTime ahora) {
     CajaCierre(
       numero: '002',
       fecha: dia(1, 17, 15),
-      cajero: 'Jose A.',
+      cajero: 'Recepción de prueba',
       totalRegistrado: 124.90,
     ),
     CajaCierre(
       numero: '003',
       fecha: dia(2, 14, 15),
-      cajero: 'María H.',
+      cajero: 'Recepción de prueba',
       totalRegistrado: 168.40,
     ),
     CajaCierre(
       numero: '004',
       fecha: dia(20, 14, 15),
-      cajero: 'Reinaldo Reyes',
+      cajero: 'Recepción de prueba',
       totalRegistrado: 98.30,
     ),
     CajaCierre(
       numero: '005',
       fecha: dia(45, 17, 15),
-      cajero: 'Jose A.',
+      cajero: 'Recepción de prueba',
       totalRegistrado: 142.75,
     ),
   ];

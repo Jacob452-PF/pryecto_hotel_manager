@@ -33,6 +33,14 @@ class ServicioInventario extends ChangeNotifier {
   /// Cuánto se ha gastado en inventario desde el último cierre de caja.
   double get gastoDelTurno => comprasDelTurno.fold(0.0, (s, c) => s + c.total);
 
+  /// Indica si [compra] es la compra más reciente de su producto.
+  bool esUltimaCompra(CompraInventario compra) {
+    final indice = _compras.lastIndexWhere(
+      (c) => c.productoId == compra.productoId,
+    );
+    return indice != -1 && _compras[indice].id == compra.id;
+  }
+
   void _cambio() {
     _ultimaActualizacion = DateTime.now();
     notifyListeners();
@@ -130,6 +138,81 @@ class ServicioInventario extends ChangeNotifier {
         esNuevo: false,
       );
     }
+    _cambio();
+  }
+
+  /// Corrige una compra registrada y ajusta el stock según los paquetes
+  /// añadidos o quitados. Si es la compra más reciente, también corrige el
+  /// costo actual del producto y opcionalmente su precio de venta.
+  void editarCompra(
+    String id, {
+    required int paquetes,
+    required double costoPaquete,
+    required bool actualizarPrecio,
+  }) {
+    if (paquetes < 1 || !costoPaquete.isFinite || costoPaquete < 0) return;
+
+    final indice = _compras.indexWhere((c) => c.id == id);
+    if (indice == -1) return;
+
+    final anterior = _compras[indice];
+    final esUltima = esUltimaCompra(anterior);
+    final totalAnterior = anterior.total;
+    final totalNuevo = paquetes * costoPaquete;
+    final unidadesCambian =
+        (paquetes - anterior.paquetes) * anterior.unidadesPorPaquete;
+    final costoUnidad = anterior.unidadesPorPaquete > 0
+        ? costoPaquete / anterior.unidadesPorPaquete
+        : 0.0;
+    final fecha = DateTime.now();
+
+    _compras[indice] = anterior.conEdicion(
+      paquetes: paquetes,
+      costoPaquete: costoPaquete,
+      edicion: EdicionCompra(
+        fecha: fecha,
+        totalAnterior: totalAnterior,
+        totalNuevo: totalNuevo,
+        cambio:
+            'Costo del paquete: \$${anterior.costoPaquete.toStringAsFixed(2)} a \$${costoPaquete.toStringAsFixed(2)}; paquetes: ${anterior.paquetes} a $paquetes',
+      ),
+    );
+
+    final indiceProducto = _productos.indexWhere(
+      (p) => p.id == anterior.productoId,
+    );
+    if (indiceProducto != -1) {
+      final producto = _productos[indiceProducto];
+      final stockCalculado = producto.stock + unidadesCambian;
+      final stockNuevo = stockCalculado < 0 ? 0 : stockCalculado;
+      final precioNuevo = esUltima && actualizarPrecio && costoUnidad > 0
+          ? precioDeVenta(costoUnidad)
+          : null;
+
+      _productos[indiceProducto] = producto.copyWith(
+        stock: stockNuevo,
+        stockMaximo: stockNuevo > producto.stockMaximo ? stockNuevo : null,
+        precio: precioNuevo,
+        costoPaquete: esUltima ? costoPaquete : null,
+        unidadesPorPaquete: esUltima ? anterior.unidadesPorPaquete : null,
+      );
+
+      if (stockNuevo != producto.stock) {
+        _movimientos.add(
+          MovimientoInventario(
+            productoId: producto.id,
+            producto: producto.nombre,
+            stockAnterior: producto.stock,
+            stockNuevo: stockNuevo,
+            motivo: 'Corrección de compra',
+            nota:
+                'Compra ${anterior.id}: ${unidadesCambian > 0 ? '+' : ''}$unidadesCambian unidades',
+            fecha: fecha,
+          ),
+        );
+      }
+    }
+
     _cambio();
   }
 

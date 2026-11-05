@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -452,7 +453,10 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
             ),
             child: Row(
               children: [
-                _MiniaturaProducto(imagen: l.articulo.imagen),
+                _MiniaturaProducto(
+                  imagen: l.articulo.imagen,
+                  imagenBytes: l.articulo.imagenBytes,
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -496,7 +500,8 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
 
 class _MiniaturaProducto extends StatelessWidget {
   final String? imagen;
-  const _MiniaturaProducto({this.imagen});
+  final Uint8List? imagenBytes;
+  const _MiniaturaProducto({this.imagen, this.imagenBytes});
 
   @override
   Widget build(BuildContext context) {
@@ -508,7 +513,9 @@ class _MiniaturaProducto extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
       ),
       clipBehavior: Clip.antiAlias,
-      child: imagen == null
+      child: imagenBytes != null
+          ? Image.memory(imagenBytes!, fit: BoxFit.cover)
+          : imagen == null
           ? Icon(
               Icons.image_outlined,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -557,7 +564,10 @@ class _FilaProducto extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _MiniaturaProducto(imagen: linea.articulo.imagen),
+          _MiniaturaProducto(
+            imagen: linea.articulo.imagen,
+            imagenBytes: linea.articulo.imagenBytes,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

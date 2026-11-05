@@ -85,7 +85,11 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Row(
                 children: [
-                  Icon(Icons.inventory_2_outlined, size: 34, color: Theme.of(context).colorScheme.primary),
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    size: 34,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -178,7 +182,7 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                       children: [
                         Text(
                           'Listado de productos',
-                            style: TextStyle(
+                          style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.onSurface,
@@ -212,7 +216,9 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface,
                                 ),
                               ),
                             ],
@@ -254,16 +260,27 @@ class _FilaEliminada extends StatelessWidget {
       ),
       child: Row(
         children: [
-          MiniaturaProducto(imagen: producto.imagen),
+          MiniaturaProducto(
+            imagen: producto.imagen,
+            imagenBytes: producto.imagenBytes,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(producto.nombre, style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
+                Text(
+                  producto.nombre,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
                 Text(
                   '\$${producto.precio.toStringAsFixed(2)}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -304,6 +321,3 @@ class _Panel extends StatelessWidget {
     );
   }
 }
-
-
-

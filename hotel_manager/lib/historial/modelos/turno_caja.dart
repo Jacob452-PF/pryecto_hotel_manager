@@ -13,7 +13,7 @@ enum TipoVenta {
 }
 
 enum CategoriaGasto {
-  alimentos('Productos', Icons.restaurant),
+  alimentos('Alimentos', Icons.restaurant),
   aseo('Aseo', Icons.cleaning_services),
   mantenimiento('Mantenimiento', Icons.build),
   otros('Otros', Icons.more_horiz);
@@ -47,7 +47,18 @@ class GastoInventarioTurno {
   final String detalle;
   final double monto;
 
-  const GastoInventarioTurno(this.producto, this.detalle, this.monto);
+  /// Lo que se había anotado antes de corregirlo (null si nunca se editó).
+  final double? montoOriginal;
+
+  const GastoInventarioTurno(
+    this.producto,
+    this.detalle,
+    this.monto, [
+    this.montoOriginal,
+  ]);
+
+  /// ¿Se corrigió este gasto?
+  bool get editado => montoOriginal != null;
 }
 
 /// Resumen del turno que se va a cerrar.

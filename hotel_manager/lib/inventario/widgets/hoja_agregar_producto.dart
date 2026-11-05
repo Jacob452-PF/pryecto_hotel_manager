@@ -1,17 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../pantallas/pantalla_agregar_producto.dart';
 import '../modelos/producto_inventario.dart';
 import '../servicios/servicio_inventario.dart';
 import 'dialogo_inventario.dart';
 
-/// Ventana "Agregar producto". Se escribe lo que cuesta el PAQUETE y cuántos
-/// paquetes se compraron: el precio de venta de cada unidad sale solo
-/// (costo por unidad + 30%) y el gasto queda en Inventario y Cierre de caja.
+/// Abre el formulario de alta y registra producto y compra inicial.
 Future<void> mostrarAgregarProducto(BuildContext context) {
-  return showDialog<void>(
-    context: context,
-    builder: (_) => const _DialogoAgregar(),
+  return _agregarDesdePantalla(context);
+}
+
+Future<void> _agregarDesdePantalla(BuildContext context) async {
+  final datos = await Navigator.of(context).push<DatosNuevoProducto>(
+    MaterialPageRoute<DatosNuevoProducto>(
+      builder: (_) => const PantallaAgregarProducto(),
+    ),
+  );
+  if (datos == null || !context.mounted) return;
+
+  final servicio = ServicioInventario.instancia;
+  final stock = datos.paquetes * datos.unidadesPorPaquete;
+  servicio.agregar(
+    ProductoInventario(
+      id: servicio.nuevoId(),
+      nombre: datos.nombre,
+      precio: datos.precioVenta,
+      categoria: datos.categoria,
+      stock: stock,
+      stockMaximo: datos.stockMaximo,
+      stockMinimo: datos.stockMinimo,
+      imagenBytes: datos.foto,
+      unidadesPorPaquete: datos.unidadesPorPaquete,
+      costoPaquete: datos.costoPaquete,
+    ),
+    paquetes: datos.paquetes,
   );
 }
 
