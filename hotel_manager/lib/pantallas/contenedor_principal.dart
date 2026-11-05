@@ -9,9 +9,11 @@ import '../modelos/notificacion_app.dart';
 import '../modelos/usuario.dart';
 import '../servicios/servicio_notificaciones.dart';
 import '../servicios/servicio_sesion.dart';
+import '../servicios/servicio_caja.dart';
 import 'pantalla_notificaciones.dart';
 import 'pantalla_tareas.dart';
 import 'pantalla_agenda.dart';
+import 'pantalla_apertura_caja.dart';
 
 class ContenedorPrincipal extends StatefulWidget {
   const ContenedorPrincipal({super.key});
@@ -38,6 +40,19 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final sesion = ServicioSesion.instancia.usuario;
+      if (!mounted ||
+          sesion?.rol != RolUsuario.recepcion ||
+          ServicioCaja.instancia.cajaActual != null) {
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const PantallaAperturaCaja(),
+        ),
+      );
+    });
     _ultimaNotificacionId = _notificaciones.notificaciones.isEmpty
         ? null
         : _notificaciones.notificaciones.first.id;
