@@ -28,6 +28,7 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
   final _paquetes = TextEditingController(text: '1');
   final _unidades = TextEditingController(text: '1');
   final _maximo = TextEditingController(text: '50');
+  final _minimo = TextEditingController(text: '5');
   CategoriaInventario _categoria = CategoriaInventario.alimentos;
   String? _error;
 
@@ -38,6 +39,7 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
     _paquetes.dispose();
     _unidades.dispose();
     _maximo.dispose();
+    _minimo.dispose();
     super.dispose();
   }
 
@@ -55,9 +57,10 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
     String? prefijo,
     String? ayuda,
   }) {
+    final colores = Theme.of(context).colorScheme;
     final borde = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFF9A9AA5)),
+      borderSide: BorderSide(color: colores.outline),
     );
     return InputDecoration(
       labelText: etiqueta,
@@ -65,9 +68,13 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
       helperText: ayuda,
       helperMaxLines: 2,
       filled: true,
-      fillColor: const Color(0xFFF6F6F9),
+      fillColor: colores.surfaceContainerHighest,
       border: borde,
       enabledBorder: borde,
+      labelStyle: TextStyle(color: colores.onSurfaceVariant),
+      hintStyle: TextStyle(color: colores.onSurfaceVariant),
+      helperStyle: TextStyle(color: colores.onSurfaceVariant),
+      prefixStyle: TextStyle(color: colores.onSurface),
     );
   }
 
@@ -107,6 +114,7 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
         categoria: _categoria,
         stock: stock,
         stockMaximo: maximo,
+        stockMinimo: int.tryParse(_minimo.text.trim()) ?? 5,
         unidadesPorPaquete: unidades,
         costoPaquete: costo,
       ),
@@ -117,6 +125,7 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     final categorias = CategoriaInventario.values.where(
       (c) => c != CategoriaInventario.todos,
     );
@@ -139,9 +148,13 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
             decoration: _decoracion('Nombre'),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Categoría',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: colores.onSurface,
+            ),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -157,9 +170,13 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Compra del paquete',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: colores.onSurface,
+            ),
           ),
           const SizedBox(height: 8),
           TextField(
@@ -206,6 +223,13 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: _decoracion('Stock máximo'),
           ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _minimo,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: _decoracion('Stock mínimo para aviso'),
+          ),
           const SizedBox(height: 14),
           // Cuentas automáticas
           ResumenCompra(
@@ -217,7 +241,7 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
                 hayDatos ? _d(paquetes * costo) : '—',
               ),
               FilaResumen(
-                'Precio de venta por unidad (+20%)',
+                'Precio de venta por unidad (+${(margenGanancia * 100).round()}%)',
                 hayDatos ? _d(precioDeVenta(costoUnidad)) : '—',
                 destacar: true,
               ),

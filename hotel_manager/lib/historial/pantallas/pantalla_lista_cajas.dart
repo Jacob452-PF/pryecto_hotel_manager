@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../modelos/periodo_historial.dart';
+import '../../modelos/usuario.dart';
+import '../../servicios/servicio_sesion.dart';
+import '../../servicios/servicio_caja.dart';
+import '../../pantallas/pantalla_apertura_caja.dart';
 import '../servicios/servicio_historial.dart';
 import '../utilidades/estilos_historial.dart';
 import '../widgets/boton_pildora.dart';
@@ -48,6 +52,10 @@ class _EstadoPantallaListaCajas extends State<PantallaListaCajas> {
     final texto = _busqueda.text.trim().toLowerCase();
 
     final cajas = _servicio.cajas.where((c) {
+      final usuario = ServicioSesion.instancia.usuario;
+      if (usuario?.rol != RolUsuario.admin && c.cajero != usuario?.nombre) {
+        return false;
+      }
       if (!_periodo.contiene(c.fecha, ahora)) return false;
       if (texto.isEmpty) return true;
       return c.numero.contains(texto) || c.cajero.toLowerCase().contains(texto);
@@ -162,7 +170,9 @@ class _EstadoPantallaListaCajas extends State<PantallaListaCajas> {
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.primary,
                             decoration: TextDecoration.underline,
-                            decorationColor: Theme.of(context).colorScheme.primary,
+                            decorationColor: Theme.of(context)
+                                .colorScheme
+                                .primary,
                           ),
                         ),
                       ),
@@ -173,11 +183,20 @@ class _EstadoPantallaListaCajas extends State<PantallaListaCajas> {
           ],
         ),
       ),
-      bottomNavigationBar: BotonPildora(
-        texto: 'Cierre de caja',
-        onPressed: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute<void>(builder: (_) => PantallaCierreCaja())),
+      bottomNavigationBar: AnimatedBuilder(
+        animation: ServicioCaja.instancia,
+        builder: (context, _) => BotonPildora(
+          texto: ServicioCaja.instancia.cajaActual == null
+              ? 'Abrir caja'
+              : 'Cierre de caja',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ServicioCaja.instancia.cajaActual == null
+                  ? const PantallaAperturaCaja()
+                  : const PantallaCierreCaja(),
+            ),
+          ),
+        ),
       ),
     );
   }

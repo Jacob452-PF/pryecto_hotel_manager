@@ -4,6 +4,8 @@ import '../../modelos/factura.dart';
 import '../modelos/consumo_cliente.dart';
 import '../modelos/turno_caja.dart';
 import '../utilidades/sesion_actual.dart';
+import '../../modelos/abono.dart';
+import '../../servicios/servicio_abonos.dart';
 
 class _Cuenta {
   final String id;
@@ -16,6 +18,8 @@ class _Cuenta {
   bool pagado = false;
   DateTime? pagadoEn;
   String metodoPago = '';
+  double get total =>
+      [...iniciales, ...anadidas].fold(0.0, (s, l) => s + l.importe);
 
   _Cuenta(this.id, this.cliente, this.habitacion, this.registradoPor);
 }
@@ -50,6 +54,8 @@ class ServicioConsumos extends ChangeNotifier {
         pagado: c.pagado,
         pagadoEn: c.pagadoEn,
         metodoPago: c.metodoPago,
+        montoAbonado: ServicioAbonos.instancia.abonado(c.id),
+        abonos: ServicioAbonos.instancia.paraFactura(c.id),
       ),
   ];
 
@@ -86,6 +92,61 @@ class ServicioConsumos extends ChangeNotifier {
     notifyListeners();
   }
 
+  String facturaIdParaHabitacion(String habitacion, String cliente) =>
+      '$habitacion|$cliente';
+
+  Future<void> registrarAbonoFactura({
+    required String habitacion,
+    required String cliente,
+    required double monto,
+    required MetodoAbono metodo,
+    required double precioEstadia,
+    required List<({String nombre, double precio, int cantidad})> cargos,
+  }) async {
+    final id = facturaIdParaHabitacion(habitacion, cliente);
+    final cuenta = _cuentas.putIfAbsent(id, () {
+      final nueva = _Cuenta(id, cliente, habitacion, nombreUsuarioActual());
+      if (precioEstadia > 0)
+        nueva.iniciales.add(
+          LineaConsumo(
+            'Habitación $habitacion',
+            precioEstadia,
+            1,
+            TipoVenta.habitaciones,
+          ),
+        );
+      for (final c in cargos) {
+        _sumar(nueva.iniciales, LineaConsumo(c.nombre, c.precio, c.cantidad));
+      }
+      return nueva;
+    });
+    final existeHabitacion = [
+      ...cuenta.iniciales,
+      ...cuenta.anadidas,
+    ].any((l) => l.tipo == TipoVenta.habitaciones);
+    if (!existeHabitacion && precioEstadia > 0)
+      cuenta.iniciales.insert(
+        0,
+        LineaConsumo(
+          'Habitación $habitacion',
+          precioEstadia,
+          1,
+          TipoVenta.habitaciones,
+        ),
+      );
+    final total = cuenta.total;
+    await ServicioAbonos.instancia.registrar(
+      facturaId: id,
+      monto: monto,
+      saldoDisponible: total - ServicioAbonos.instancia.abonado(id),
+      metodo: metodo,
+    );
+    cuenta.pagado = ServicioAbonos.instancia.abonado(id) >= total - 0.001;
+    cuenta.pagadoEn = cuenta.pagado ? DateTime.now() : null;
+    cuenta.metodoPago = cuenta.pagado ? metodo.name : '';
+    notifyListeners();
+  }
+
   /// Marca la cuenta del cliente como pagada (o la vuelve a pendiente).
   void cambiarPago(String id, bool pagado) {
     final cuenta = _cuentas[id];
@@ -100,13 +161,13 @@ class ServicioConsumos extends ChangeNotifier {
   /// Si el cliente ya estaba en el turno, solo pasa a Pagado. Si no estaba
   /// (por ejemplo una habitación de ejemplo, o un huésped de otro turno), se
   /// agrega con lo que pagó. Siempre queda incluida la línea de la habitación.
-  void registrarPago({
+  Future<void> registrarPago({
     required String habitacion,
     required String cliente,
     required String metodo,
     required double precioEstadia,
     required List<({String nombre, double precio, int cantidad})> cargos,
-  }) {
+  }) async {
     final id = '$habitacion|$cliente';
     final cuenta = _cuentas.putIfAbsent(id, () {
       final nueva = _Cuenta(id, cliente, habitacion, nombreUsuarioActual());
@@ -132,6 +193,18 @@ class ServicioConsumos extends ChangeNotifier {
       );
     }
 
+    final m = MetodoAbono.values.firstWhere(
+      (x) => x.name == metodo.toLowerCase(),
+      orElse: () => MetodoAbono.efectivo,
+    );
+    final saldo = cuenta.total - ServicioAbonos.instancia.abonado(id);
+    if (saldo > 0)
+      await ServicioAbonos.instancia.registrar(
+        facturaId: id,
+        monto: saldo,
+        saldoDisponible: saldo,
+        metodo: m,
+      );
     cuenta.pagado = true;
     cuenta.pagadoEn = DateTime.now();
     cuenta.metodoPago = metodo;

@@ -9,6 +9,8 @@ import '../modelos/producto.dart';
 import '../modelos/tarifa.dart';
 import '../modelos/tipo_cuarto.dart';
 import '../servicios/servicio_estadias.dart';
+import '../servicios/servicio_huespedes.dart';
+import '../servicios/servicio_reservas.dart';
 import '../servicios/servicio_habitaciones.dart';
 import '../tema/estilos_botones.dart';
 import '../tema/estilos_texto.dart';
@@ -108,7 +110,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
 
   String _textoCamas(int n) => '$n ${n == 1 ? 'cama' : 'camas'}';
 
-  void _confirmar() {
+  Future<void> _confirmar() async {
     final mensajero = ScaffoldMessenger.of(context);
 
     if (!_claveFormulario.currentState!.validate()) {
@@ -126,11 +128,37 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       return;
     }
 
-    final factura = Factura(
-      fecha: DateTime.now(),
-      huesped: _controladorNombre.text.trim(),
+    final fechaEntrada = DateTime.now();
+    final duracion = _tarifa == TipoTarifa.porHora
+        ? Duration(hours: _cantidad)
+        : Duration(days: _cantidad);
+    if (!ServicioReservas.instancia.validarEstadiaContraReservas(
+      habitacion: habitacionElegida.numero,
+      inicio: fechaEntrada,
+      fin: fechaEntrada.add(duracion),
+    )) {
+      mensajero.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La estadía no deja el margen necesario antes de una reserva.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final huesped = await ServicioHuespedes.instancia.obtenerOCrear(
+      nombre: _controladorNombre.text,
       dui: _controladorDui.text,
       telefono: _controladorTelefono.text,
+    );
+    if (!mounted) return;
+
+    final factura = Factura(
+      fecha: fechaEntrada,
+      huesped: huesped.nombre,
+      dui: huesped.dui,
+      telefono: huesped.telefono,
       habitacion: habitacionElegida,
       tarifa: _tarifa,
       cantidad: _cantidad,
@@ -152,6 +180,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       productos: factura.productos
           .map((p) => CargoEstadia(p.nombre, p.precio))
           .toList(),
+      huespedId: huesped.id,
     );
 
     // Se anota el consumo del cliente y su factura para el cierre de caja.
