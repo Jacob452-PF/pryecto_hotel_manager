@@ -5,6 +5,7 @@ import '../../modelos/habitacion.dart';
 import '../../servicios/servicio_habitaciones.dart';
 import '../../servicios/servicio_caja.dart';
 import '../../servicios/servicio_sesion.dart';
+import '../datos/cajas_mock.dart';
 import '../modelos/caja_cierre.dart';
 import '../modelos/consumo_cliente.dart';
 import '../modelos/turno_caja.dart';
@@ -17,12 +18,13 @@ class ServicioHistorial extends ChangeNotifier {
   ServicioHistorial._() {
     // Si cambia el inventario (compras, stock), el cierre se actualiza solo.
     ServicioInventario.instancia.addListener(notifyListeners);
+    ServicioCaja.instancia.addListener(notifyListeners);
   }
 
   static final ServicioHistorial instancia = ServicioHistorial._();
 
-  /// Cierres de caja guardados. Empieza vacío: se llena al cerrar turno.
-  final List<CajaCierre> _cajas = [];
+  /// Cierres de muestra para que el historial tenga datos desde el inicio.
+  final List<CajaCierre> _cajas = crearCajasMock(DateTime.now());
 
   /// Gastos registrados a mano (cocina, limpieza...). Empieza vacío: cuando
   /// haya una pantalla para registrarlos, se llenará aquí.
