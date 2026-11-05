@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../utilidades/estilos_historial.dart';
-
 /// Etiqueta pequeña con borde (por ejemplo "Cierre" o "#A2").
 class EtiquetaPill extends StatelessWidget {
   final String texto;

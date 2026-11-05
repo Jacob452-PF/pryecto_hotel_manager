@@ -1,9 +1,18 @@
 enum MetodoAbono { efectivo, tarjeta, transferencia }
 
+extension EtiquetaMetodoAbono on MetodoAbono {
+  String get etiqueta => switch (this) {
+    MetodoAbono.efectivo => 'Efectivo',
+    MetodoAbono.tarjeta => 'Tarjeta',
+    MetodoAbono.transferencia => 'Depósito',
+  };
+}
+
 class Abono {
   final String id;
   final String facturaId;
   final double monto;
+  final double efectivoEntregado;
   final MetodoAbono metodo;
   final String usuarioId;
   final String cajaId;
@@ -12,6 +21,7 @@ class Abono {
     required this.id,
     required this.facturaId,
     required this.monto,
+    this.efectivoEntregado = 0,
     required this.metodo,
     required this.usuarioId,
     required this.cajaId,
@@ -21,6 +31,7 @@ class Abono {
     'id': id,
     'facturaId': facturaId,
     'monto': monto,
+    'efectivoEntregado': efectivoEntregado,
     'metodo': metodo.name,
     'usuarioId': usuarioId,
     'cajaId': cajaId,
@@ -30,6 +41,7 @@ class Abono {
     id: j['id'] as String,
     facturaId: j['facturaId'] as String,
     monto: (j['monto'] as num).toDouble(),
+    efectivoEntregado: (j['efectivoEntregado'] as num?)?.toDouble() ?? 0,
     metodo: MetodoAbono.values.firstWhere(
       (m) => m.name == j['metodo'],
       orElse: () => MetodoAbono.efectivo,

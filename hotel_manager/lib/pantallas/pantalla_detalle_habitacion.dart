@@ -225,12 +225,28 @@ class PantallaDetalleHabitacion extends StatelessWidget {
                   icono: Icons.info_outline,
                   hijo: Column(
                     children: [
-                      FilaInformacion(
-                        icono: estado.icono,
-                        etiqueta: 'Estado',
-                        valor: estado.etiqueta,
-                        colorValor: estado.color,
-                      ),
+                      if (estado != EstadoHabitacion.limpieza &&
+                          estado != EstadoHabitacion.ocupadaYLimpieza)
+                        FilaInformacion(
+                          icono: estado.icono,
+                          etiqueta: 'Estado',
+                          valor: estado.etiqueta,
+                          colorValor: estado.color,
+                        ),
+                      if (estado == EstadoHabitacion.limpieza ||
+                          estado == EstadoHabitacion.ocupadaYLimpieza) ...[
+                        const FilaInformacion(
+                          icono: Icons.cleaning_services,
+                          etiqueta: 'Servicio',
+                          valor: 'Limpieza solicitada',
+                        ),
+                        if (estado == EstadoHabitacion.ocupadaYLimpieza)
+                          const FilaInformacion(
+                            icono: Icons.bed,
+                            etiqueta: 'Estado',
+                            valor: 'Ocupada',
+                          ),
+                      ],
                       if (habitacion.limpiezaSolicitada) ...[
                         const Divider(height: 1),
                         const FilaInformacion(

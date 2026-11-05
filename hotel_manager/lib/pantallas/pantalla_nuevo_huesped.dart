@@ -5,6 +5,7 @@ import '../historial/historial.dart';
 import '../inventario/servicios/servicio_inventario.dart';
 import '../modelos/factura.dart';
 import '../modelos/habitacion.dart';
+import '../modelos/huesped.dart';
 import '../modelos/producto.dart';
 import '../modelos/tarifa.dart';
 import '../modelos/tipo_cuarto.dart';
@@ -21,6 +22,7 @@ import '../widgets/formulario_huesped.dart';
 import '../widgets/resumen_factura.dart';
 import '../widgets/selector_opciones.dart';
 import '../widgets/tarjeta_seccion.dart';
+import '../widgets/selector_huesped_guardado.dart';
 import 'pantalla_factura.dart';
 
 class PantallaNuevoHuesped extends StatefulWidget {
@@ -36,6 +38,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
   final _controladorNombre = TextEditingController();
   final _controladorDui = TextEditingController();
   final _controladorTelefono = TextEditingController();
+  String? _huespedSeleccionadoId;
 
   // Parte 4: selección de la reserva
   TipoTarifa _tarifa = TipoTarifa.porNoche;
@@ -233,11 +236,25 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     final formulario = TarjetaSeccion(
       titulo: 'Datos del huésped',
       icono: Icons.person_add,
-      hijo: FormularioHuesped(
-        claveFormulario: _claveFormulario,
-        controladorNombre: _controladorNombre,
-        controladorDui: _controladorDui,
-        controladorTelefono: _controladorTelefono,
+      hijo: Column(
+        children: [
+          SelectorHuespedGuardado(
+            huespedes: ServicioHuespedes.instancia.huespedes,
+            seleccionadoId: _huespedSeleccionadoId,
+            alCambiar: (Huesped? h) => setState(() {
+              _huespedSeleccionadoId = h?.id;
+              _controladorNombre.text = h?.nombre ?? '';
+              _controladorDui.text = h?.dui ?? '';
+              _controladorTelefono.text = h?.telefono ?? '';
+            }),
+          ),
+          FormularioHuesped(
+            claveFormulario: _claveFormulario,
+            controladorNombre: _controladorNombre,
+            controladorDui: _controladorDui,
+            controladorTelefono: _controladorTelefono,
+          ),
+        ],
       ),
     );
 

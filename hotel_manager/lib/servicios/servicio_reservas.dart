@@ -4,11 +4,11 @@ import 'package:flutter/foundation.dart';
 
 import '../modelos/notificacion_app.dart';
 import '../modelos/reserva.dart';
-import '../modelos/habitacion.dart';
+import '../modelos/tipo_cuarto.dart';
+import '../modelos/tarifa.dart';
 import 'servicio_huespedes.dart';
 import 'servicio_aviso_externo.dart';
 import 'servicio_configuracion.dart';
-import 'servicio_habitaciones.dart';
 import '../modelos/usuario.dart';
 import 'servicio_sesion.dart';
 import 'servicio_notificaciones.dart';
@@ -39,59 +39,27 @@ class ServicioReservas extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// La estadía debe dejar el margen configurable antes del inicio reservado.
-  bool validarChoque({
-    required DateTime finEstadiaNueva,
-    required DateTime inicioReserva,
-  }) => !finEstadiaNueva
-      .add(
-        Duration(
-          hours: ServicioConfiguracion
-              .instancia
-              .valor
-              .margenDesocupacionLimpiezaHoras,
-        ),
-      )
-      .isAfter(inicioReserva);
-
+  /// Una solicitud todavía no asigna una habitación concreta.
   bool validarEstadiaContraReservas({
     required String habitacion,
     required DateTime inicio,
     required DateTime fin,
-  }) {
-    final margen = Duration(
-      hours:
-          ServicioConfiguracion.instancia.valor.margenDesocupacionLimpiezaHoras,
-    );
-    final tolerancia = Duration(
-      hours: ServicioConfiguracion
-          .instancia
-          .valor
-          .toleranciaVencimientoReservaHoras,
-    );
-    for (final r in _reservas.where(
-      (r) => r.habitacionId == habitacion && r.estado == EstadoReserva.activa,
-    )) {
-      final finReserva = r.fin.add(tolerancia);
-      if (r.inicio.isBefore(fin) && inicio.isBefore(finReserva)) {
-        return false;
-      }
-      if (!r.inicio.isBefore(inicio) && fin.add(margen).isAfter(r.inicio)) {
-        return false;
-      }
-    }
-    return true;
-  }
+  }) => fin.isAfter(inicio);
 
   Future<Reserva> crear({
     required String huespedId,
-    required String habitacionId,
     required DateTime inicio,
     required DateTime fin,
+    required double total,
+    required TipoCuarto tipoCuarto,
+    required int camas,
+    required TipoTarifa tarifa,
+    required int cantidad,
   }) async {
     final rol = ServicioSesion.instancia.usuario?.rol;
-    if (rol != RolUsuario.recepcion && rol != RolUsuario.admin)
+    if (rol != RolUsuario.recepcion && rol != RolUsuario.admin) {
       throw StateError('Solo recepción o administración puede crear reservas.');
+    }
     if (!fin.isAfter(inicio)) {
       throw ArgumentError('La fecha final debe ser posterior a la inicial.');
     }
@@ -99,78 +67,66 @@ class ServicioReservas extends ChangeNotifier {
     if (inicio.isBefore(now)) {
       throw ArgumentError('La entrada de la reserva debe ser futura.');
     }
-    final margen = Duration(
-      hours:
-          ServicioConfiguracion.instancia.valor.margenDesocupacionLimpiezaHoras,
-    );
-    final tolerancia = Duration(
-      hours: ServicioConfiguracion
-          .instancia
-          .valor
-          .toleranciaVencimientoReservaHoras,
-    );
-    if (_reservas.any(
-      (r) =>
-          r.habitacionId == habitacionId &&
-          r.estado == EstadoReserva.activa &&
-          ((inicio.isBefore(r.fin.add(tolerancia)) && r.inicio.isBefore(fin)) ||
-              (!fin.isAfter(r.inicio) && fin.add(margen).isAfter(r.inicio)) ||
-              (!inicio.isBefore(r.fin.add(tolerancia)) &&
-                  r.fin.add(tolerancia + margen).isAfter(inicio))),
-    )) {
-      throw StateError(
-        'La habitación ya tiene una reserva que se cruza con esas fechas.',
-      );
-    }
-    final ocupada = ServicioHabitaciones.instancia.buscar(habitacionId);
-    if (ocupada == null || ocupada.estado != EstadoHabitacion.disponible) {
-      throw StateError('La habitación no está disponible para reservar.');
-    }
     final reserva = Reserva(
       id: 'res-${now.microsecondsSinceEpoch}',
       huespedId: huespedId,
-      habitacionId: habitacionId,
       inicio: inicio,
       fin: fin,
+      total: total,
+      tipoCuarto: tipoCuarto,
+      camas: camas,
+      tarifa: tarifa,
+      cantidad: cantidad,
       createdAt: now,
     );
+    // Persist before publishing the reservation to listeners. If the platform
+    // storage channel stalls or fails, the UI can report the error instead of
+    // leaving a half-created reservation in memory.
+    final reservasAnteriores = List<Reserva>.of(_reservas);
     _reservas.add(reserva);
-    if (!inicio.isAfter(now)) {
-      ServicioHabitaciones.instancia.reservar(habitacionId);
+    try {
+      await _guardar().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw StateError(
+          'El almacenamiento tardó demasiado. Intenta guardar la reserva otra vez.',
+        ),
+      );
+    } on Object {
+      _reservas
+        ..clear()
+        ..addAll(reservasAnteriores);
+      rethrow;
     }
-    await _guardar();
+    final huesped = ServicioHuespedes.instancia.huespedes
+        .where((h) => h.id == huespedId)
+        .firstOrNull;
+    ServicioNotificaciones.instancia.notificarEvento(
+      id: 'reserva-creada-${reserva.id}',
+      titulo: 'Reserva creada',
+      mensaje:
+          '${huesped?.nombre ?? 'Huésped'} · ${tipoCuarto.etiqueta}, $camas ${camas == 1 ? 'cama' : 'camas'} · ${tarifa.etiqueta} × $cantidad · ${_fechaHora(inicio)} a ${_fechaHora(fin)} · total ${total.toStringAsFixed(2)}.',
+      severidad: SeveridadNotificacion.leve,
+    );
     notifyListeners();
     return reserva;
   }
 
+  String _fechaHora(DateTime fecha) =>
+      '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+
   Future<void> cancelar(String id) async {
     final rol = ServicioSesion.instancia.usuario?.rol;
-    if (rol != RolUsuario.recepcion && rol != RolUsuario.admin)
+    if (rol != RolUsuario.recepcion && rol != RolUsuario.admin) {
       throw StateError(
         'Solo recepción o administración puede cancelar reservas.',
       );
+    }
     final i = _reservas.indexWhere(
       (r) => r.id == id && r.estado == EstadoReserva.activa,
     );
     if (i < 0) return;
     final r = _reservas[i];
     _reservas[i] = r.copyWith(estado: EstadoReserva.cancelada);
-    if (!_reservas.any(
-      (x) =>
-          x.id != id &&
-          x.habitacionId == r.habitacionId &&
-          x.estado == EstadoReserva.activa,
-    )) {
-      final otraActiva = _reservas.any(
-        (x) =>
-            x.id != r.id &&
-            x.habitacionId == r.habitacionId &&
-            x.estado == EstadoReserva.activa,
-      );
-      if (!otraActiva) {
-        ServicioHabitaciones.instancia.liberarReserva(r.habitacionId);
-      }
-    }
     await _guardar();
     notifyListeners();
   }
@@ -194,11 +150,10 @@ class ServicioReservas extends ChangeNotifier {
         estado: EstadoReserva.vencida,
         notificadaVencida: true,
       );
-      ServicioHabitaciones.instancia.liberarReserva(r.habitacionId);
       ServicioNotificaciones.instancia.notificarEvento(
         id: 'reserva-vencida-${r.id}',
         titulo: 'Reserva vencida',
-        mensaje: 'La reserva de la habitación ${r.habitacionId} venció.',
+        mensaje: 'La solicitud de ${_nombreHuesped(r.huespedId)} venció.',
         severidad: SeveridadNotificacion.urgente,
       );
       // TODO(API): enviar notificación externa en el canal configurado.
@@ -214,38 +169,16 @@ class ServicioReservas extends ChangeNotifier {
       );
       cambio = true;
     }
-    _sincronizarEstados(now, tolerancia);
     if (cambio) {
       await _guardar();
       notifyListeners();
     }
   }
 
-  void _sincronizarEstados(DateTime now, Duration tolerancia) {
-    final vigentesAhora = _reservas
-        .where(
-          (r) =>
-              r.estado == EstadoReserva.activa &&
-              !now.isBefore(r.inicio) &&
-              now.isBefore(r.fin.add(tolerancia)),
-        )
-        .map((r) => r.habitacionId)
-        .toSet();
-    final futuros = _reservas
-        .where(
-          (r) => r.estado == EstadoReserva.activa && now.isBefore(r.inicio),
-        )
-        .map((r) => r.habitacionId)
-        .toSet();
-    for (final numero in vigentesAhora) {
-      ServicioHabitaciones.instancia.reservar(numero);
-    }
-    for (final numero in futuros) {
-      if (!vigentesAhora.contains(numero)) {
-        ServicioHabitaciones.instancia.liberarReserva(numero);
-      }
-    }
-  }
+  String _nombreHuesped(String id) => ServicioHuespedes.instancia.huespedes
+      .where((h) => h.id == id)
+      .map((h) => h.nombre)
+      .firstOrNull ?? 'Huésped';
 
   Future<void> _guardar() => ServicioStorage.instancia.guardarLista(
     _clave,

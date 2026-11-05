@@ -11,6 +11,7 @@ import '../servicios/servicio_notificaciones.dart';
 import '../servicios/servicio_sesion.dart';
 import 'pantalla_notificaciones.dart';
 import 'pantalla_tareas.dart';
+import 'pantalla_agenda.dart';
 
 class ContenedorPrincipal extends StatefulWidget {
   const ContenedorPrincipal({super.key});
@@ -27,6 +28,7 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
 
   static final List<Widget> _paginas = <Widget>[
     PantallaInicio(),
+    PantallaAgenda(),
     PantallaTienda(),
     PantallaInventario(),
     PantallaHistorial(),
@@ -62,6 +64,7 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
       ..showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
           backgroundColor: Theme.of(context).colorScheme.inverseSurface,
           content: Row(
             children: [
@@ -114,6 +117,11 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
               label: 'Inicio',
             ),
             NavigationDestination(
+              icon: Icon(Icons.calendar_month_outlined),
+              selectedIcon: Icon(Icons.calendar_month),
+              label: 'Agenda',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.shopping_cart_outlined),
               selectedIcon: Icon(Icons.shopping_cart),
               label: 'Tienda',
@@ -138,48 +146,48 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
       appBar: AppBar(
         title: const Text('Hotel Manager'),
         actions: [
-        if (!esTecnico)
-        ListenableBuilder(
-            listenable: ServicioNotificaciones.instancia,
-            builder: (context, _) {
-              final cantidad = ServicioNotificaciones.instancia.noLeidas;
-              return IconButton(
-                tooltip: 'Notificaciones',
-                onPressed: _abrirNotificaciones,
-                icon: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.notifications_outlined),
-                    if (cantidad > 0)
-                      Positioned(
-                        right: -8,
-                        top: -7,
-                        child: Container(
-                          constraints: const BoxConstraints(
-                            minWidth: 18,
-                            minHeight: 18,
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFD32F2F),
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            cantidad > 99 ? '99+' : '$cantidad',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+          if (!esTecnico)
+            ListenableBuilder(
+              listenable: ServicioNotificaciones.instancia,
+              builder: (context, _) {
+                final cantidad = ServicioNotificaciones.instancia.noLeidas;
+                return IconButton(
+                  tooltip: 'Notificaciones',
+                  onPressed: _abrirNotificaciones,
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.notifications_outlined),
+                      if (cantidad > 0)
+                        Positioned(
+                          right: -8,
+                          top: -7,
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFD32F2F),
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              cantidad > 99 ? '99+' : '$cantidad',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              );
-            },
-          ),
+                    ],
+                  ),
+                );
+              },
+            ),
           const SizedBox(width: 8),
         ],
       ),

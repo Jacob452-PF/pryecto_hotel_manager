@@ -13,7 +13,7 @@ import '../../modelos/caja.dart';
 import '../../servicios/servicio_caja.dart';
 import '../../widgets/formulario_desglose_efectivo.dart';
 import '../../servicios/servicio_abonos.dart';
-import '../../modelos/abono.dart';
+import '../../widgets/dialogo_cobro.dart';
 import '../modelos/turno_caja.dart';
 
 /// Pantalla "Cierre de caja": revisa ventas, gastos y los clientes del turno
@@ -454,56 +454,11 @@ class PantallaCierreCaja extends StatelessWidget {
     BuildContext context,
     ConsumoCliente cliente,
   ) async {
-    final input = TextEditingController();
-    var metodo = MetodoAbono.efectivo;
-    final valor = await showDialog<(double, MetodoAbono)?>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          title: Text('Abono · ${cliente.cliente}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Saldo: ${dinero(cliente.saldo)}'),
-              TextField(
-                controller: input,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: const InputDecoration(labelText: 'Monto'),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<MetodoAbono>(
-                initialValue: metodo,
-                items: [
-                  for (final m in MetodoAbono.values)
-                    DropdownMenuItem(value: m, child: Text(m.name)),
-                ],
-                onChanged: (v) {
-                  if (v != null) setDialog(() => metodo = v);
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final m = double.tryParse(
-                  input.text.trim().replaceAll(',', '.'),
-                );
-                if (m != null) Navigator.pop(ctx, (m, metodo));
-              },
-              child: const Text('Registrar'),
-            ),
-          ],
-        ),
-      ),
+    final valor = await mostrarDialogoCobro(
+      context,
+      saldo: cliente.saldo,
+      permitirAbono: true,
     );
-    input.dispose();
     if (valor == null) return;
     try {
       final habitacion = cliente.codigo.replaceFirst('#', '');
@@ -519,8 +474,9 @@ class PantallaCierreCaja extends StatelessWidget {
       await ServicioConsumos.instancia.registrarAbonoFactura(
         habitacion: habitacion,
         cliente: cliente.cliente,
-        monto: valor.$1,
-        metodo: valor.$2,
+        monto: valor.monto,
+        metodo: valor.metodo,
+        efectivoEntregado: valor.efectivoEntregado,
         precioEstadia: precio,
         cargos: cargos,
       );

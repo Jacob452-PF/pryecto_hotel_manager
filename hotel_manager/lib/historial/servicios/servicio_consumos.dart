@@ -102,6 +102,7 @@ class ServicioConsumos extends ChangeNotifier {
     required MetodoAbono metodo,
     required double precioEstadia,
     required List<({String nombre, double precio, int cantidad})> cargos,
+    double? efectivoEntregado,
   }) async {
     final id = facturaIdParaHabitacion(habitacion, cliente);
     final cuenta = _cuentas.putIfAbsent(id, () {
@@ -140,6 +141,7 @@ class ServicioConsumos extends ChangeNotifier {
       monto: monto,
       saldoDisponible: total - ServicioAbonos.instancia.abonado(id),
       metodo: metodo,
+      efectivoEntregado: efectivoEntregado,
     );
     cuenta.pagado = ServicioAbonos.instancia.abonado(id) >= total - 0.001;
     cuenta.pagadoEn = cuenta.pagado ? DateTime.now() : null;
@@ -167,6 +169,7 @@ class ServicioConsumos extends ChangeNotifier {
     required String metodo,
     required double precioEstadia,
     required List<({String nombre, double precio, int cantidad})> cargos,
+    double? efectivoEntregado,
   }) async {
     final id = '$habitacion|$cliente';
     final cuenta = _cuentas.putIfAbsent(id, () {
@@ -204,6 +207,7 @@ class ServicioConsumos extends ChangeNotifier {
         monto: saldo,
         saldoDisponible: saldo,
         metodo: m,
+        efectivoEntregado: efectivoEntregado,
       );
     cuenta.pagado = true;
     cuenta.pagadoEn = DateTime.now();

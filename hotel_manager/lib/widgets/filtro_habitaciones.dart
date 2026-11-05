@@ -60,7 +60,11 @@ class FiltroHabitaciones extends StatelessWidget {
               selected: estado == null,
               onSelected: (_) => alCambiarEstado(null),
             ),
-            for (final e in EstadoHabitacion.values)
+            for (final e in EstadoHabitacion.values.where(
+              (e) =>
+                  e != EstadoHabitacion.limpieza &&
+                  e != EstadoHabitacion.ocupadaYLimpieza,
+            ))
               ChoiceChip(
                 avatar: Icon(e.icono, size: 18, color: e.color),
                 label: Text(e.etiqueta),

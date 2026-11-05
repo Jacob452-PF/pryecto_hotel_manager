@@ -12,12 +12,17 @@ class TarjetaHabitacion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final estado = habitacion.estado;
+    final estadoVisible = switch (estado) {
+      EstadoHabitacion.limpieza => EstadoHabitacion.disponible,
+      EstadoHabitacion.ocupadaYLimpieza => EstadoHabitacion.ocupada,
+      _ => estado,
+    };
     final radio = BorderRadius.circular(Dimensiones.radioTarjeta);
 
     return Padding(
       padding: const EdgeInsets.only(right: 10),
       child: Material(
-        color: estado.color.withValues(alpha: 0.12),
+      color: estadoVisible.color.withValues(alpha: 0.12),
         borderRadius: radio,
         child: InkWell(
           borderRadius: radio,
@@ -34,7 +39,7 @@ class TarjetaHabitacion extends StatelessWidget {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               borderRadius: radio,
-              border: Border.all(color: estado.color.withValues(alpha: 0.5)),
+              border: Border.all(color: estadoVisible.color.withValues(alpha: 0.5)),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -47,7 +52,7 @@ class TarjetaHabitacion extends StatelessWidget {
                       habitacion.numero,
                       style: EstilosTexto.numeroHabitacion,
                     ),
-                    Icon(estado.icono, color: estado.color, size: 20),
+                    Icon(estadoVisible.icono, color: estadoVisible.color, size: 20),
                   ],
                 ),
                 Text(
@@ -55,9 +60,9 @@ class TarjetaHabitacion extends StatelessWidget {
                   style: EstilosTexto.detalleHabitacion,
                 ),
                 Text(
-                  estado.etiqueta,
+                  estadoVisible.etiqueta,
                   style: EstilosTexto.estadoHabitacion.copyWith(
-                    color: estado.color,
+                    color: estadoVisible.color,
                   ),
                 ),
               ],
