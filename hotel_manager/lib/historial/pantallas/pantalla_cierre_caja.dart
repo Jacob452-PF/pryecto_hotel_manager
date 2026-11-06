@@ -117,6 +117,8 @@ class PantallaCierreCaja extends StatelessWidget {
     final caja = servicio.registrarCierre(
       numero: cajaCerrada.id,
       totalRegistrado: cajaCerrada.montoCierre,
+      aperturaAt: cajaCerrada.aperturaAt,
+      cierreAt: cajaCerrada.cierreAt!,
     );
     navegador.pop();
     messenger.showSnackBar(

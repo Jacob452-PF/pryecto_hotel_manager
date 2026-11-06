@@ -43,7 +43,7 @@ class PantallaDetalleCaja extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondaryContainer,
+                color: Theme.of(context).colorScheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Theme.of(context).dividerColor),
               ),
@@ -73,8 +73,13 @@ class PantallaDetalleCaja extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 2),
+                  if (caja.aperturaAt != null)
+                    Text(
+                      'Abrió: ${fechaHora(caja.aperturaAt!)}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   Text(
-                    fechaHora(caja.fecha),
+                    'Cerró: ${fechaHora(caja.fecha)}',
                     style: const TextStyle(fontSize: 13),
                   ),
                   const SizedBox(height: 6),

@@ -48,6 +48,7 @@ class ServicioHistorial extends ChangeNotifier {
       lista.add(
         CajaCierre(
           numero: c.id,
+          aperturaAt: c.aperturaAt,
           fecha: c.cierreAt!,
           cajero: nombre ?? c.usuarioId,
           totalRegistrado: c.montoCierre ?? 0,
@@ -105,7 +106,12 @@ class ServicioHistorial extends ChangeNotifier {
 
   /// Cierra el turno: guarda la caja con el detalle de clientes y deja
   /// el turno en cero para el siguiente.
-  CajaCierre registrarCierre({String? numero, double? totalRegistrado}) {
+  CajaCierre registrarCierre({
+    String? numero,
+    double? totalRegistrado,
+    DateTime? aperturaAt,
+    DateTime? cierreAt,
+  }) {
     final turno = turnoActual;
     var mayor = 0;
     for (final c in _cajas) {
@@ -114,7 +120,8 @@ class ServicioHistorial extends ChangeNotifier {
     }
     final caja = CajaCierre(
       numero: numero ?? (mayor + 1).toString().padLeft(3, '0'),
-      fecha: DateTime.now(),
+      aperturaAt: aperturaAt,
+      fecha: cierreAt ?? DateTime.now(),
       cajero: turno.usuario,
       clientes: turno.clientes,
       totalRegistrado: totalRegistrado ?? turno.totalEnCaja,

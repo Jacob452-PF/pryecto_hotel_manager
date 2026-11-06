@@ -5,6 +5,7 @@ import 'consumo_cliente.dart';
 class CajaCierre {
   /// Número con ceros, por ejemplo "001".
   final String numero;
+  final DateTime? aperturaAt;
   final DateTime fecha;
   final String cajero;
 
@@ -18,6 +19,7 @@ class CajaCierre {
     required this.numero,
     required this.fecha,
     required this.cajero,
+    this.aperturaAt,
     this.clientes = const [],
     this.totalRegistrado,
   });
