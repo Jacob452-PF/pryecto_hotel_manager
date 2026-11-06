@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../servicios/servicio_configuracion.dart';
 
 /// Categorías del inventario (filtros de la parte superior).
@@ -36,6 +38,7 @@ class ProductoInventario {
   final int stockMaximo;
   final int stockMinimo;
   final String? imagen; // ruta de asset (opcional por ahora)
+  final Uint8List? imagenBytes;
 
   /// Cuántas unidades trae cada paquete que compra el hotel.
   final int unidadesPorPaquete;
@@ -52,6 +55,7 @@ class ProductoInventario {
     this.stockMaximo = 50,
     this.stockMinimo = 5,
     this.imagen,
+    this.imagenBytes,
     this.unidadesPorPaquete = 1,
     this.costoPaquete = 0,
   });
@@ -82,6 +86,7 @@ class ProductoInventario {
       stockMaximo: stockMaximo ?? this.stockMaximo,
       stockMinimo: stockMinimo ?? this.stockMinimo,
       imagen: imagen,
+      imagenBytes: imagenBytes,
       unidadesPorPaquete: unidadesPorPaquete ?? this.unidadesPorPaquete,
       costoPaquete: costoPaquete ?? this.costoPaquete,
     );

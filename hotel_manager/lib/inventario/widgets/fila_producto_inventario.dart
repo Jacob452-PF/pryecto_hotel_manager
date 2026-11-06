@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../modelos/producto_inventario.dart';
@@ -22,7 +24,10 @@ class FilaProductoInventario extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         children: [
-          MiniaturaProducto(imagen: producto.imagen),
+          MiniaturaProducto(
+            imagen: producto.imagen,
+            imagenBytes: producto.imagenBytes,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -78,7 +83,7 @@ class FilaProductoInventario extends StatelessWidget {
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                children: [
+                  children: [
                     Icon(Icons.add_circle, size: 16, color: colores.primary),
                     SizedBox(width: 4),
                     Text(
@@ -128,9 +133,15 @@ class FilaProductoInventario extends StatelessWidget {
 /// Cuadro gris de la imagen del producto (o su foto cuando exista).
 class MiniaturaProducto extends StatelessWidget {
   final String? imagen;
+  final Uint8List? imagenBytes;
   final double tamano;
 
-  const MiniaturaProducto({super.key, this.imagen, this.tamano = 44});
+  const MiniaturaProducto({
+    super.key,
+    this.imagen,
+    this.imagenBytes,
+    this.tamano = 44,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -138,11 +149,13 @@ class MiniaturaProducto extends StatelessWidget {
       width: tamano,
       height: tamano,
       decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
       ),
       clipBehavior: Clip.antiAlias,
-      child: imagen == null
+      child: imagenBytes != null
+          ? Image.memory(imagenBytes!, fit: BoxFit.cover)
+          : imagen == null
           ? null
           : Image.asset(
               imagen!,
@@ -175,7 +188,11 @@ class _EstadoStock extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color == Theme.of(context).colorScheme.primary ? Theme.of(context).dividerColor : color),
+        border: Border.all(
+          color: color == Theme.of(context).colorScheme.primary
+              ? Theme.of(context).dividerColor
+              : color,
+        ),
       ),
       child: Text(
         texto,

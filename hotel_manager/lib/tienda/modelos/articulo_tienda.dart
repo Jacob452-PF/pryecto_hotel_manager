@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 /// Categorías para los filtros de la parte superior.
 enum CategoriaTienda {
   todos('Todos'),
@@ -28,6 +30,7 @@ class ArticuloTienda {
   final SeccionTienda seccion;
   final CategoriaTienda? categoria;
   final String? imagen; // ruta de asset (opcional por ahora)
+  final Uint8List? imagenBytes;
 
   const ArticuloTienda({
     required this.id,
@@ -36,5 +39,6 @@ class ArticuloTienda {
     required this.seccion,
     this.categoria,
     this.imagen,
+    this.imagenBytes,
   });
 }

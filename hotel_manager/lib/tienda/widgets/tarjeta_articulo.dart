@@ -31,7 +31,9 @@ class TarjetaArticulo extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 color: const Color(0xFFD9D9D9),
-                child: articulo.imagen == null
+                child: articulo.imagenBytes != null
+                    ? Image.memory(articulo.imagenBytes!, fit: BoxFit.cover)
+                    : articulo.imagen == null
                     ? null
                     : Image.asset(
                         articulo.imagen!,

@@ -29,6 +29,7 @@ ArticuloTienda _aArticulo(ProductoInventario p) {
     seccion: SeccionTienda.productos,
     categoria: _categoriaDeTienda(p.categoria),
     imagen: p.imagen,
+    imagenBytes: p.imagenBytes,
   );
 }
 
