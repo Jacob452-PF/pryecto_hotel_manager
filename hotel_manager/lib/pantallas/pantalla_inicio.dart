@@ -131,12 +131,6 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
             Icons.bed,
           ),
           DatoResumen(
-            'En limpieza',
-            _contar(todas, EstadoHabitacion.limpieza),
-            ColoresApp.limpieza,
-            Icons.cleaning_services,
-          ),
-          DatoResumen(
             'Mantenimiento',
             _contar(todas, EstadoHabitacion.mantenimiento),
             ColoresApp.mantenimiento,

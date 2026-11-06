@@ -34,6 +34,7 @@ class ServicioAbonos extends ChangeNotifier {
     required double monto,
     required double saldoDisponible,
     required MetodoAbono metodo,
+    double? efectivoEntregado,
   }) async {
     final caja = ServicioCaja.instancia.cajaActual;
     final usuario = ServicioSesion.instancia.usuario;
@@ -43,11 +44,17 @@ class ServicioAbonos extends ChangeNotifier {
       throw ArgumentError(
         'El abono debe ser mayor que cero y no superar el saldo pendiente.',
       );
+    final entregado = metodo == MetodoAbono.efectivo
+        ? (efectivoEntregado ?? monto)
+        : monto;
+    if (entregado + 0.001 < monto)
+      throw ArgumentError('El efectivo entregado no cubre el monto a pagar.');
     final ahora = DateTime.now();
     final a = Abono(
       id: 'abo-${ahora.microsecondsSinceEpoch}',
       facturaId: facturaId,
       monto: monto,
+      efectivoEntregado: entregado,
       metodo: metodo,
       usuarioId: usuario.id,
       cajaId: caja.id,

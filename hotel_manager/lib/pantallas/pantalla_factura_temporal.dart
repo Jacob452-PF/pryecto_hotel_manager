@@ -7,6 +7,7 @@ import '../servicios/servicio_abonos.dart';
 import '../historial/servicios/servicio_consumos.dart';
 import '../modelos/abono.dart';
 import '../utilidades/formato.dart';
+import '../widgets/dialogo_cobro.dart';
 
 class PantallaFacturaTemporal extends StatefulWidget {
   final String habitacion;
@@ -139,7 +140,7 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
                             for (final a
                                 in ServicioAbonos.instancia.paraFactura(id))
                               _fila(
-                                '${a.metodo.name} · ${a.createdAt.toLocal().toString().substring(0, 16)}',
+                                '${a.metodo.etiqueta} · ${a.createdAt.toLocal().toString().substring(0, 16)}',
                                 a.monto,
                               ),
                           ],
@@ -171,57 +172,11 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
     double saldo,
     DatosEstadia e,
   ) async {
-    final montoCtrl = TextEditingController();
-    var metodo = MetodoAbono.efectivo;
-    final resultado = await showDialog<(double, MetodoAbono)?>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          title: const Text('Registrar abono'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Saldo pendiente: ${formatearDinero(saldo)}'),
-              TextField(
-                controller: montoCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: const InputDecoration(labelText: 'Monto del abono'),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<MetodoAbono>(
-                value: metodo,
-                decoration: const InputDecoration(labelText: 'Método'),
-                items: [
-                  for (final m in MetodoAbono.values)
-                    DropdownMenuItem(value: m, child: Text(m.name)),
-                ],
-                onChanged: (v) {
-                  if (v != null) setDialog(() => metodo = v);
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final v = double.tryParse(
-                  montoCtrl.text.trim().replaceAll(',', '.'),
-                );
-                if (v != null) Navigator.pop(ctx, (v, metodo));
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
-        ),
-      ),
+    final resultado = await mostrarDialogoCobro(
+      context,
+      saldo: saldo,
+      permitirAbono: true,
     );
-    montoCtrl.dispose();
     if (resultado == null) return;
     try {
       final cargos = [...e.cargosIniciales, ...e.cargosTienda]
@@ -232,8 +187,9 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
       await ServicioConsumos.instancia.registrarAbonoFactura(
         habitacion: widget.habitacion,
         cliente: widget.huesped,
-        monto: resultado.$1,
-        metodo: resultado.$2,
+        monto: resultado.monto,
+        metodo: resultado.metodo,
+        efectivoEntregado: resultado.efectivoEntregado,
         precioEstadia: e.precioEstadia,
         cargos: cargos,
       );

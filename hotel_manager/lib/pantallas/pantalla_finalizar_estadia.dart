@@ -6,6 +6,9 @@ import '../servicios/servicio_habitaciones.dart';
 import '../servicios/servicio_tareas.dart';
 import '../modelos/solicitud_limpieza.dart';
 import '../utilidades/formato.dart';
+import '../servicios/servicio_abonos.dart';
+import '../modelos/abono.dart';
+import '../widgets/dialogo_cobro.dart';
 
 class PantallaFinalizarEstadia extends StatefulWidget {
   final String habitacion;
@@ -21,7 +24,6 @@ class PantallaFinalizarEstadia extends StatefulWidget {
 }
 
 class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
-  String? _metodo;
   bool _pagada = false;
   double _total = 0;
   double _precioHabitacion = 0;
@@ -46,6 +48,12 @@ class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
       builder: (context, _) {
         final estadia = ServicioEstadias.instancia.buscar(widget.habitacion);
         final total = estadia?.total ?? 0;
+        final facturaId = ServicioConsumos.instancia.facturaIdParaHabitacion(
+          widget.habitacion,
+          widget.huesped,
+        );
+        final abonado = ServicioAbonos.instancia.abonado(facturaId);
+        final saldo = (total - abonado).clamp(0.0, total).toDouble();
         final lineas = estadia == null
             ? <CargoEstadia>[]
             : [...estadia.cargosIniciales, ...estadia.cargosTienda];
@@ -80,96 +88,77 @@ class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
                         child: Text('Sin productos cargados'),
                       ),
                     const Divider(),
-                    _fila('Total a pagar', total, negrita: true),
-                  ],
-                ),
-              ),
-            ),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Método de pago',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    for (final m in ['Efectivo', 'Tarjeta', 'Transferencia'])
-                      RadioListTile<String>(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(m),
-                        value: m,
-                        groupValue: _metodo,
-                        onChanged: (v) => setState(() => _metodo = v),
-                      ),
+                    _fila('Abonado anteriormente', abonado),
+                    _fila('Saldo a pagar', saldo, negrita: true),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 12),
             FilledButton(
-              onPressed: _metodo == null
-                  ? null
-                  : () async {
-                      final e = ServicioEstadias.instancia.buscar(
-                        widget.habitacion,
-                      );
-                      final cargos = e == null
-                          ? <CargoEstadia>[]
-                          : [...e.cargosIniciales, ...e.cargosTienda];
+              onPressed: () async {
+                final pago = saldo > .001
+                    ? await mostrarDialogoCobro(context, saldo: saldo)
+                    : null;
+                if (saldo > .001 && pago == null) return;
+                if (!context.mounted) return;
+                final e = ServicioEstadias.instancia.buscar(widget.habitacion);
+                final cargos = e == null
+                    ? <CargoEstadia>[]
+                    : [...e.cargosIniciales, ...e.cargosTienda];
 
-                      // Se registra el cobro en el Cierre de caja (antes de
-                      // borrar la estadía): el cliente pasa a "Pagado".
-                      try {
-                        await ServicioConsumos.instancia.registrarPago(
-                          habitacion: widget.habitacion,
-                          cliente: widget.huesped,
-                          metodo: _metodo!,
-                          precioEstadia: e?.precioEstadia ?? 0,
-                          cargos: [
-                            for (final c in cargos)
-                              (
-                                nombre: c.nombre,
-                                precio: c.precio,
-                                cantidad: c.cantidad,
-                              ),
-                          ],
-                        );
-                      } catch (error) {
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              error.toString().replaceFirst('Bad state: ', ''),
-                            ),
-                          ),
-                        );
-                        return;
-                      }
+                // Se registra el cobro en el Cierre de caja (antes de
+                // borrar la estadía): el cliente pasa a "Pagado".
+                try {
+                  await ServicioConsumos.instancia.registrarPago(
+                    habitacion: widget.habitacion,
+                    cliente: widget.huesped,
+                    metodo: pago?.metodo.name ?? MetodoAbono.efectivo.name,
+                    precioEstadia: e?.precioEstadia ?? 0,
+                    cargos: [
+                      for (final c in cargos)
+                        (
+                          nombre: c.nombre,
+                          precio: c.precio,
+                          cantidad: c.cantidad,
+                        ),
+                    ],
+                    efectivoEntregado: pago?.efectivoEntregado,
+                  );
+                } catch (error) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        error.toString().replaceFirst('Bad state: ', ''),
+                      ),
+                    ),
+                  );
+                  return;
+                }
 
-                      setState(() {
-                        _total = e?.total ?? total;
-                        _precioHabitacion = e?.precioEstadia ?? 0;
-                        _lineasFinales = cargos;
-                        _restante = e == null
-                            ? 'Estadía finalizada'
-                            : _tiempo(e.salida);
-                        _pagada = true;
-                      });
-                      ServicioHabitaciones.instancia.terminarEstadia(
-                        widget.habitacion,
-                      );
-                      try {
-                        await ServicioTareas.instancia.solicitarLimpieza(
-                          widget.habitacion,
-                          origen: OrigenLimpieza.recepcion,
-                        );
-                      } on StateError {
-                        // Una solicitud previa conserva su asignación.
-                      }
-                      ServicioEstadias.instancia.limpiar(widget.habitacion);
-                    },
+                setState(() {
+                  _total = e?.total ?? total;
+                  _precioHabitacion = e?.precioEstadia ?? 0;
+                  _lineasFinales = cargos;
+                  _restante = e == null
+                      ? 'Estadía finalizada'
+                      : _tiempo(e.salida);
+                  _pagada = true;
+                });
+                ServicioHabitaciones.instancia.terminarEstadia(
+                  widget.habitacion,
+                );
+                try {
+                  await ServicioTareas.instancia.solicitarLimpieza(
+                    widget.habitacion,
+                    origen: OrigenLimpieza.recepcion,
+                  );
+                } on StateError {
+                  // Una solicitud previa conserva su asignación.
+                }
+                ServicioEstadias.instancia.limpiar(widget.habitacion);
+              },
               child: const Text('Confirmar pago'),
             ),
           ],
