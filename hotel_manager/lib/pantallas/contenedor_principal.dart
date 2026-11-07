@@ -14,6 +14,7 @@ import 'pantalla_notificaciones.dart';
 import 'pantalla_tareas.dart';
 import 'pantalla_agenda.dart';
 import 'pantalla_apertura_caja.dart';
+import 'pantalla_detalle_habitacion.dart';
 
 class ContenedorPrincipal extends StatefulWidget {
   const ContenedorPrincipal({super.key});
@@ -93,7 +94,10 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
               ),
             ],
           ),
-          action: SnackBarAction(label: 'Ver', onPressed: _abrirNotificaciones),
+          action: SnackBarAction(
+            label: 'Ver',
+            onPressed: () => _abrirOrigenNotificacion(notificacion),
+          ),
         ),
       );
   }
@@ -101,6 +105,19 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
   void _abrirNotificaciones() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const PantallaNotificaciones()),
+    );
+  }
+
+  void _abrirOrigenNotificacion(NotificacionApp notificacion) {
+    final habitacion = notificacion.habitacion;
+    if (habitacion == null) {
+      _abrirNotificaciones();
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PantallaDetalleHabitacion(numeroHabitacion: habitacion),
+      ),
     );
   }
 

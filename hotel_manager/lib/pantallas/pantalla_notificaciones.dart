@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../modelos/notificacion_app.dart';
 import '../servicios/servicio_notificaciones.dart';
+import 'pantalla_detalle_habitacion.dart';
 
 class PantallaNotificaciones extends StatefulWidget {
   const PantallaNotificaciones({super.key});
@@ -135,6 +136,18 @@ class _TarjetaNotificacion extends StatelessWidget {
         side: BorderSide(color: color.withValues(alpha: 0.45)),
       ),
       child: ListTile(
+        onTap: notificacion.habitacion == null
+            ? null
+            : () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => PantallaDetalleHabitacion(
+                    numeroHabitacion: notificacion.habitacion!,
+                  ),
+                ),
+              ),
+        trailing: notificacion.habitacion == null
+            ? null
+            : const Icon(Icons.chevron_right),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         leading: CircleAvatar(
           backgroundColor: color.withValues(alpha: 0.13),

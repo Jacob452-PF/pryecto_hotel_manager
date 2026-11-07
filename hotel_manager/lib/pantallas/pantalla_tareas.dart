@@ -6,6 +6,8 @@ import '../modelos/usuario.dart';
 import '../servicios/servicio_auth.dart';
 import '../servicios/servicio_sesion.dart';
 import '../servicios/servicio_tareas.dart';
+import '../servicios/servicio_habitaciones.dart';
+import '../modelos/habitacion.dart';
 
 class PantallaTareas extends StatelessWidget {
   const PantallaTareas({super.key});
@@ -63,7 +65,10 @@ class PantallaTareas extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Tareas')),
       body: ListenableBuilder(
-        listenable: ServicioTareas.instancia,
+        listenable: Listenable.merge([
+          ServicioTareas.instancia,
+          ServicioHabitaciones.instancia,
+        ]),
         builder: (context, _) {
           final s = ServicioTareas.instancia;
           final limpiezas = s.solicitudesLimpieza
@@ -127,6 +132,9 @@ class PantallaTareas extends StatelessWidget {
     bool worker,
     String? userId,
   ) {
+    final habitacion = ServicioHabitaciones.instancia.buscar(t.habitacionId);
+    final ocupada = habitacion?.estado == EstadoHabitacion.ocupada ||
+        habitacion?.estado == EstadoHabitacion.ocupadaYLimpieza;
     final actions = <Widget>[];
     if (admin && t.estado == EstadoSolicitudLimpieza.pendiente)
       actions.add(
@@ -167,9 +175,13 @@ class PantallaTareas extends StatelessWidget {
       );
     return Card(
       child: ListTile(
-        title: Text('Habitación ${t.habitacionId}'),
+        title: Text(
+          'Habitación ${t.habitacionId} · Piso ${habitacion?.piso ?? '—'}',
+        ),
         subtitle: Text(
-          '${t.descripcion ?? 'Sin descripción'} · ${t.estado.name}${t.asignadoA == null ? '' : ' · asignada'}',
+          '${t.descripcion ?? 'Sin descripción'} · ${t.estado.name}'
+          '${t.asignadoA == null ? '' : ' · asignada'}'
+          ' · ${ocupada ? 'Ocupada' : 'No ocupada'}',
         ),
         trailing: actions.isEmpty ? null : Wrap(children: actions),
       ),
@@ -184,6 +196,7 @@ class PantallaTareas extends StatelessWidget {
     bool worker,
     String? userId,
   ) {
+    final habitacion = ServicioHabitaciones.instancia.buscar(t.habitacionId);
     final actions = <Widget>[];
     if (admin &&
         (t.estado == EstadoSolicitudMantenimiento.pendiente ||
@@ -227,7 +240,9 @@ class PantallaTareas extends StatelessWidget {
       );
     return Card(
       child: ListTile(
-        title: Text('Habitación ${t.habitacionId}'),
+        title: Text(
+          'Habitación ${t.habitacionId} · Piso ${habitacion?.piso ?? '—'}',
+        ),
         subtitle: Text('${t.descripcion} · ${t.estado.name}'),
         trailing: actions.isEmpty ? null : Wrap(children: actions),
       ),

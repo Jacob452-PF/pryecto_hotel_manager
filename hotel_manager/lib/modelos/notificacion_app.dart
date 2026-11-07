@@ -7,6 +7,7 @@ class NotificacionApp {
   final DateTime fecha;
   final SeveridadNotificacion severidad;
   final bool leida;
+  final String? habitacion;
 
   const NotificacionApp({
     required this.id,
@@ -15,6 +16,7 @@ class NotificacionApp {
     required this.fecha,
     required this.severidad,
     this.leida = false,
+    this.habitacion,
   });
 
   NotificacionApp copyWith({bool? leida}) => NotificacionApp(
@@ -24,5 +26,6 @@ class NotificacionApp {
     fecha: fecha,
     severidad: severidad,
     leida: leida ?? this.leida,
+    habitacion: habitacion,
   );
 }
