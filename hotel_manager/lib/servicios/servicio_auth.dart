@@ -19,42 +19,58 @@ class ServicioAuth {
 
   Future<List<Usuario>> usuarios() async {
     var data = await ServicioStorage.instancia.leerLista(_clave);
+    final seeds = [
+      _seed(
+        'u-admin',
+        'Administración de prueba',
+        '00000000-0',
+        'admin01',
+        RolUsuario.admin,
+      ),
+      _seed(
+        'u-recep',
+        'Recepción de prueba',
+        '11111111-1',
+        'recep01',
+        RolUsuario.recepcion,
+      ),
+      _seed(
+        'u-limp',
+        'Limpieza de prueba',
+        '22222222-2',
+        'limp01',
+        RolUsuario.limpieza,
+      ),
+      _seed(
+        'u-limp-02',
+        'Limpieza de prueba 2',
+        '22222222-3',
+        'limp02',
+        RolUsuario.limpieza,
+      ),
+      _seed(
+        'u-mant',
+        'Mantenimiento de prueba',
+        '33333333-3',
+        'mant01',
+        RolUsuario.mantenimiento,
+      ),
+      _seed(
+        'u-mant-02',
+        'Mantenimiento de prueba 2',
+        '33333333-4',
+        'mant02',
+        RolUsuario.mantenimiento,
+      ),
+    ];
     if (data.isEmpty) {
-      final seeds = [
-        _seed(
-          'u-admin',
-          'Administración de prueba',
-          '00000000-0',
-          'admin01',
-          RolUsuario.admin,
-        ),
-        _seed(
-          'u-recep',
-          'Recepción de prueba',
-          '11111111-1',
-          'recep01',
-          RolUsuario.recepcion,
-        ),
-        _seed(
-          'u-limp',
-          'Limpieza de prueba',
-          '22222222-2',
-          'limp01',
-          RolUsuario.limpieza,
-        ),
-        _seed(
-          'u-mant',
-          'Mantenimiento de prueba',
-          '33333333-3',
-          'mant01',
-          RolUsuario.mantenimiento,
-        ),
-      ];
-      await ServicioStorage.instancia.guardarLista(
-        _clave,
-        seeds.map((u) => u.toJson()).toList(),
-      );
-      data = await ServicioStorage.instancia.leerLista(_clave);
+      data = [];
+    }
+    final ids = data.map((fila) => fila['id']).whereType<String>().toSet();
+    final faltantes = seeds.where((u) => !ids.contains(u.id)).toList();
+    if (faltantes.isNotEmpty) {
+      data = [...data, ...faltantes.map((u) => u.toJson())];
+      await ServicioStorage.instancia.guardarLista(_clave, data);
     }
     return data.map(Usuario.fromJson).toList();
   }

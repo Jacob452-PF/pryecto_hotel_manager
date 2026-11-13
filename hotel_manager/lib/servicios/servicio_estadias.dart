@@ -172,6 +172,28 @@ class ServicioEstadias extends ChangeNotifier {
     unawaited(_guardar());
   }
 
+  /// Registra una estadía a partir de las fechas y el importe de una reserva.
+  void iniciarDesdeReserva({
+    required String habitacion,
+    required DateTime entrada,
+    required DateTime salida,
+    required double precio,
+    required String huespedId,
+  }) {
+    if (!salida.isAfter(entrada)) {
+      throw ArgumentError('La salida debe ser posterior a la entrada.');
+    }
+    _estadias[habitacion] = DatosEstadia(
+      entrada: entrada,
+      salida: salida,
+      precioEstadia: precio,
+      cargosIniciales: const [],
+      huespedId: huespedId,
+    );
+    notifyListeners();
+    unawaited(_guardar());
+  }
+
   void agregarCargos(
     String habitacion,
     List<({ArticuloTienda articulo, int cantidad})> items,

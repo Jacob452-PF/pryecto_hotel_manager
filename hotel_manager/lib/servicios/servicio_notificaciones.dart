@@ -34,6 +34,7 @@ class ServicioNotificaciones extends ChangeNotifier {
     required String titulo,
     required String mensaje,
     required SeveridadNotificacion severidad,
+    String? habitacion,
   }) {
     _notificaciones.insert(
       0,
@@ -43,6 +44,7 @@ class ServicioNotificaciones extends ChangeNotifier {
         mensaje: mensaje,
         fecha: DateTime.now(),
         severidad: severidad,
+        habitacion: habitacion,
       ),
     );
     notifyListeners();
@@ -89,6 +91,7 @@ class ServicioNotificaciones extends ChangeNotifier {
               mensaje:
                   'La habitación $habitacion supera el check-out esperado.',
               severidad: SeveridadNotificacion.urgente,
+              habitacion: habitacion,
             );
           }
         }
@@ -105,6 +108,27 @@ class ServicioNotificaciones extends ChangeNotifier {
         }
       }
     }
+
+    // Las alertas de vencimiento solo existen mientras siga activa la
+    // estadía que las originó. Al finalizarla, desaparecen de la bandeja.
+    final estadiasActivas = ServicioEstadias.instancia.todas;
+    final idsEstadiaActiva = estadiasActivas.entries
+        .map((e) => '${e.key}-${e.value.entrada.microsecondsSinceEpoch}')
+        .toSet();
+    final cantidadAntes = _notificaciones.length;
+    _notificaciones.removeWhere((n) {
+      if (!n.id.startsWith('estadia-vencida-')) return false;
+      final habitacion = n.habitacion;
+      if (habitacion == null) return false;
+      final estadia = estadiasActivas[habitacion];
+      final clave = estadia == null
+          ? null
+          : '$habitacion-${estadia.entrada.microsecondsSinceEpoch}';
+      final sigueOcupada = ServicioHabitaciones.instancia.buscar(habitacion)
+          ?.estado == EstadoHabitacion.ocupada;
+      return clave == null || !idsEstadiaActiva.contains(clave) || !sigueOcupada;
+    });
+    if (_notificaciones.length != cantidadAntes) notifyListeners();
 
     for (final producto in ServicioInventario.instancia.productos) {
       final estado = producto.stock <= 0

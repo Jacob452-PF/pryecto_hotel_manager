@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../modelos/reserva.dart';
+import '../modelos/habitacion.dart';
+import '../modelos/tipo_cuarto.dart';
 import '../servicios/servicio_huespedes.dart';
+import '../servicios/servicio_habitaciones.dart';
 import '../servicios/servicio_reservas.dart';
+import '../servicios/servicio_estadias.dart';
 import '../utilidades/formato.dart';
 
 class PantallaAgenda extends StatefulWidget {
@@ -55,6 +59,84 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
       _mes = DateTime(_mes.year, _mes.month + cantidad);
       _seleccionado = _mes;
     });
+  }
+
+  Future<void> _crearEstadia(Reserva reserva) async {
+    final habitaciones = ServicioHabitaciones.instancia.habitaciones
+        .where(
+          (h) =>
+              h.estado == EstadoHabitacion.disponible &&
+              h.tipoCuarto == reserva.tipoCuarto &&
+              (reserva.tipoCuarto != TipoCuarto.familiar ||
+                  h.camas == reserva.camas),
+        )
+        .toList();
+    if (habitaciones.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay habitaciones disponibles que coincidan con la reserva.'),
+        ),
+      );
+      return;
+    }
+    final habitacion = await showDialog<Habitacion>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Crear estadía'),
+        content: SizedBox(
+          width: 420,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              Text('Selecciona una habitación para ${_nombreHuesped(reserva.huespedId)}.'),
+              const SizedBox(height: 8),
+              for (final h in habitaciones)
+                ListTile(
+                  leading: Icon(h.tipoCuarto.icono),
+                  title: Text('Habitación ${h.numero}'),
+                  subtitle: Text('Piso ${h.piso} · ${h.camas} ${h.camas == 1 ? 'cama' : 'camas'}'),
+                  onTap: () => Navigator.pop(context, h),
+                ),
+            ],
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))],
+      ),
+    );
+    if (habitacion == null || !mounted) return;
+
+    try {
+      final habitacionActual = ServicioHabitaciones.instancia.buscar(
+        habitacion.numero,
+      );
+      if (habitacionActual?.estado != EstadoHabitacion.disponible) {
+        throw StateError('La habitación seleccionada ya no está disponible.');
+      }
+      // Cambia el estado de la reserva primero para evitar convertir dos veces.
+      await ServicioReservas.instancia.marcarConvertida(reserva.id);
+      ServicioHabitaciones.instancia.ocupar(
+        habitacion.numero,
+        _nombreHuesped(reserva.huespedId),
+      );
+      ServicioEstadias.instancia.iniciarDesdeReserva(
+        habitacion: habitacion.numero,
+        entrada: reserva.inicio,
+        salida: reserva.fin,
+        precio: reserva.total,
+        huespedId: reserva.huespedId,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Estadía creada en la habitación ${habitacion.numero}.')),
+        );
+      }
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))),
+        );
+      }
+    }
   }
 
   @override
@@ -232,6 +314,17 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           '${reserva.tarifa.etiqueta} · ${reserva.cantidad} ${reserva.tarifa.unidad(reserva.cantidad)} · ${TimeOfDay.fromDateTime(reserva.fin).format(context)} · Total estimado: ${formatearDinero(reserva.total)}',
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.icon(
+                          onPressed: () => _crearEstadia(reserva),
+                          icon: const Icon(Icons.login),
+                          label: const Text('Crear estadía'),
                         ),
                       ),
                     ),

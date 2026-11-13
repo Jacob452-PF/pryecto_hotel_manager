@@ -131,6 +131,22 @@ class ServicioReservas extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> marcarConvertida(String id) async {
+    final rol = ServicioSesion.instancia.usuario?.rol;
+    if (rol != RolUsuario.recepcion && rol != RolUsuario.admin) {
+      throw StateError(
+        'Solo recepción o administración puede convertir reservas.',
+      );
+    }
+    final i = _reservas.indexWhere(
+      (r) => r.id == id && r.estado == EstadoReserva.activa,
+    );
+    if (i < 0) throw StateError('La reserva ya no está activa.');
+    _reservas[i] = _reservas[i].copyWith(estado: EstadoReserva.convertida);
+    await _guardar();
+    notifyListeners();
+  }
+
   Future<void> procesarVencimientos() async {
     final now = DateTime.now();
     var cambio = false;
