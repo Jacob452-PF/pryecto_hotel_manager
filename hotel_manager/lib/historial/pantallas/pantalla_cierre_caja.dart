@@ -109,16 +109,18 @@ class PantallaCierreCaja extends StatelessWidget {
           false;
     }
     if (!confirmarDiferencia || !context.mounted) return;
+    final cierreAt = DateTime.now();
     final cajaCerrada = await cajaService.cerrar(
       desglose: conteo,
       netoTurno: efectivoDelTurno,
       confirmarDiferencia: true,
+      cierreAt: cierreAt,
     );
     final caja = servicio.registrarCierre(
       numero: cajaCerrada.id,
       totalRegistrado: cajaCerrada.montoCierre,
       aperturaAt: cajaCerrada.aperturaAt,
-      cierreAt: cajaCerrada.cierreAt!,
+      cierreAt: cierreAt,
     );
     navegador.pop();
     messenger.showSnackBar(
@@ -201,6 +203,7 @@ class PantallaCierreCaja extends StatelessWidget {
 
   Widget _construir(BuildContext context) {
     final turno = ServicioHistorial.instancia.turnoActual;
+    final cajaActual = ServicioCaja.instancia.cajaActual;
     final ahora = DateTime.now();
 
     final pendientes = turno.clientes.where((c) => !c.pagado).toList();
@@ -222,9 +225,21 @@ class PantallaCierreCaja extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Fecha y hora', style: TextStyle(fontSize: 9)),
+          const Text('Fecha', style: TextStyle(fontSize: 9)),
           Text(
-            fechaHora(ahora),
+            fechaLarga(ahora),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text('Inicio de caja', style: TextStyle(fontSize: 9)),
+          Text(
+            cajaActual == null ? 'No disponible' : hora(cajaActual.aperturaAt),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text('Hora de cierre', style: TextStyle(fontSize: 9)),
+          Text(
+            hora(ahora),
             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
