@@ -33,7 +33,10 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
 
   Future<void> _iniciarSesion() async {
     if (_cargando || !_claveFormulario.currentState!.validate()) return;
-    setState(() { _cargando = true; _errorAcceso = null; });
+    setState(() {
+      _cargando = true;
+      _errorAcceso = null;
+    });
     try {
       final data = await ApiClient.instance.login(
         _controladorUsuario.text.trim(),
@@ -47,13 +50,16 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
         'mantenimiento' || 'maintenance' => RolUsuario.mantenimiento,
         _ => RolUsuario.recepcion,
       };
-      ServicioSesion.instancia.iniciarSesion(Usuario(
-        id: (data['id'] ?? '').toString(),
-        nombre: (data['name'] ?? data['email'] ?? '').toString(),
-        username: (data['email'] ?? _controladorUsuario.text.trim()).toString(),
-        rol: rol,
-        cargo: role,
-      ));
+      ServicioSesion.instancia.iniciarSesion(
+        Usuario(
+          id: (data['id'] ?? '').toString(),
+          nombre: (data['name'] ?? data['email'] ?? '').toString(),
+          username: (data['email'] ?? _controladorUsuario.text.trim())
+              .toString(),
+          rol: rol,
+          cargo: role,
+        ),
+      );
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const ContenedorPrincipal()),
@@ -61,7 +67,10 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _errorAcceso = e.message);
     } catch (_) {
-      if (mounted) setState(() => _errorAcceso = 'No se pudo iniciar sesión. Intenta de nuevo.');
+      if (mounted)
+        setState(
+          () => _errorAcceso = 'No se pudo iniciar sesión. Intenta de nuevo.',
+        );
     } finally {
       if (mounted) setState(() => _cargando = false);
     }
@@ -89,7 +98,7 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                     children: [
                       // Logo del hotel (provisional: reemplazar por Image.asset)
                       Image.asset(
-                        'assets/imagenes/logo_hotel.jpg',
+                        'assets/imagenes/logo_hotel.jpeg',
                         height: 100,
                         errorBuilder: (context, error, stackTrace) {
                           debugPrint('Error al cargar el logo: $error');
@@ -102,7 +111,7 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Nombre del hotel',
+                        'Hotel Manager',
                         style: EstilosTexto.tituloLogin,
                       ),
                       const SizedBox(height: 24),
@@ -155,10 +164,20 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                         child: FilledButton(
                           onPressed: _cargando ? null : _iniciarSesion,
                           child: _cargando
-                              ? const Row(mainAxisSize: MainAxisSize.min, children: [
-                                  SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
-                                  SizedBox(width: 12), Text('Conectando con el servidor…'),
-                                ])
+                              ? const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text('Conectando con el servidor…'),
+                                  ],
+                                )
                               : const Text('Iniciar sesión'),
                         ),
                       ),
