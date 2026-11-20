@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-/// Muestra la foto del producto y deja tomarla con la cámara o subirla de la galería.
+/// Muestra la foto del producto y permite tomarla con la cámara.
 /// Guarda la foto como bytes, así funciona igual en celular, web y escritorio.
 class SelectorFotoProducto extends StatelessWidget {
   final Uint8List? foto;
@@ -29,54 +29,16 @@ class SelectorFotoProducto extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'No se pudo usar la cámara en este dispositivo. Prueba con la galería.',
+            'No se pudo usar la cámara en este dispositivo.',
           ),
         ),
       );
     }
   }
 
-  void _abrirMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Tomar foto'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _elegir(context, ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Elegir de la galería'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _elegir(context, ImageSource.gallery);
-              },
-            ),
-            if (foto != null)
-              ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: const Text('Quitar foto'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  onCambio(null);
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) => InkWell(
-    onTap: () => _abrirMenu(context),
+    onTap: () => _elegir(context, ImageSource.camera),
     borderRadius: BorderRadius.circular(12),
     child: Container(
       height: 160,
