@@ -150,11 +150,24 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       return;
     }
 
-    final huesped = await ServicioHuespedes.instancia.obtenerOCrear(
-      nombre: _controladorNombre.text,
-      dui: _controladorDui.text,
-      telefono: _controladorTelefono.text,
-    );
+    late final Huesped huesped;
+    try {
+      huesped = await ServicioHuespedes.instancia.obtenerOCrear(
+        nombre: _controladorNombre.text,
+        dui: _controladorDui.text,
+        telefono: _controladorTelefono.text,
+      );
+    } on Object catch (e) {
+      mensajero.showSnackBar(
+        SnackBar(
+          content: Text(
+            'No se pudo guardar el huésped en el servidor: '
+            '${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+        ),
+      );
+      return;
+    }
     if (!mounted) return;
 
     final factura = Factura(
@@ -239,7 +252,6 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       hijo: Column(
         children: [
           SelectorHuespedGuardado(
-            huespedes: ServicioHuespedes.instancia.huespedes,
             seleccionadoId: _huespedSeleccionadoId,
             alCambiar: (Huesped? h) => setState(() {
               _huespedSeleccionadoId = h?.id;

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../modelos/usuario.dart';
 import '../servicios/api_client.dart';
+import '../servicios/servicio_habitaciones.dart';
+import '../servicios/servicio_huespedes.dart';
 import '../servicios/servicio_sesion.dart';
 import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
@@ -33,37 +35,60 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
 
   Future<void> _iniciarSesion() async {
     if (_cargando || !_claveFormulario.currentState!.validate()) return;
-    setState(() { _cargando = true; _errorAcceso = null; });
+    setState(() {
+      _cargando = true;
+      _errorAcceso = null;
+    });
     try {
-      final data = await ApiClient.instance.login(
+      await ApiClient.instance.login(
         _controladorUsuario.text.trim(),
         _controladorContrasena.text,
       );
-      if (!mounted) return;
+      final data = await ApiClient.instance.me();
+      if (!mounted) {
+        return;
+      }
       final role = (data['role'] ?? '').toString().toLowerCase();
       final rol = switch (role) {
-        'admin' || 'administrador' => RolUsuario.admin,
-        'limpieza' || 'housekeeping' => RolUsuario.limpieza,
-        'mantenimiento' || 'maintenance' => RolUsuario.mantenimiento,
-        _ => RolUsuario.recepcion,
+        'admin' => RolUsuario.admin,
+        'recepcionista' => RolUsuario.recepcion,
+        'limpieza' => RolUsuario.limpieza,
+        'mantenimiento' => RolUsuario.mantenimiento,
+        _ => throw ApiException('El servidor devolvió un rol no reconocido.'),
       };
-      ServicioSesion.instancia.iniciarSesion(Usuario(
-        id: (data['id'] ?? '').toString(),
-        nombre: (data['name'] ?? data['email'] ?? '').toString(),
-        username: (data['email'] ?? _controladorUsuario.text.trim()).toString(),
-        rol: rol,
-        cargo: role,
-      ));
+      ServicioSesion.instancia.iniciarSesion(
+        Usuario(
+          id: (data['id'] ?? '').toString(),
+          nombre: (data['name'] ?? data['email'] ?? '').toString(),
+          username: (data['email'] ?? _controladorUsuario.text.trim())
+              .toString(),
+          rol: rol,
+          cargo: role,
+        ),
+      );
+      await Future.wait([
+        ServicioHabitaciones.instancia.sincronizar(),
+        ServicioHuespedes.instancia.sincronizar(),
+      ]);
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const ContenedorPrincipal()),
       );
     } on ApiException catch (e) {
-      if (mounted) setState(() => _errorAcceso = e.message);
+      if (mounted) {
+        setState(() => _errorAcceso = e.message);
+      }
     } catch (_) {
-      if (mounted) setState(() => _errorAcceso = 'No se pudo iniciar sesión. Intenta de nuevo.');
+      if (mounted) {
+        setState(
+          () => _errorAcceso = 'No se pudo iniciar sesión. Intenta de nuevo.',
+        );
+      }
     } finally {
-      if (mounted) setState(() => _cargando = false);
+      if (mounted) {
+        setState(() => _cargando = false);
+      }
     }
   }
 
@@ -155,10 +180,20 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                         child: FilledButton(
                           onPressed: _cargando ? null : _iniciarSesion,
                           child: _cargando
-                              ? const Row(mainAxisSize: MainAxisSize.min, children: [
-                                  SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
-                                  SizedBox(width: 12), Text('Conectando con el servidor…'),
-                                ])
+                              ? const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text('Conectando con el servidor…'),
+                                  ],
+                                )
                               : const Text('Iniciar sesión'),
                         ),
                       ),

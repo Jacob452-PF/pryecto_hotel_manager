@@ -1,41 +1,62 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
-import '../datos/habitaciones_ejemplo.dart';
 import '../modelos/habitacion.dart';
 import '../modelos/usuario.dart';
-import 'servicio_storage.dart';
+import 'api_client.dart';
 import 'servicio_sesion.dart';
 
-/// Guarda el estado actual de las habitaciones y avisa a las pantallas cuando
-/// cambia. Por ahora vive en memoria: al cerrar la app se vuelve a los datos de
-/// ejemplo. Cuando haya base de datos, solo se cambia este archivo.
+/// Habitaciones cargadas desde la API. Los datos locales anteriores no se
+/// borran, pero tampoco se muestran como si fueran datos del servidor.
 class ServicioHabitaciones extends ChangeNotifier {
   ServicioHabitaciones._();
 
-  static final ServicioHabitaciones instancia = ServicioHabitaciones._();
+  static final instancia = ServicioHabitaciones._();
 
-  final List<Habitacion> _habitaciones = List.of(habitacionesEjemplo);
-
+  final List<Habitacion> _habitaciones = [];
   List<Habitacion> get habitaciones => List.unmodifiable(_habitaciones);
+  bool cargando = false;
+  String? error;
+  Map<String, dynamic> resumenApi = const {};
 
-  Future<void> cargar() async {
-    final filas = await ServicioStorage.instancia.leerLista(
-      'hotel.habitaciones',
-    );
-    if (filas.isEmpty) return;
-    _habitaciones
-      ..clear()
-      ..addAll(filas.map(Habitacion.fromJson));
+  Future<void> cargar() => sincronizar();
+
+  Future<void> sincronizar() async {
+    cargando = true;
+    error = null;
     notifyListeners();
+    try {
+      final response = await ApiClient.instance.rooms();
+      final filas = ApiClient.instance.listFromResponse(
+        response,
+        collectionKey: 'rooms',
+      );
+      final habitaciones = filas
+          .map(
+            (fila) =>
+                Habitacion.fromApiJson(Map<String, dynamic>.from(fila as Map)),
+          )
+          .toList();
+      _habitaciones
+        ..clear()
+        ..addAll(habitaciones);
+      resumenApi = response['summary'] is Map
+          ? Map<String, dynamic>.from(response['summary'] as Map)
+          : const {};
+    } on ApiException catch (e) {
+      error = e.message;
+    } on FormatException catch (e) {
+      error =
+          'La respuesta de habitaciones no tiene el formato esperado: ${e.message}';
+    } catch (_) {
+      error = 'No se pudieron cargar las habitaciones desde el servidor.';
+    } finally {
+      cargando = false;
+      notifyListeners();
+    }
   }
 
-  Future<void> _guardar() => ServicioStorage.instancia.guardarLista(
-    'hotel.habitaciones',
-    _habitaciones.map((h) => h.toJson()).toList(),
-  );
-
+  /// Estos cambios siguen siendo operaciones de interfaz transitorias hasta
+  /// que reservas/estadías/tareas se ejecuten por sus endpoints propios.
   void actualizarPorTarea(
     String numero, {
     EstadoHabitacion? estado,
@@ -73,7 +94,6 @@ class ServicioHabitaciones extends ChangeNotifier {
       estadiaActivaId: h.estadiaActivaId,
       updatedAt: DateTime.now(),
     );
-    unawaited(_guardar());
     notifyListeners();
   }
 
@@ -95,7 +115,6 @@ class ServicioHabitaciones extends ChangeNotifier {
       estado,
       huesped: huesped,
     );
-    unawaited(_guardar());
     notifyListeners();
   }
 
@@ -106,7 +125,6 @@ class ServicioHabitaciones extends ChangeNotifier {
     _cambiarEstado(numero, EstadoHabitacion.ocupada, huesped: huesped);
   }
 
-  /// Una reserva ocupa el estado de la habitación al llegar su hora de entrada.
   bool reservar(String numero) {
     final h = buscar(numero);
     if (h == null || h.estado != EstadoHabitacion.disponible) return false;
@@ -114,21 +132,18 @@ class ServicioHabitaciones extends ChangeNotifier {
     return true;
   }
 
-  /// Libera únicamente habitaciones que siguen reservadas.
   void liberarReserva(String numero) {
     if (buscar(numero)?.estado == EstadoHabitacion.reservada) {
       _cambiarEstado(numero, EstadoHabitacion.disponible);
     }
   }
 
-  /// El huésped se va: la habitación pasa a limpieza.
   void terminarEstadia(String numero) {
     final rol = ServicioSesion.instancia.usuario?.rol;
     if (rol != RolUsuario.recepcion && rol != RolUsuario.admin) return;
     _cambiarEstado(numero, EstadoHabitacion.limpieza);
   }
 
-  /// Solicita limpieza y mantiene el indicador de que la habitación sigue ocupada.
   void solicitarLimpieza(String numero) {
     final indice = _habitaciones.indexWhere((h) => h.numero == numero);
     if (indice == -1) return;
@@ -153,24 +168,22 @@ class ServicioHabitaciones extends ChangeNotifier {
         estadiaActivaId: habitacion.estadiaActivaId,
         updatedAt: DateTime.now(),
       );
-      unawaited(_guardar());
       notifyListeners();
     } else if (habitacion.estado == EstadoHabitacion.disponible) {
       _cambiarEstado(numero, EstadoHabitacion.limpieza);
     }
   }
 
-  /// Solo el empleado asignado puede cerrar la tarea correspondiente.
   void marcarLista(String numero) {
     final h = buscar(numero);
-    final u = ServicioSesion.instancia.usuario;
+    final usuario = ServicioSesion.instancia.usuario;
     final autorizado =
         (h?.estado == EstadoHabitacion.limpieza &&
-            u?.rol == RolUsuario.limpieza &&
-            h?.asignadoLimpiezaId == u?.id) ||
+            usuario?.rol == RolUsuario.limpieza &&
+            h?.asignadoLimpiezaId == usuario?.id) ||
         (h?.estado == EstadoHabitacion.mantenimiento &&
-            u?.rol == RolUsuario.mantenimiento &&
-            h?.asignadoMantenimientoId == u?.id);
+            usuario?.rol == RolUsuario.mantenimiento &&
+            h?.asignadoMantenimientoId == usuario?.id);
     if (autorizado) _cambiarEstado(numero, EstadoHabitacion.disponible);
   }
 }

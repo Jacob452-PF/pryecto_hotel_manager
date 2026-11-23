@@ -124,6 +124,94 @@ class Habitacion {
     'updatedAt': updatedAt.toIso8601String(),
   };
 
+  /// Mapea una habitación del API sin convertir errores de esquema en datos
+  /// de ejemplo. Se aceptan los nombres inglés de Laravel y los locales usados
+  /// por el modelo móvil.
+  factory Habitacion.fromApiJson(Map<String, dynamic> json) {
+    final rawId = json['id'];
+    final rawNumero = json['number'] ?? json['room_number'] ?? json['numero'];
+    final rawPiso = json['floor'] ?? json['floor_number'] ?? json['piso'];
+    final rawTipo = json['room_type'] ?? json['type'] ?? json['tipo'];
+    final rawEstado = json['status'] ?? json['estado'];
+    final rawCamas = json['beds'] ?? json['bed_count'] ?? json['camas'];
+
+    if (rawId == null ||
+        rawNumero == null ||
+        rawPiso == null ||
+        rawTipo == null ||
+        rawEstado == null) {
+      throw const FormatException(
+        'Faltan id, número, piso, tipo o estado en la habitación.',
+      );
+    }
+
+    final tipoNombre = rawTipo is Map
+        ? (rawTipo['name'] ?? rawTipo['type'] ?? rawTipo['nombre'])
+        : rawTipo;
+    final tipoTexto = tipoNombre.toString().toLowerCase();
+    final tipo = switch (tipoTexto) {
+      'matrimonial' ||
+      'double' ||
+      'doubled' ||
+      'queen' ||
+      'king' => TipoCuarto.matrimonial,
+      'familiar' || 'family' => TipoCuarto.familiar,
+      'individual' || 'single' || 'twin' => TipoCuarto.individual,
+      _ => throw FormatException(
+        'Tipo de habitación no reconocido: $tipoTexto',
+      ),
+    };
+
+    final estadoTexto = rawEstado.toString().toLowerCase();
+    final estado = switch (estadoTexto) {
+      'disponible' || 'available' => EstadoHabitacion.disponible,
+      'ocupada' || 'occupied' => EstadoHabitacion.ocupada,
+      'ocupada_y_limpieza' ||
+      'occupied_cleaning' => EstadoHabitacion.ocupadaYLimpieza,
+      'limpieza' || 'cleaning' => EstadoHabitacion.limpieza,
+      'reservada' || 'reserved' => EstadoHabitacion.reservada,
+      'mantenimiento' || 'maintenance' => EstadoHabitacion.mantenimiento,
+      _ => throw FormatException(
+        'Estado de habitación no reconocido: $estadoTexto',
+      ),
+    };
+
+    final rawStay = json['active_stay'] ?? json['activeStay'];
+    final stayGuest = rawStay is Map ? rawStay['guest'] : null;
+    final rawGuest = json['guest'] ?? stayGuest ?? json['huesped'];
+    final guestName = rawGuest is Map
+        ? (rawGuest['name'] ?? rawGuest['nombre'])?.toString()
+        : rawGuest?.toString();
+    final rawUpdatedAt = json['updated_at'] ?? json['updatedAt'];
+
+    return Habitacion(
+      rawNumero.toString(),
+      int.tryParse(rawPiso.toString()) ??
+          (throw const FormatException('El piso de habitación no es válido.')),
+      tipo,
+      estado,
+      camas: int.tryParse(rawCamas?.toString() ?? '') ?? 1,
+      huesped: guestName,
+      limpiezaSolicitada:
+          json['cleaning_requested'] as bool? ??
+          json['limpiezaSolicitada'] as bool? ??
+          estado == EstadoHabitacion.ocupadaYLimpieza,
+      id: rawId.toString(),
+      asignadoLimpiezaId:
+          (json['assigned_cleaner_id'] ?? json['asignadoLimpiezaId'])
+              ?.toString(),
+      asignadoMantenimientoId:
+          (json['assigned_maintenance_id'] ?? json['asignadoMantenimientoId'])
+              ?.toString(),
+      reservaActivaId:
+          (json['active_reservation_id'] ?? json['reservaActivaId'])
+              ?.toString(),
+      estadiaActivaId: (json['active_stay_id'] ?? json['estadiaActivaId'])
+          ?.toString(),
+      updatedAt: DateTime.tryParse(rawUpdatedAt?.toString() ?? ''),
+    );
+  }
+
   factory Habitacion.fromJson(Map<String, dynamic> j) => Habitacion(
     j['numero'] as String,
     j['piso'] as int,
