@@ -71,8 +71,13 @@ class TarjetaCaja extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 2),
+                      if (caja.aperturaAt != null)
+                        Text(
+                          'Abrió: ${fechaHora(caja.aperturaAt!)}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
                       Text(
-                        fechaHora(caja.fecha),
+                        'Cerró: ${fechaHora(caja.fecha)}',
                         style: const TextStyle(fontSize: 12),
                       ),
                       const SizedBox(height: 6),

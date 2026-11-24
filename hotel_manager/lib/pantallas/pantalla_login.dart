@@ -114,7 +114,7 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                     children: [
                       // Logo del hotel (provisional: reemplazar por Image.asset)
                       Image.asset(
-                        'assets/imagenes/logo_hotel.jpg',
+                        'assets/imagenes/logo_hotel.jpeg',
                         height: 100,
                         errorBuilder: (context, error, stackTrace) {
                           debugPrint('Error al cargar el logo: $error');
@@ -127,7 +127,7 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Nombre del hotel',
+                        'Hotel Manager',
                         style: EstilosTexto.tituloLogin,
                       ),
                       const SizedBox(height: 24),

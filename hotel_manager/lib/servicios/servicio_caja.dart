@@ -57,6 +57,7 @@ class ServicioCaja extends ChangeNotifier {
     required DesgloseEfectivo desglose,
     required double netoTurno,
     required bool confirmarDiferencia,
+    DateTime? cierreAt,
     String? notas,
   }) async {
     if (!_puedeOperar())
@@ -68,7 +69,7 @@ class ServicioCaja extends ChangeNotifier {
     if (diferencia != 0 && !confirmarDiferencia)
       throw StateError('Confirma la diferencia antes de cerrar caja.');
     final cerrada = c.cerrar(
-      fecha: DateTime.now(),
+      fecha: cierreAt ?? DateTime.now(),
       desglose: desglose,
       diferencia: diferencia,
       confirmada: confirmarDiferencia,
