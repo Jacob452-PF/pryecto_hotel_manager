@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
+
+import 'api_client.dart';
+
 /// Comprueba el estado de la conexión.
 class ServicioConexion {
   ServicioConexion._();
@@ -18,8 +22,30 @@ class ServicioConexion {
     }
   }
 
-  /// null = todavía no hay servidor configurado.
-  /// TODO: cuando exista la API, hacer una petición a un endpoint de prueba
-  /// (por ejemplo /api/ping) y devolver true o false.
-  static Future<bool?> servidorDisponible() async => null;
+  /// Comprueba el API usando una ruta protegida que no requiere credenciales.
+  /// Un 401/403 también confirma que Laravel está respondiendo.
+  static Future<bool> servidorDisponible() async {
+    try {
+      final response = await _consultarApi();
+      return response != null && response.statusCode < 500;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<http.Response?> _consultarApi() async {
+    try {
+      final base = kApiBase.replaceFirst(RegExp(r'/+$'), '');
+      return await http
+          .get(
+            Uri.parse('$base/me'),
+            headers: const {'Accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }
