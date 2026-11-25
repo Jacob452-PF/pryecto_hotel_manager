@@ -57,4 +57,25 @@ class Usuario {
         DateTime.tryParse(json['createdAt'] as String? ?? '') ??
         DateTime.fromMillisecondsSinceEpoch(0),
   );
+
+  factory Usuario.fromApiJson(Map<String, dynamic> json) {
+    final role = json['role']?.toString().toLowerCase();
+    final rol = switch (role) {
+      'admin' => RolUsuario.admin,
+      'recepcionista' => RolUsuario.recepcion,
+      'limpieza' => RolUsuario.limpieza,
+      'mantenimiento' => RolUsuario.mantenimiento,
+      _ => throw FormatException('Rol de usuario no reconocido: $role'),
+    };
+    return Usuario(
+      id: json['id'].toString(),
+      nombre: json['name']?.toString() ?? '',
+      username: json['email']?.toString() ?? '',
+      rol: rol,
+      activo: json['active'] as bool? ?? true,
+      cargo: role,
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
 }

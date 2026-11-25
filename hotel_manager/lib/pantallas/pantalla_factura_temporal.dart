@@ -3,12 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../servicios/servicio_estadias.dart';
-import '../servicios/servicio_abonos.dart';
-import '../historial/servicios/servicio_consumos.dart';
-import '../modelos/abono.dart';
 import '../utilidades/formato.dart';
-import '../widgets/dialogo_cobro.dart';
 
+/// Consulta la instantánea remota de la estadía. Los abonos no aplican aquí:
+/// la habitación se paga al ingreso y los cargos adicionales al checkout.
 class PantallaFacturaTemporal extends StatefulWidget {
   final String habitacion;
   final String huesped;
@@ -17,6 +15,7 @@ class PantallaFacturaTemporal extends StatefulWidget {
     required this.habitacion,
     required this.huesped,
   });
+
   @override
   State<PantallaFacturaTemporal> createState() =>
       _PantallaFacturaTemporalState();
@@ -24,10 +23,11 @@ class PantallaFacturaTemporal extends StatefulWidget {
 
 class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
   Timer? _reloj;
+
   @override
   void initState() {
     super.initState();
-    ServicioEstadias.instancia.asegurarEstadiaPredeterminada(widget.habitacion);
+    ServicioEstadias.instancia.sincronizar();
     _reloj = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -42,181 +42,102 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
   String _restante(DateTime salida) {
     final d = salida.difference(DateTime.now());
     if (d.isNegative) return 'Estadía vencida';
-    final h = d.inHours, m = d.inMinutes.remainder(60);
-    return '${h}h ${m.toString().padLeft(2, '0')}m restantes';
+    return '${d.inHours}h ${d.inMinutes.remainder(60).toString().padLeft(2, '0')}m restantes';
   }
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([
-      ServicioEstadias.instancia,
-      ServicioAbonos.instancia,
-    ]),
-    builder: (context, _) {
-      final e = ServicioEstadias.instancia.buscar(widget.habitacion);
-      final id = ServicioConsumos.instancia.facturaIdParaHabitacion(
-        widget.habitacion,
-        widget.huesped,
-      );
-      final abonado = ServicioAbonos.instancia.abonado(id);
-      final saldo = e == null
-          ? 0.0
-          : (e.total - abonado).clamp(0.0, e.total).toDouble();
-      return Scaffold(
-        appBar: AppBar(title: const Text('Factura temporal')),
-        body: e == null
-            ? const Center(
-                child: Text('No hay cargos registrados para esta estadía.'),
-              )
-            : ListView(
-                padding: const EdgeInsets.all(16),
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Resumen de estadía')),
+    body: ListenableBuilder(
+      listenable: ServicioEstadias.instancia,
+      builder: (context, _) {
+        final service = ServicioEstadias.instancia;
+        final stay = service.buscar(widget.habitacion);
+        if (stay == null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Habitación ${widget.habitacion} · ${widget.huesped}',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(_restante(e.salida)),
-                          const SizedBox(height: 12),
-                          LinearProgressIndicator(
-                            value:
-                                (DateTime.now()
-                                            .difference(e.entrada)
-                                            .inSeconds /
-                                        e.salida
-                                            .difference(e.entrada)
-                                            .inSeconds)
-                                    .clamp(0.0, 1.0),
-                          ),
-                        ],
-                      ),
+                  Text(service.cargando
+                      ? 'Cargando datos del servidor…'
+                      : service.error == null
+                          ? 'No hay una estadía activa en esta habitación.'
+                          : 'No se pudo cargar la estadía: ${service.error}'),
+                  if (!service.cargando)
+                    TextButton.icon(
+                      onPressed: service.sincronizar,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reintentar'),
                     ),
-                  ),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Estadía',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          _fila('Cargo de habitación', e.precioEstadia),
-                          const Divider(),
-                          Text(
-                            'Productos y cargos',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          for (final c in [
-                            ...e.cargosIniciales,
-                            ...e.cargosTienda,
-                          ])
-                            _fila(
-                              '${c.nombre}${c.cantidad > 1 ? ' × ${c.cantidad}' : ''}',
-                              c.importe,
-                            ),
-                          if (e.cargosIniciales.isEmpty &&
-                              e.cargosTienda.isEmpty)
-                            const Text('Todavía no hay productos cargados.'),
-                          const Divider(),
-                          _fila('Total temporal', e.total, negrita: true),
-                          _fila('Abonado', abonado),
-                          _fila('Saldo pendiente', saldo, negrita: true),
-                          if (ServicioAbonos.instancia
-                              .paraFactura(id)
-                              .isNotEmpty) ...[
-                            const Divider(),
-                            const Text(
-                              'Abonos recibidos',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            for (final a
-                                in ServicioAbonos.instancia.paraFactura(id))
-                              _fila(
-                                '${a.metodo.etiqueta} · ${a.createdAt.toLocal().toString().substring(0, 16)}',
-                                a.monto,
-                              ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Los cargos se actualizan al cargar productos desde la tienda.',
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: saldo <= 0
-                        ? null
-                        : () => _registrarAbono(context, id, saldo, e),
-                    icon: const Icon(Icons.payments_outlined),
-                    label: const Text('Registrar abono'),
-                  ),
                 ],
               ),
-      );
-    },
+            ),
+          );
+        }
+        final charges = [...stay.cargosIniciales, ...stay.cargosTienda];
+        final progress = stay.salida.difference(stay.entrada).inSeconds <= 0
+            ? 0.0
+            : DateTime.now().difference(stay.entrada).inSeconds /
+                  stay.salida.difference(stay.entrada).inSeconds;
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Habitación ${widget.habitacion} · ${widget.huesped}',
+                        style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 8),
+                    Text(_restante(stay.salida)),
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(value: progress.clamp(0.0, 1.0)),
+                  ],
+                ),
+              ),
+            ),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Cuenta del servidor', style: Theme.of(context).textTheme.titleMedium),
+                    _fila('Habitación · pagada al ingreso', stay.precioEstadia),
+                    const Divider(),
+                    Text('Cargos adicionales', style: Theme.of(context).textTheme.titleMedium),
+                    for (final charge in charges)
+                      _fila(
+                        '${charge.nombre}${charge.cantidad > 1 ? ' × ${charge.cantidad}' : ''}${charge.pagado ? ' · pagado' : ''}',
+                        charge.importe,
+                      ),
+                    if (charges.isEmpty) const Text('Todavía no hay cargos adicionales.'),
+                    const Divider(),
+                    _fila('Saldo adicional al checkout', stay.saldoCargos, negrita: true),
+                  ],
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: Text('La habitación se cobra al ingreso; los cargos pendientes se pagan al finalizar.'),
+            ),
+          ],
+        );
+      },
+    ),
   );
 
-  Future<void> _registrarAbono(
-    BuildContext context,
-    String facturaId,
-    double saldo,
-    DatosEstadia e,
-  ) async {
-    final resultado = await mostrarDialogoCobro(
-      context,
-      saldo: saldo,
-      permitirAbono: true,
-    );
-    if (resultado == null) return;
-    try {
-      final cargos = [...e.cargosIniciales, ...e.cargosTienda]
-          .map(
-            (c) => (nombre: c.nombre, precio: c.precio, cantidad: c.cantidad),
-          )
-          .toList();
-      await ServicioConsumos.instancia.registrarAbonoFactura(
-        habitacion: widget.habitacion,
-        cliente: widget.huesped,
-        monto: resultado.monto,
-        metodo: resultado.metodo,
-        efectivoEntregado: resultado.efectivoEntregado,
-        precioEstadia: e.precioEstadia,
-        cargos: cargos,
-      );
-    } catch (error) {
-      if (context.mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Bad state: ', '')),
-          ),
-        );
-    }
-  }
-
-  Widget _fila(String titulo, double monto, {bool negrita = false}) => Padding(
+  Widget _fila(String label, double amount, {bool negrita = false}) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: Row(
       children: [
-        Expanded(
-          child: Text(
-            titulo,
-            style: TextStyle(fontWeight: negrita ? FontWeight.bold : null),
-          ),
-        ),
-        Text(
-          formatearDinero(monto),
-          style: TextStyle(fontWeight: negrita ? FontWeight.bold : null),
-        ),
+        Expanded(child: Text(label, style: TextStyle(fontWeight: negrita ? FontWeight.bold : null))),
+        Text(formatearDinero(amount), style: TextStyle(fontWeight: negrita ? FontWeight.bold : null)),
       ],
     ),
   );

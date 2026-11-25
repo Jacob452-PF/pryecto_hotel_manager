@@ -4,10 +4,12 @@ class HuespedTienda {
   final String id;
   final String nombre;
   final String habitacion;
+  final String? estadiaIdApi;
 
   const HuespedTienda({
     required this.id,
     required this.nombre,
     required this.habitacion,
+    this.estadiaIdApi,
   });
 }

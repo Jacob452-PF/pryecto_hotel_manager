@@ -1,31 +1,21 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
-import '../tienda/modelos/articulo_tienda.dart';
-import '../datos/tarifas_ejemplo.dart';
 import '../modelos/habitacion.dart';
-import '../modelos/tarifa.dart';
-import '../modelos/tipo_cuarto.dart';
-import 'servicio_habitaciones.dart';
-import 'servicio_storage.dart';
-import 'servicio_reservas.dart';
+import 'api_client.dart';
 
 class CargoEstadia {
   final String nombre;
   final double precio;
   final int cantidad;
-  const CargoEstadia(this.nombre, this.precio, {this.cantidad = 1});
+  final bool pagado;
+
+  const CargoEstadia(this.nombre, this.precio, {this.cantidad = 1, this.pagado = false});
   double get importe => precio * cantidad;
-  Map<String, dynamic> toJson() => {
-    'nombre': nombre,
-    'precio': precio,
-    'cantidad': cantidad,
-  };
-  factory CargoEstadia.fromJson(Map<String, dynamic> j) => CargoEstadia(
-    j['nombre'] as String,
-    (j['precio'] as num).toDouble(),
-    cantidad: j['cantidad'] as int? ?? 1,
+
+  factory CargoEstadia.fromApi(Map<String, dynamic> json) => CargoEstadia(
+    json['description']?.toString() ?? 'Consumo adicional',
+    double.tryParse(json['amount']?.toString() ?? '') ?? 0,
+    pagado: json['paid_at'] != null,
   );
 }
 
@@ -35,187 +25,110 @@ class DatosEstadia {
   final double precioEstadia;
   final String? huespedId;
   final String id;
-  final DateTime createdAt;
   final List<CargoEstadia> cargosIniciales;
-  final List<CargoEstadia> cargosTienda = [];
-  DatosEstadia({
+  final List<CargoEstadia> cargosTienda;
+
+  const DatosEstadia({
+    required this.id,
     required this.entrada,
     required this.salida,
     required this.precioEstadia,
     required this.cargosIniciales,
+    required this.cargosTienda,
     this.huespedId,
-    String? id,
-    DateTime? createdAt,
-  }) : id = id ?? 'est-${entrada.microsecondsSinceEpoch}',
-       createdAt = createdAt ?? entrada;
-  double get totalProductos =>
-      [...cargosIniciales, ...cargosTienda].fold(0, (s, c) => s + c.importe);
+  });
+
+  double get totalProductos => [...cargosIniciales, ...cargosTienda].fold(0, (s, c) => s + c.importe);
   double get total => precioEstadia + totalProductos;
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'huespedId': huespedId,
-    'entrada': entrada.toIso8601String(),
-    'salida': salida.toIso8601String(),
-    'precioEstadia': precioEstadia,
-    'createdAt': createdAt.toIso8601String(),
-    'cargosIniciales': cargosIniciales.map((e) => e.toJson()).toList(),
-    'cargosTienda': cargosTienda.map((e) => e.toJson()).toList(),
-  };
-  factory DatosEstadia.fromJson(Map<String, dynamic> j) {
-    final d = DatosEstadia(
-      id: j['id'] as String?,
-      huespedId: j['huespedId'] as String?,
-      entrada: DateTime.parse(j['entrada'] as String),
-      salida: DateTime.parse(j['salida'] as String),
-      precioEstadia: (j['precioEstadia'] as num).toDouble(),
-      cargosIniciales: (j['cargosIniciales'] as List? ?? [])
-          .cast<Map<String, dynamic>>()
-          .map(CargoEstadia.fromJson)
-          .toList(),
-      createdAt: DateTime.tryParse(j['createdAt'] as String? ?? ''),
+  double get saldoCargos => [...cargosIniciales, ...cargosTienda]
+      .where((charge) => !charge.pagado)
+      .fold(0, (sum, charge) => sum + charge.importe);
+
+  factory DatosEstadia.fromApi(Map<String, dynamic> json) {
+    final rate = json['rate'] is Map
+        ? Map<String, dynamic>.from(json['rate'] as Map)
+        : const <String, dynamic>{};
+    final guest = json['guest'] is Map
+        ? Map<String, dynamic>.from(json['guest'] as Map)
+        : const <String, dynamic>{};
+    final charges = json['charges'] is List
+        ? (json['charges'] as List)
+            .whereType<Map>()
+            .map((row) => CargoEstadia.fromApi(Map<String, dynamic>.from(row)))
+            .toList()
+        : <CargoEstadia>[];
+    final units = int.tryParse(json['rate_units']?.toString() ?? '') ?? 1;
+    return DatosEstadia(
+      id: json['id'].toString(),
+      entrada: DateTime.parse(json['check_in_at'].toString()),
+      salida: DateTime.parse(json['expected_checkout_at'].toString()),
+      precioEstadia: (double.tryParse(rate['price']?.toString() ?? '') ?? 0) * units,
+      cargosIniciales: const [],
+      cargosTienda: charges,
+      huespedId: (json['guest_id'] ?? guest['id'])?.toString(),
     );
-    d.cargosTienda.addAll(
-      (j['cargosTienda'] as List? ?? []).cast<Map<String, dynamic>>().map(
-        CargoEstadia.fromJson,
-      ),
-    );
-    return d;
   }
 }
 
-/// Estado temporal de las estadías y cargos, compartido con la tienda.
+/// Instantánea en memoria de estadías leídas del backend. El servidor sigue
+/// siendo la fuente de verdad; no se cargan estadías guardadas en el teléfono.
 class ServicioEstadias extends ChangeNotifier {
   ServicioEstadias._();
   static final instancia = ServicioEstadias._();
+
   final Map<String, DatosEstadia> _estadias = {};
   Map<String, DatosEstadia> get todas => Map.unmodifiable(_estadias);
   DatosEstadia? buscar(String habitacion) => _estadias[habitacion];
+  bool cargando = false;
+  String? error;
 
-  Future<void> cargar() async {
-    _estadias.clear();
-    final filas = await ServicioStorage.instancia.leerLista('hotel.estadias');
-    for (final fila in filas) {
-      final habitacion = fila['habitacionId'] as String?;
-      final data = fila['estadia'];
-      if (habitacion != null && data is Map<String, dynamic>) {
-        _estadias[habitacion] = DatosEstadia.fromJson(data);
-      }
+  Future<void> cargar() => sincronizar();
+
+  Future<void> sincronizar() async {
+    cargando = true;
+    error = null;
+    notifyListeners();
+    try {
+      final rooms = <String, DatosEstadia>{};
+      var page = 1;
+      var lastPage = 1;
+      do {
+        final response = await ApiClient.instance.stays(page: page);
+        final rows = ApiClient.instance.listFromResponse(response);
+        for (final row in rows) {
+          final json = Map<String, dynamic>.from(row as Map);
+          if (json['status'] != 'activa') continue;
+          final room = json['room'] is Map
+              ? Map<String, dynamic>.from(json['room'] as Map)
+              : const <String, dynamic>{};
+          final number = (room['number'] ?? '').toString();
+          if (number.isNotEmpty) rooms[number] = DatosEstadia.fromApi(json);
+        }
+        if (response is Map) {
+          final meta = response['meta'];
+          lastPage = int.tryParse(
+                (response['last_page'] ?? (meta is Map ? meta['last_page'] : null))?.toString() ?? '',
+              ) ?? page;
+        }
+        page++;
+      } while (page <= lastPage);
+      _estadias
+        ..clear()
+        ..addAll(rooms);
+    } on Object catch (e) {
+      _estadias.clear();
+      error = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      cargando = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
-  Future<void> _guardar() => ServicioStorage.instancia.guardarLista(
-    'hotel.estadias',
-    _estadias.entries
-        .map((e) => {'habitacionId': e.key, 'estadia': e.value.toJson()})
-        .toList(),
-  );
-
-  /// Las habitaciones ocupadas de demostración no tienen check-in en esta
-  /// sesión. Al abrir su factura se les asigna una noche a la tarifa vigente.
-  void asegurarEstadiaPredeterminada(String numeroHabitacion) {
-    if (_estadias.containsKey(numeroHabitacion)) return;
-    final habitacion = ServicioHabitaciones.instancia.buscar(numeroHabitacion);
-    if (habitacion == null ||
-        (habitacion.estado != EstadoHabitacion.ocupada &&
-            habitacion.estado != EstadoHabitacion.ocupadaYLimpieza)) {
-      return;
-    }
-
-    final camas = habitacion.tipoCuarto == TipoCuarto.familiar
-        ? habitacion.camas
-        : 1;
-    final precio = tarifasEjemplo
-        .firstWhere((tarifa) => tarifa.tipo == TipoTarifa.porNoche)
-        .precioPara(camas);
-    final entrada = DateTime.now();
-    _estadias[numeroHabitacion] = DatosEstadia(
-      entrada: entrada,
-      salida: entrada.add(const Duration(days: 1)),
-      precioEstadia: precio,
-      cargosIniciales: const [],
-    );
-    unawaited(_guardar());
-    notifyListeners();
-  }
-
-  void iniciar({
-    required String habitacion,
-    required DateTime entrada,
-    required TipoTarifa tarifa,
-    required int cantidad,
-    required double precioUnitario,
-    required List<CargoEstadia> productos,
-    String? huespedId,
-  }) {
-    final duracion = tarifa == TipoTarifa.porHora
-        ? Duration(hours: cantidad)
-        : Duration(days: cantidad);
-    final fin = entrada.add(duracion);
-    if (!ServicioReservas.instancia.validarEstadiaContraReservas(
-      habitacion: habitacion,
-      inicio: entrada,
-      fin: fin,
-    )) {
-      throw StateError(
-        'La estadía se cruza con una reserva o no deja el margen de limpieza requerido.',
-      );
-    }
-    _estadias[habitacion] = DatosEstadia(
-      entrada: entrada,
-      salida: fin,
-      precioEstadia: precioUnitario * cantidad,
-      cargosIniciales: List.unmodifiable(productos),
-      huespedId: huespedId,
-    );
-    notifyListeners();
-    unawaited(_guardar());
-  }
-
-  /// Registra una estadía a partir de las fechas y el importe de una reserva.
-  void iniciarDesdeReserva({
-    required String habitacion,
-    required DateTime entrada,
-    required DateTime salida,
-    required double precio,
-    required String huespedId,
-  }) {
-    if (!salida.isAfter(entrada)) {
-      throw ArgumentError('La salida debe ser posterior a la entrada.');
-    }
-    _estadias[habitacion] = DatosEstadia(
-      entrada: entrada,
-      salida: salida,
-      precioEstadia: precio,
-      cargosIniciales: const [],
-      huespedId: huespedId,
-    );
-    notifyListeners();
-    unawaited(_guardar());
-  }
-
-  void agregarCargos(
-    String habitacion,
-    List<({ArticuloTienda articulo, int cantidad})> items,
-  ) {
-    final estadia = _estadias[habitacion];
-    if (estadia == null) return;
-    estadia.cargosTienda.addAll(
-      items.map(
-        (i) => CargoEstadia(
-          i.articulo.nombre,
-          i.articulo.precio,
-          cantidad: i.cantidad,
-        ),
-      ),
-    );
-    notifyListeners();
-    unawaited(_guardar());
-  }
+  /// No inventa una estadía para habitaciones que no tengan check-in remoto.
+  void asegurarEstadiaPredeterminada(String numeroHabitacion) {}
 
   void limpiar(String habitacion) {
     _estadias.remove(habitacion);
-    unawaited(_guardar());
     notifyListeners();
   }
 }

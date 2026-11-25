@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../datos/tarifas_ejemplo.dart';
 import '../modelos/tarifa.dart';
 import '../modelos/tipo_cuarto.dart';
+import '../servicios/api_client.dart';
 import '../servicios/servicio_huespedes.dart';
 import '../servicios/servicio_reservas.dart';
 import '../modelos/huesped.dart';
@@ -24,25 +24,57 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
   final _nombre = TextEditingController();
   final _dui = TextEditingController();
   final _telefono = TextEditingController();
-  TipoCuarto _tipo = TipoCuarto.matrimonial;
-  TipoTarifa _tarifa = TipoTarifa.porNoche;
-  int _camas = 2;
+  TipoCuarto _tipo = TipoCuarto.comun;
+  final List<TarifaRemota> _tarifas = [];
+  TarifaRemota? _tarifa;
+  bool _cargandoTarifas = true;
+  String? _errorTarifas;
+  int _camas = 1;
   int _cantidad = 1;
   String? _huespedSeleccionadoId;
   DateTime _inicio = DateTime.now().add(const Duration(hours: 1));
   bool _guardando = false;
 
   DateTime get _fin => _inicio.add(
-    _tarifa == TipoTarifa.porHora
-        ? Duration(hours: _cantidad)
-        : Duration(days: _cantidad),
+    Duration(hours: (_tarifa?.horas ?? 12) * _cantidad),
   );
 
-  int get _camasSeleccionadas => _tipo == TipoCuarto.familiar ? _camas : 1;
-  double get _precioUnitario => tarifasEjemplo
-      .firstWhere((tarifa) => tarifa.tipo == _tarifa)
-      .precioPara(_camasSeleccionadas);
-  double get _total => _precioUnitario * _cantidad;
+  int get _camasSeleccionadas => _tipo == TipoCuarto.comun ? 1 : _camas;
+  double get _total => (_tarifa?.precio ?? 0) * _cantidad;
+  List<TarifaRemota> get _tarifasCompatibles => _tarifas
+      .where((t) => t.tipoHabitacion == null || t.tipoHabitacion == _tipo.valorApi)
+      .toList();
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarTarifas();
+  }
+
+  Future<void> _cargarTarifas() async {
+    try {
+      final response = await ApiClient.instance.rates();
+      final rates = ApiClient.instance
+          .listFromResponse(response)
+          .map((row) => TarifaRemota.fromJson(Map<String, dynamic>.from(row as Map)))
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _tarifas
+          ..clear()
+          ..addAll(rates);
+        _tarifa = _tarifasCompatibles.firstOrNull;
+        _cargandoTarifas = false;
+        _errorTarifas = rates.isEmpty ? 'No hay tarifas activas en el servidor.' : null;
+      });
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cargandoTarifas = false;
+        _errorTarifas = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -115,15 +147,19 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
               'El guardado del huésped tardó demasiado. Revisa la conexión e inténtalo de nuevo.',
             ),
           );
+      final tarifa = _tarifa;
+      if (tarifa == null) {
+        throw StateError(_errorTarifas ?? 'Selecciona una tarifa del servidor.');
+      }
       await ServicioReservas.instancia.crear(
         huespedId: huesped.id,
         inicio: _inicio,
         fin: _fin,
-        total: _total,
         tipoCuarto: _tipo,
         camas: _camasSeleccionadas,
-        tarifa: _tarifa,
         cantidad: _cantidad,
+        tarifaId: tarifa.id,
+        tarifaNombre: tarifa.nombre,
       );
       if (!mounted) return;
       if (mounted) Navigator.pop(context, true);
@@ -159,7 +195,7 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Registra los datos del huésped y lo que necesita. No se asignará una habitación en esta solicitud.',
+                          'Registra la preferencia y el horario. El sistema asignará una habitación compatible cuando falte un día.',
                           style: TextStyle(color: colores.onPrimaryContainer),
                         ),
                       ),
@@ -205,14 +241,17 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                       icono: (tipo) => tipo.icono,
                       alCambiar: (tipo) => setState(() {
                         _tipo = tipo;
+                        if (!_tarifasCompatibles.contains(_tarifa)) {
+                          _tarifa = _tarifasCompatibles.firstOrNull;
+                        }
                       }),
                     ),
-                    if (_tipo == TipoCuarto.familiar) ...[
+                    if (_tipo == TipoCuarto.especial) ...[
                       const SizedBox(height: 14),
                       const Text('Cantidad de camas'),
                       const SizedBox(height: 8),
                       SelectorOpciones<int>(
-                        opciones: const [2, 3, 4],
+                        opciones: const [1, 2, 3, 4],
                         seleccionada: _camas,
                         etiqueta: (cantidad) => '$cantidad camas',
                         icono: (_) => Icons.bed_outlined,
@@ -222,26 +261,25 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                       ),
                     ],
                     const SizedBox(height: 16),
-                    SelectorOpciones<TipoTarifa>(
-                      opciones: TipoTarifa.values,
-                      seleccionada: _tarifa,
-                      etiqueta: (tarifa) => tarifa.etiqueta,
-                      icono: (tarifa) => tarifa.icono,
-                      detalle: (tarifa) => formatearDinero(
-                        tarifasEjemplo
-                            .firstWhere((t) => t.tipo == tarifa)
-                            .precioPara(_camasSeleccionadas),
+                    if (_cargandoTarifas)
+                      const Center(child: CircularProgressIndicator())
+                    else if (_errorTarifas != null)
+                      Text(_errorTarifas!, style: const TextStyle(color: Colors.red))
+                    else
+                      SelectorOpciones<TarifaRemota>(
+                        opciones: _tarifasCompatibles,
+                        seleccionada: _tarifa,
+                        etiqueta: (t) => t.etiquetaDuracion,
+                        icono: (t) => t.horas <= 6 ? Icons.schedule : Icons.nights_stay,
+                        detalle: (t) => formatearDinero(t.precio),
+                        alCambiar: (t) => setState(() {
+                          _tarifa = t;
+                          _cantidad = 1;
+                        }),
                       ),
-                      alCambiar: (tarifa) => setState(() {
-                        _tarifa = tarifa;
-                        _cantidad = 1;
-                      }),
-                    ),
                     const SizedBox(height: 12),
                     ContadorCantidad(
-                      etiqueta: _tarifa == TipoTarifa.porHora
-                          ? 'Horas de estadía'
-                          : 'Noches de estadía',
+                      etiqueta: 'Bloques de tarifa',
                       valor: _cantidad,
                       alCambiar: (cantidad) => setState(() {
                         _cantidad = cantidad;
@@ -287,7 +325,7 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                         '${formatoFecha.formatMediumDate(_fin)} · ${formatoFecha.formatTimeOfDay(TimeOfDay.fromDateTime(_fin))}',
                       ),
                       trailing: Text(
-                        '$_cantidad ${_tarifa.unidad(_cantidad)}',
+                        '${_tarifa?.nombre ?? 'Tarifa'} × $_cantidad',
                         style: Theme.of(context).textTheme.labelLarge,
                       ),
                     ),
@@ -302,7 +340,7 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                   children: [
                     _filaResumen(
                       'Tarifa',
-                      '${formatearDinero(_precioUnitario)} × $_cantidad ${_tarifa.unidad(_cantidad)}',
+                      '${_tarifa?.nombre ?? 'Sin tarifa'} × $_cantidad · ${formatearDinero(_tarifa?.precio ?? 0)} c/u',
                     ),
                     _filaResumen(
                       'Preferencia',

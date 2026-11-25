@@ -92,6 +92,28 @@ class PantallaTareas extends StatelessWidget {
                                 t.asignadoA == usuario?.id)),
               )
               .toList();
+          if (s.cargando && limpiezas.isEmpty && mantenimientos.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (s.error != null && limpiezas.isEmpty && mantenimientos.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('No se pudieron cargar las tareas: ${s.error}'),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: s.sincronizar,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           if (limpiezas.isEmpty && mantenimientos.isEmpty)
             return const Center(child: Text('No hay tareas pendientes.'));
           return ListView(
@@ -145,13 +167,6 @@ class PantallaTareas extends StatelessWidget {
               _accion(context, () => s.asignarLimpieza(t.id, id));
           },
           child: const Text('Asignar'),
-        ),
-      );
-    if (worker && t.estado == EstadoSolicitudLimpieza.pendiente)
-      actions.add(
-        TextButton(
-          onPressed: () => _accion(context, () => s.aceptarLimpieza(t.id)),
-          child: const Text('Aceptar'),
         ),
       );
     if (worker &&
@@ -209,13 +224,6 @@ class PantallaTareas extends StatelessWidget {
               _accion(context, () => s.asignarMantenimiento(t.id, id));
           },
           child: const Text('Asignar'),
-        ),
-      );
-    if (worker && t.estado == EstadoSolicitudMantenimiento.pendiente)
-      actions.add(
-        TextButton(
-          onPressed: () => _accion(context, () => s.aceptarMantenimiento(t.id)),
-          child: const Text('Aceptar'),
         ),
       );
     if (worker &&

@@ -5,95 +5,112 @@ import '../modelos/notificacion_app.dart';
 import '../modelos/solicitud_limpieza.dart';
 import '../modelos/solicitud_mantenimiento.dart';
 import '../modelos/usuario.dart';
-import '../historial/modelos/consumo_cliente.dart';
-import '../historial/modelos/turno_caja.dart';
-import '../historial/servicios/servicio_consumos.dart';
-import '../tienda/datos/articulos_mock.dart';
-import 'servicio_auth.dart';
-import 'servicio_estadias.dart';
+import 'api_client.dart';
 import 'servicio_habitaciones.dart';
-import 'servicio_notificaciones.dart';
 import 'servicio_sesion.dart';
-import 'servicio_storage.dart';
 
+/// Tareas y cambios de estado se leen y escriben en el servicio remoto.
 class ServicioTareas extends ChangeNotifier {
   ServicioTareas._();
   static final instancia = ServicioTareas._();
+
   final List<SolicitudLimpieza> _limpieza = [];
   final List<SolicitudMantenimiento> _mantenimiento = [];
-  List<SolicitudLimpieza> get solicitudesLimpieza =>
-      List.unmodifiable(_limpieza);
-  List<SolicitudMantenimiento> get solicitudesMantenimiento =>
-      List.unmodifiable(_mantenimiento);
+  List<SolicitudLimpieza> get solicitudesLimpieza => List.unmodifiable(_limpieza);
+  List<SolicitudMantenimiento> get solicitudesMantenimiento => List.unmodifiable(_mantenimiento);
+  bool cargando = false;
+  String? error;
   Usuario? get _usuario => ServicioSesion.instancia.usuario;
 
-  Future<void> cargar() async {
-    final l = await ServicioStorage.instancia.leerLista(
-      'hotel.solicitudes_limpieza',
-    );
-    final m = await ServicioStorage.instancia.leerLista(
-      'hotel.solicitudes_mantenimiento',
-    );
-    _limpieza
-      ..clear()
-      ..addAll(l.map(SolicitudLimpieza.fromJson));
-    _mantenimiento
-      ..clear()
-      ..addAll(m.map(SolicitudMantenimiento.fromJson));
-    for (final t in _limpieza.where(
-      (t) => t.estado != EstadoSolicitudLimpieza.lista,
-    )) {
-      final h = ServicioHabitaciones.instancia.buscar(t.habitacionId);
-      if (h != null)
-        ServicioHabitaciones.instancia.actualizarPorTarea(
-          h.numero,
-          estado: h.estado == EstadoHabitacion.ocupada
-              ? EstadoHabitacion.ocupadaYLimpieza
-              : h.estado,
-          limpiezaSolicitada: true,
-          asignadoLimpiezaId: t.asignadoA,
-          descripcionLimpieza: t.descripcion,
-        );
-    }
-    for (final t in _mantenimiento.where(
-      (t) => t.estado != EstadoSolicitudMantenimiento.resuelta,
-    )) {
-      final h = ServicioHabitaciones.instancia.buscar(t.habitacionId);
-      if (h != null)
-        ServicioHabitaciones.instancia.actualizarPorTarea(
-          h.numero,
-          estado: EstadoHabitacion.mantenimiento,
-          asignadoMantenimientoId: t.asignadoA,
-        );
-    }
+  Future<void> cargar() => sincronizar();
+
+  Future<void> sincronizar() async {
+    cargando = true;
+    error = null;
     notifyListeners();
+    try {
+      final tasks = <Map<String, dynamic>>[];
+      var page = 1;
+      var lastPage = 1;
+      do {
+        final response = await ApiClient.instance.tasks(page: page);
+        tasks.addAll(ApiClient.instance.listFromResponse(response)
+            .map((row) => Map<String, dynamic>.from(row as Map)));
+        if (response is Map) {
+          final meta = response['meta'];
+          lastPage = int.tryParse(
+                (response['last_page'] ?? (meta is Map ? meta['last_page'] : null))
+                        ?.toString() ??
+                    '',
+              ) ??
+              page;
+        }
+        page++;
+      } while (page <= lastPage);
+      _limpieza
+        ..clear()
+        ..addAll(tasks.where((t) => t['type'] == 'limpieza').map(_aLimpieza));
+      _mantenimiento
+        ..clear()
+        ..addAll(tasks.where((t) => t['type'] == 'mantenimiento').map(_aMantenimiento));
+    } on Object catch (e) {
+      _limpieza.clear();
+      _mantenimiento.clear();
+      error = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      cargando = false;
+      notifyListeners();
+    }
   }
 
-  Future<void> _guardar() async {
-    await ServicioStorage.instancia.guardarLista(
-      'hotel.solicitudes_limpieza',
-      _limpieza.map((e) => e.toJson()).toList(),
-    );
-    await ServicioStorage.instancia.guardarLista(
-      'hotel.solicitudes_mantenimiento',
-      _mantenimiento.map((e) => e.toJson()).toList(),
+  SolicitudLimpieza _aLimpieza(Map<String, dynamic> j) {
+    final room = j['room'] is Map ? Map<String, dynamic>.from(j['room'] as Map) : const <String, dynamic>{};
+    final status = j['status']?.toString();
+    return SolicitudLimpieza(
+      id: j['id'].toString(),
+      habitacionId: (room['number'] ?? j['room_id']).toString(),
+      origen: OrigenLimpieza.recepcion,
+      descripcion: j['description']?.toString(),
+      estado: switch (status) {
+        'asignada' => EstadoSolicitudLimpieza.asignada,
+        'en_progreso' => EstadoSolicitudLimpieza.en_proceso,
+        'completada' || 'cancelada' => EstadoSolicitudLimpieza.lista,
+        _ => EstadoSolicitudLimpieza.pendiente,
+      },
+      asignadoA: j['assigned_to']?.toString(),
+      createdAt: DateTime.tryParse(j['created_at']?.toString() ?? '') ?? DateTime.now(),
+      cerradaAt: DateTime.tryParse(j['completed_at']?.toString() ?? ''),
     );
   }
 
-  bool _puedeRecepcion() =>
-      _usuario?.rol == RolUsuario.recepcion ||
-      _usuario?.rol == RolUsuario.admin;
+  SolicitudMantenimiento _aMantenimiento(Map<String, dynamic> j) {
+    final room = j['room'] is Map ? Map<String, dynamic>.from(j['room'] as Map) : const <String, dynamic>{};
+    final status = j['status']?.toString();
+    return SolicitudMantenimiento(
+      id: j['id'].toString(),
+      habitacionId: (room['number'] ?? j['room_id']).toString(),
+      descripcion: j['description']?.toString() ?? '',
+      estado: switch (status) {
+        'asignada' => EstadoSolicitudMantenimiento.asignada,
+        'en_progreso' => EstadoSolicitudMantenimiento.en_proceso,
+        'completada' || 'cancelada' => EstadoSolicitudMantenimiento.resuelta,
+        _ => EstadoSolicitudMantenimiento.pendiente,
+      },
+      asignadoA: j['assigned_to']?.toString(),
+      createdAt: DateTime.tryParse(j['created_at']?.toString() ?? '') ?? DateTime.now(),
+      resueltaAt: DateTime.tryParse(j['completed_at']?.toString() ?? ''),
+    );
+  }
+
+  int _roomApiId(String numero) {
+    final room = ServicioHabitaciones.instancia.buscar(numero);
+    final id = int.tryParse(room?.id ?? '');
+    if (id == null) throw StateError('La habitación no tiene ID del servidor.');
+    return id;
+  }
+
+  bool _puedeRecepcion() => _usuario?.rol == RolUsuario.recepcion || _usuario?.rol == RolUsuario.admin;
   bool _esAdmin() => _usuario?.rol == RolUsuario.admin;
-  Future<Usuario> _tecnicoActivo(String id, RolUsuario rol) async {
-    final encontrados = (await ServicioAuth.instancia.usuarios()).where(
-      (u) => u.id == id && u.rol == rol && u.activo,
-    );
-    if (encontrados.isEmpty)
-      throw StateError(
-        'El usuario asignado no está activo o no tiene ese rol.',
-      );
-    return encontrados.first;
-  }
 
   Future<SolicitudLimpieza> solicitarLimpieza(
     String habitacionId, {
@@ -101,332 +118,65 @@ class ServicioTareas extends ChangeNotifier {
     OrigenLimpieza origen = OrigenLimpieza.recepcion,
     bool solicitudHuesped = false,
   }) async {
-    if (!_puedeRecepcion() && !(solicitudHuesped && _usuario == null))
-      throw StateError(
-        'Solo recepción o administración puede solicitar limpieza.',
-      );
-    final h = ServicioHabitaciones.instancia.buscar(habitacionId);
-    if (h == null ||
-        !(h.estado == EstadoHabitacion.ocupada ||
-            h.estado == EstadoHabitacion.ocupadaYLimpieza ||
-            h.estado == EstadoHabitacion.disponible ||
-            h.estado == EstadoHabitacion.limpieza)) {
-      throw StateError(
-        'La habitación no admite una solicitud de limpieza en su estado actual.',
-      );
+    if (!_puedeRecepcion()) throw StateError('Solo recepción o administración puede solicitar limpieza.');
+    final room = ServicioHabitaciones.instancia.buscar(habitacionId);
+    if (room == null ||
+        (room.estado == EstadoHabitacion.ocupadaYLimpieza &&
+            room.limpiezaSolicitada)) {
+      throw StateError('No se puede solicitar limpieza para esta habitación en su estado actual.');
     }
-    if (_limpieza.any(
-      (t) =>
-          t.habitacionId == habitacionId &&
-          t.estado != EstadoSolicitudLimpieza.lista,
-    ))
-      throw StateError('Ya hay una solicitud de limpieza activa.');
-    final ahora = DateTime.now();
-    final origenReal = solicitudHuesped
-        ? OrigenLimpieza.huesped
-        : _usuario?.rol == RolUsuario.admin
-        ? OrigenLimpieza.admin
-        : origen;
-    final t = SolicitudLimpieza(
-      id: 'lim-${ahora.microsecondsSinceEpoch}',
-      habitacionId: habitacionId,
-      origen: origenReal,
-      descripcion: descripcion?.trim().isEmpty == true
-          ? null
-          : descripcion?.trim(),
-      createdAt: ahora,
-    );
-    _limpieza.add(t);
-    ServicioHabitaciones.instancia.actualizarPorTarea(
-      habitacionId,
-      estado:
-          h.estado == EstadoHabitacion.disponible ||
-              h.estado == EstadoHabitacion.limpieza
-          ? EstadoHabitacion.limpieza
-          : EstadoHabitacion.ocupadaYLimpieza,
-      limpiezaSolicitada: true,
-      descripcionLimpieza: t.descripcion,
-    );
-    ServicioNotificaciones.instancia.notificarEvento(
-      id: 'tarea-limpieza-${t.id}',
-      titulo: 'Nueva solicitud de limpieza',
-      mensaje: 'Habitación $habitacionId requiere limpieza.',
-      severidad: SeveridadNotificacion.leve,
-    );
-    await _guardar();
-    notifyListeners();
-    return t;
+    final response = await ApiClient.instance.createTask({
+      'room_id': _roomApiId(habitacionId),
+      'type': 'limpieza',
+      'description': descripcion?.trim().isEmpty == true ? null : descripcion?.trim(),
+    });
+    await Future.wait([sincronizar(), ServicioHabitaciones.instancia.sincronizar()]);
+    return _aLimpieza(response);
   }
 
   Future<SolicitudLimpieza> solicitarLimpiezaHuesped(String habitacionId) =>
-      solicitarLimpieza(
-        habitacionId,
-        origen: OrigenLimpieza.huesped,
-        solicitudHuesped: true,
-      );
+      solicitarLimpieza(habitacionId, origen: OrigenLimpieza.huesped, solicitudHuesped: true);
 
-  Future<void> asignarLimpieza(String solicitudId, String usuarioId) async {
-    if (!_esAdmin())
-      throw StateError('Solo administración puede asignar tareas.');
-    final i = _limpieza.indexWhere(
-      (t) => t.id == solicitudId && t.estado != EstadoSolicitudLimpieza.lista,
-    );
-    if (i < 0) throw StateError('Solicitud de limpieza no encontrada.');
-    final tecnico = await _tecnicoActivo(usuarioId, RolUsuario.limpieza);
-    _limpieza[i] = _limpieza[i].copyWith(
-      estado: EstadoSolicitudLimpieza.asignada,
-      asignadoA: tecnico.id,
-    );
-    ServicioHabitaciones.instancia.actualizarPorTarea(
-      _limpieza[i].habitacionId,
-      asignadoLimpiezaId: tecnico.id,
-    );
-    ServicioNotificaciones.instancia.notificarEvento(
-      id: 'tarea-limpieza-asignada-$solicitudId',
-      titulo: 'Limpieza asignada',
-      mensaje: 'Se te asignó la habitación ${_limpieza[i].habitacionId}.',
-      severidad: SeveridadNotificacion.leve,
-    );
-    await _guardar();
-    notifyListeners();
+  Future<void> asignarLimpieza(String taskId, String userId) async => _asignar(taskId, userId);
+  Future<void> asignarMantenimiento(String taskId, String userId) async => _asignar(taskId, userId);
+
+  Future<void> _asignar(String taskId, String userId) async {
+    if (!_puedeRecepcion()) throw StateError('Solo recepción o administración puede asignar tareas.');
+    await ApiClient.instance.assignTask(taskId, userId);
+    await sincronizar();
   }
 
-  Future<void> aceptarLimpieza(String solicitudId) async {
-    final user = _usuario;
-    if (user?.rol != RolUsuario.limpieza)
-      throw StateError('Solo personal de limpieza puede aceptar tareas.');
-    final i = _limpieza.indexWhere(
-      (t) =>
-          t.id == solicitudId &&
-          (t.estado == EstadoSolicitudLimpieza.pendiente ||
-              (t.estado == EstadoSolicitudLimpieza.asignada &&
-                  t.asignadoA == user!.id)),
-    );
-    if (i < 0)
-      throw StateError(
-        'La solicitud ya fue tomada o asignada por administración.',
-      );
-    _limpieza[i] = _limpieza[i].copyWith(
-      estado: EstadoSolicitudLimpieza.aceptada,
-      asignadoA: user!.id,
-    );
-    ServicioHabitaciones.instancia.actualizarPorTarea(
-      _limpieza[i].habitacionId,
-      asignadoLimpiezaId: user.id,
-    );
-    await _guardar();
-    notifyListeners();
+  /// La API pasa directamente de pendiente/asignada a en_progreso; no existe
+  /// una operación separada de aceptación.
+  Future<void> aceptarLimpieza(String id) => iniciarLimpieza(id);
+  Future<void> aceptarMantenimiento(String id) => iniciarMantenimiento(id);
+
+  Future<void> iniciarLimpieza(String id) async => _actualizarEstado(id, 'en_progreso');
+  Future<void> finalizarLimpieza(String id) async {
+    await _actualizarEstado(id, 'completada');
+    await ServicioHabitaciones.instancia.sincronizar();
   }
 
-  Future<void> iniciarLimpieza(String solicitudId) async {
-    final i = _limpieza.indexWhere((t) => t.id == solicitudId);
-    if (i < 0 ||
-        _limpieza[i].asignadoA != _usuario?.id ||
-        _usuario?.rol != RolUsuario.limpieza)
-      throw StateError('Esta tarea no está asignada a tu usuario.');
-    if (_limpieza[i].estado != EstadoSolicitudLimpieza.asignada &&
-        _limpieza[i].estado != EstadoSolicitudLimpieza.aceptada)
-      throw StateError('La tarea no se puede iniciar.');
-    _limpieza[i] = _limpieza[i].copyWith(
-      estado: EstadoSolicitudLimpieza.en_proceso,
-    );
-    await _guardar();
-    notifyListeners();
+  Future<SolicitudMantenimiento> solicitarMantenimiento(String room, String descripcion) async {
+    if (!_puedeRecepcion()) throw StateError('Solo recepción o administración puede solicitar mantenimiento.');
+    if (descripcion.trim().isEmpty) throw ArgumentError('Describe el problema de mantenimiento.');
+    final response = await ApiClient.instance.createTask({
+      'room_id': _roomApiId(room),
+      'type': 'mantenimiento',
+      'description': descripcion.trim(),
+    });
+    await Future.wait([sincronizar(), ServicioHabitaciones.instancia.sincronizar()]);
+    return _aMantenimiento(response);
   }
 
-  Future<void> finalizarLimpieza(String solicitudId) async {
-    final i = _limpieza.indexWhere((t) => t.id == solicitudId);
-    if (i < 0 ||
-        _limpieza[i].asignadoA != _usuario?.id ||
-        _usuario?.rol != RolUsuario.limpieza)
-      throw StateError('Solo la persona asignada puede cerrar esta tarea.');
-    if (_limpieza[i].estado != EstadoSolicitudLimpieza.en_proceso)
-      throw StateError('Inicia la tarea antes de marcarla como lista.');
-    final h = ServicioHabitaciones.instancia.buscar(_limpieza[i].habitacionId);
-    final sigueOcupada =
-        h?.estado == EstadoHabitacion.ocupada ||
-        h?.estado == EstadoHabitacion.ocupadaYLimpieza;
-    if (h == null || (!sigueOcupada && h.estado != EstadoHabitacion.limpieza))
-      throw StateError(
-        'La habitación no se puede liberar desde su estado actual.',
-      );
-    if (sigueOcupada) {
-      final articuloLimpieza = articulosMock.firstWhere(
-        (a) => a.nombre.toLowerCase() == 'limpieza',
-      );
-      ServicioEstadias.instancia.asegurarEstadiaPredeterminada(h.numero);
-      ServicioEstadias.instancia.agregarCargos(h.numero, [
-        (articulo: articuloLimpieza, cantidad: 1),
-      ]);
-      ServicioConsumos.instancia.registrar(
-        cliente: h.huesped ?? 'Huésped',
-        habitacion: h.numero,
-        lineas: [
-          LineaConsumo(
-            articuloLimpieza.nombre,
-            articuloLimpieza.precio,
-            1,
-            TipoVenta.servicios,
-          ),
-        ],
-      );
-    }
-    _limpieza[i] = _limpieza[i].copyWith(
-      estado: EstadoSolicitudLimpieza.lista,
-      cerradaAt: DateTime.now(),
-    );
-    ServicioHabitaciones.instancia.actualizarPorTarea(
-        h.numero,
-      estado: sigueOcupada
-          ? EstadoHabitacion.ocupada
-          : EstadoHabitacion.disponible,
-      limpiezaSolicitada: false,
-      limpiarAsignacionLimpieza: true,
-      limpiarDescripcion: true,
-    );
-    await _guardar();
-    notifyListeners();
+  Future<void> iniciarMantenimiento(String id) async => _actualizarEstado(id, 'en_progreso');
+  Future<void> finalizarMantenimiento(String id) async {
+    await _actualizarEstado(id, 'completada');
+    await ServicioHabitaciones.instancia.sincronizar();
   }
 
-  Future<SolicitudMantenimiento> solicitarMantenimiento(
-    String habitacionId,
-    String descripcion,
-  ) async {
-    if (!_puedeRecepcion())
-      throw StateError(
-        'Solo recepción o administración puede solicitar mantenimiento.',
-      );
-    if (descripcion.trim().isEmpty)
-      throw ArgumentError('Describe el problema de mantenimiento.');
-    final h = ServicioHabitaciones.instancia.buscar(habitacionId);
-    if (h == null ||
-        h.estado == EstadoHabitacion.ocupada ||
-        h.estado == EstadoHabitacion.ocupadaYLimpieza ||
-        h.estado == EstadoHabitacion.reservada ||
-        h.estado == EstadoHabitacion.limpieza)
-      throw StateError(
-        'No se puede enviar a mantenimiento en el estado actual.',
-      );
-    if (_mantenimiento.any(
-      (t) =>
-          t.habitacionId == habitacionId &&
-          t.estado != EstadoSolicitudMantenimiento.resuelta,
-    ))
-      throw StateError('Ya hay una solicitud de mantenimiento activa.');
-    final ahora = DateTime.now();
-    final t = SolicitudMantenimiento(
-      id: 'man-${ahora.microsecondsSinceEpoch}',
-      habitacionId: habitacionId,
-      descripcion: descripcion.trim(),
-      createdAt: ahora,
-    );
-    _mantenimiento.add(t);
-    ServicioHabitaciones.instancia.actualizarPorTarea(
-      habitacionId,
-      estado: EstadoHabitacion.mantenimiento,
-    );
-    ServicioNotificaciones.instancia.notificarEvento(
-      id: 'tarea-mantenimiento-${t.id}',
-      titulo: 'Nueva solicitud de mantenimiento',
-      mensaje: 'Habitación $habitacionId: ${t.descripcion}',
-      severidad: SeveridadNotificacion.urgente,
-    );
-    await _guardar();
-    notifyListeners();
-    return t;
-  }
-
-  Future<void> asignarMantenimiento(
-    String solicitudId,
-    String usuarioId,
-  ) async {
-    if (!_esAdmin())
-      throw StateError('Solo administración puede asignar tareas.');
-    final i = _mantenimiento.indexWhere(
-      (t) =>
-          t.id == solicitudId &&
-          t.estado != EstadoSolicitudMantenimiento.resuelta,
-    );
-    if (i < 0) throw StateError('Solicitud de mantenimiento no encontrada.');
-    final tecnico = await _tecnicoActivo(usuarioId, RolUsuario.mantenimiento);
-    _mantenimiento[i] = _mantenimiento[i].copyWith(
-      estado: EstadoSolicitudMantenimiento.asignada,
-      asignadoA: tecnico.id,
-    );
-    ServicioHabitaciones.instancia.actualizarPorTarea(
-      _mantenimiento[i].habitacionId,
-      asignadoMantenimientoId: tecnico.id,
-    );
-    ServicioNotificaciones.instancia.notificarEvento(
-      id: 'tarea-mantenimiento-asignada-$solicitudId',
-      titulo: 'Mantenimiento asignado',
-      mensaje: 'Se te asignó la habitación ${_mantenimiento[i].habitacionId}.',
-      severidad: SeveridadNotificacion.urgente,
-    );
-    await _guardar();
-    notifyListeners();
-  }
-
-  Future<void> aceptarMantenimiento(String solicitudId) async {
-    final user = _usuario;
-    if (user?.rol != RolUsuario.mantenimiento)
-      throw StateError('Solo mantenimiento puede aceptar tareas.');
-    final i = _mantenimiento.indexWhere(
-      (t) =>
-          t.id == solicitudId &&
-          (t.estado == EstadoSolicitudMantenimiento.pendiente ||
-              (t.estado == EstadoSolicitudMantenimiento.asignada &&
-                  t.asignadoA == user!.id)),
-    );
-    if (i < 0) throw StateError('La solicitud ya fue tomada o asignada.');
-    _mantenimiento[i] = _mantenimiento[i].copyWith(
-      estado: EstadoSolicitudMantenimiento.aceptada,
-      asignadoA: user!.id,
-    );
-    ServicioHabitaciones.instancia.actualizarPorTarea(
-      _mantenimiento[i].habitacionId,
-      asignadoMantenimientoId: user.id,
-    );
-    await _guardar();
-    notifyListeners();
-  }
-
-  Future<void> iniciarMantenimiento(String solicitudId) async {
-    final i = _mantenimiento.indexWhere((t) => t.id == solicitudId);
-    if (i < 0 ||
-        _mantenimiento[i].asignadoA != _usuario?.id ||
-        _usuario?.rol != RolUsuario.mantenimiento)
-      throw StateError('Esta tarea no está asignada a tu usuario.');
-    _mantenimiento[i] = _mantenimiento[i].copyWith(
-      estado: EstadoSolicitudMantenimiento.en_proceso,
-    );
-    await _guardar();
-    notifyListeners();
-  }
-
-  Future<void> finalizarMantenimiento(String solicitudId) async {
-    final i = _mantenimiento.indexWhere((t) => t.id == solicitudId);
-    if (i < 0 ||
-        _mantenimiento[i].asignadoA != _usuario?.id ||
-        _usuario?.rol != RolUsuario.mantenimiento)
-      throw StateError('Solo la persona asignada puede resolver esta tarea.');
-    if (_mantenimiento[i].estado != EstadoSolicitudMantenimiento.en_proceso)
-      throw StateError('Inicia la tarea antes de marcarla como resuelta.');
-    final h = ServicioHabitaciones.instancia.buscar(
-      _mantenimiento[i].habitacionId,
-    );
-    if (h?.estado != EstadoHabitacion.mantenimiento)
-      throw StateError('La habitación no está en mantenimiento.');
-    _mantenimiento[i] = _mantenimiento[i].copyWith(
-      estado: EstadoSolicitudMantenimiento.resuelta,
-      resueltaAt: DateTime.now(),
-    );
-    ServicioHabitaciones.instancia.actualizarPorTarea(
-      h!.numero,
-      estado: EstadoHabitacion.disponible,
-      limpiarAsignacionMantenimiento: true,
-    );
-    await _guardar();
-    notifyListeners();
+  Future<void> _actualizarEstado(String id, String status) async {
+    await ApiClient.instance.updateTaskStatus(id, status);
+    await sincronizar();
   }
 }

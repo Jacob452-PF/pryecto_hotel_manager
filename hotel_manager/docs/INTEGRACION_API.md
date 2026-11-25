@@ -29,14 +29,14 @@ con una cuenta de la app.
 | Inicio y resumen / `pantalla_inicio.dart` | Estado local de habitaciones | `GET /rooms` (summary + rooms), `GET /reports/dashboard` (admin) | Recepción; dashboard admin | No sincronizado. El resumen oficial debe venir del backend. |
 | Habitaciones / inicio, detalle, tareas | `GET /rooms` después del login; fixtures quitados de la lista activa | `GET /rooms`, `PATCH /rooms/{id}/status`; admin `POST /rooms`, `PUT /rooms/{id}` | Todos leen; admin escribe catálogo; los roles operativos actualizan según autorización | Lectura conectada; respuesta esperada `{summary, rooms}`. El modelo acepta nombres en inglés y español, pero hay que validar el JSON real. Los cambios de estado siguen pendientes de endpoints de estadía/reserva/tarea. |
 | Huéspedes / alta, agenda, reserva | API con paginación; el JSON local ya no se carga ni mezcla | `GET /guests?q=&per_page=`, `POST /guests`, `GET/PUT/PATCH/DELETE /guests/{id}` | Admin y recepcionista | Lectura y creación conectadas. El POST usa `name`, `document`, `phone` y `email`; falta conectar edición/archivo y validar respuesta real. Los datos previos en storage local se conservan sin mostrarse ni migrarse. |
-| Reservas / agenda y nueva reserva | Servicio local y `SharedPreferences` | `GET/POST /reservations`, `GET /reservations/{id}`, `POST /reservations/{id}/cancel`, `/check-in` | Recepcionista | No sincronizado. Falta mapear respuestas/estados y mover validación de disponibilidad al servidor. |
-| Estadías / nueva y finalizar estadía | Servicio local, tarifas mock, factura local | `GET/POST /stays`, `GET /stays/{id}`, `POST /stays/{id}/extend`, `/charge`, `/checkout` | Recepcionista | No sincronizado. No se debe tratar la factura local ni sus cálculos como persistencia financiera oficial. |
+| Reservas / agenda y nueva reserva | API para reservas y agenda; caché local anterior | `GET/POST /reservations`, `POST /reservations/{id}/cancel`, `/check-in`, `/payments`; `GET /rates` | Recepcionista | Alta, consulta, cancelación, abonos y check-in conectados. La app manda tipo/camas, huésped, tarifa y fechas; el backend asigna habitación 24 horas antes. El check-in cobra el saldo de la reserva y requiere turno abierto. |
+| Estadías / nueva y finalizar estadía | Check-in desde reserva y cierre conectados; ingreso directo aún local | `GET/POST /stays`, `GET /stays/{id}`, `POST /stays/{id}/extend`, `/charge`, `/checkout` | Recepcionista | El check-in de una reserva crea la estadía y venta en servidor. El cierre manda el método de pago y liquida cargos pendientes del API. El flujo “Nuevo huésped” de ingreso inmediato aún no está conectado. |
 | Tarifas / nueva reserva y check-in | `tarifas_ejemplo.dart` | `GET /rates`; administración según contrato | Recepcionista consulta; admin administra | No sincronizado. La app calcula precios localmente; debe usar importes y reglas del servidor. |
 | Tareas / limpieza y mantenimiento | `SharedPreferences`, cambios locales de habitaciones | `GET/POST /tasks`, `PATCH /tasks/{id}/assign`, `/status` | Admin asigna; limpieza/mantenimiento actualizan las asignadas | No sincronizado. El control actual de roles no reemplaza la autorización API. |
 | Productos y categorías / tienda | Catálogos mock/locales | `GET /products`, `GET /categories` | Recepción consulta; admin administra | Cliente tiene métodos GET, pero la UI no los consume. |
 | Tienda y ventas / carrito | Catálogo local e historial en memoria | `POST /sales`, `GET /sales`, `GET /sales/{id}`, `POST /sales/{id}/cancel` | Recepcionista; admin consulta | Métodos parciales ya existen para ventas; UI no los usa. No reintentar POST automáticamente. |
 | Inventario / inventario | Productos mock y estado en memoria | `/inventory/movements`; `/purchases` | Admin | No conectado. El contrato aportado no detalla verbos, campos ni respuestas para productos, compras o ajustes. |
-| Caja / apertura y cierre | `SharedPreferences` y cálculos locales | `GET /shifts/current`, `POST /shifts/open`, `/close`; admin `GET /shifts` y detalle | Recepcionista turno propio; admin consulta | Cliente tiene algunas operaciones, UI/servicio aún local. Falta usar resumen oficial de cierre. |
+| Caja / apertura y cierre | Turno abierto/cerrado en API y caché local auxiliar | `GET /shifts/current`, `POST /shifts/open`, `/close`; admin `GET /shifts` y detalle | Recepcionista turno propio; admin consulta | Apertura y cierre conectados. La interfaz conserva el desglose local; los totales oficiales del turno deben verificarse con una sesión autenticada. |
 | Gastos / gastos de turno | Registro local o sin operación API en UI | `GET/POST /expenses` | Recepcionista; admin consulta | Cliente tiene métodos parciales; UI no los consume. |
 | Historiales, facturas y cobros | Datos locales y mocks | Ventas, gastos, turnos; no hay libro de facturas/pagos parciales | Admin reportes; recepción su operación | No sincronizado. El contrato dice que no existe endpoint independiente de facturas ni pagos parciales. |
 | Reportes financieros | Cálculos y mocks locales | `/reports/dashboard` y endpoints financieros disponibles | Admin | No conectado. No mostrar cifras locales como oficiales. |
@@ -55,6 +55,10 @@ con una cuenta de la app.
 - Registrar un huésped busca primero por documento en la API y lo crea en el
   servidor si no existe. No se escriben datos nuevos de huéspedes en storage
   local.
+- Las reservas se crean sin habitación asignada y permiten registrar abonos;
+  el check-in cobra el saldo pendiente en el servidor.
+- La apertura/cierre de caja y el cierre de estadías existentes envían cambios
+  al API.
 
 Estos cambios conectan la lectura de habitaciones y lectura/creación de
 huéspedes. **No declaran sincronizados** módulos cuyas operaciones siguen en

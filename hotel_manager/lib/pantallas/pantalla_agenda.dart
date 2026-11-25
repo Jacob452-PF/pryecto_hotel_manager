@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../modelos/reserva.dart';
-import '../modelos/habitacion.dart';
-import '../modelos/tipo_cuarto.dart';
+import '../modelos/abono.dart';
 import '../servicios/servicio_huespedes.dart';
 import '../servicios/servicio_habitaciones.dart';
 import '../servicios/servicio_reservas.dart';
 import '../servicios/servicio_estadias.dart';
 import '../utilidades/formato.dart';
+import '../widgets/dialogo_cobro.dart';
+import 'pantalla_nueva_reserva.dart';
 
 class PantallaAgenda extends StatefulWidget {
   const PantallaAgenda({super.key});
@@ -62,73 +63,42 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
   }
 
   Future<void> _crearEstadia(Reserva reserva) async {
-    final habitaciones = ServicioHabitaciones.instancia.habitaciones
-        .where(
-          (h) =>
-              h.estado == EstadoHabitacion.disponible &&
-              h.tipoCuarto == reserva.tipoCuarto &&
-              (reserva.tipoCuarto != TipoCuarto.familiar ||
-                  h.camas == reserva.camas),
-        )
-        .toList();
-    if (habitaciones.isEmpty) {
+    final numeroHabitacion = reserva.habitacionId;
+    if (numeroHabitacion == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No hay habitaciones disponibles que coincidan con la reserva.'),
+          content: Text('La habitación se asignará automáticamente un día antes de la reserva.'),
         ),
       );
       return;
     }
-    final habitacion = await showDialog<Habitacion>(
+    final metodoPago = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Crear estadía'),
-        content: SizedBox(
-          width: 420,
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              Text('Selecciona una habitación para ${_nombreHuesped(reserva.huespedId)}.'),
-              const SizedBox(height: 8),
-              for (final h in habitaciones)
-                ListTile(
-                  leading: Icon(h.tipoCuarto.icono),
-                  title: Text('Habitación ${h.numero}'),
-                  subtitle: Text('Piso ${h.piso} · ${h.camas} ${h.camas == 1 ? 'cama' : 'camas'}'),
-                  onTap: () => Navigator.pop(context, h),
-                ),
-            ],
-          ),
-        ),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))],
+      builder: (context) => SimpleDialog(
+        title: const Text('Método de pago'),
+        children: [
+          for (final metodo in const ['efectivo', 'tarjeta', 'transferencia'])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, metodo),
+              child: Text(metodo[0].toUpperCase() + metodo.substring(1)),
+            ),
+        ],
       ),
     );
-    if (habitacion == null || !mounted) return;
+    if (metodoPago == null || !mounted) return;
 
     try {
-      final habitacionActual = ServicioHabitaciones.instancia.buscar(
-        habitacion.numero,
+      await ServicioReservas.instancia.registrarCheckIn(
+        reserva.id,
+        metodoPago: metodoPago,
       );
-      if (habitacionActual?.estado != EstadoHabitacion.disponible) {
-        throw StateError('La habitación seleccionada ya no está disponible.');
-      }
-      // Cambia el estado de la reserva primero para evitar convertir dos veces.
-      await ServicioReservas.instancia.marcarConvertida(reserva.id);
-      ServicioHabitaciones.instancia.ocupar(
-        habitacion.numero,
-        _nombreHuesped(reserva.huespedId),
-      );
-      ServicioEstadias.instancia.iniciarDesdeReserva(
-        habitacion: habitacion.numero,
-        entrada: reserva.inicio,
-        salida: reserva.fin,
-        precio: reserva.total,
-        huespedId: reserva.huespedId,
-      );
+      await ServicioHabitaciones.instancia.sincronizar();
+      final habitacion = ServicioHabitaciones.instancia.buscar(numeroHabitacion);
+      await ServicioEstadias.instancia.sincronizar();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Estadía creada en la habitación ${habitacion.numero}.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Entrada y cobro registrados en el servidor.'),
+        ));
       }
     } on Object catch (e) {
       if (mounted) {
@@ -136,6 +106,38 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
           SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))),
         );
       }
+    }
+  }
+
+  Future<void> _abonarReserva(Reserva reserva) async {
+    final pago = await mostrarDialogoCobro(
+      context,
+      saldo: reserva.saldoPendiente,
+      permitirAbono: true,
+    );
+    if (pago == null || !mounted) return;
+    try {
+      await ServicioReservas.instancia.registrarAbono(
+        reserva.id,
+        monto: pago.monto,
+        metodo: pago.metodo,
+      );
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))),
+        );
+      }
+    }
+  }
+
+  Future<void> _abrirNuevaReserva() async {
+    final creada = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const PantallaNuevaReserva()),
+    );
+    if (creada == true && mounted) {
+      await ServicioReservas.instancia.sincronizar();
     }
   }
 
@@ -155,7 +157,14 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
       final inicioCuadricula = primerDia.subtract(Duration(days: desfase));
       final colores = Theme.of(context).colorScheme;
 
-      return ListView(
+      return RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            ServicioReservas.instancia.sincronizar(),
+            ServicioHabitaciones.instancia.sincronizar(),
+          ]);
+        },
+        child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           Row(
@@ -313,7 +322,7 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          '${reserva.tarifa.etiqueta} · ${reserva.cantidad} ${reserva.tarifa.unidad(reserva.cantidad)} · ${TimeOfDay.fromDateTime(reserva.fin).format(context)} · Total estimado: ${formatearDinero(reserva.total)}',
+                          '${reserva.tarifaNombre ?? reserva.tarifa.etiqueta} × ${reserva.cantidad} · Habitación: ${reserva.habitacionId ?? 'pendiente de asignación'} · Salida: ${TimeOfDay.fromDateTime(reserva.fin).format(context)} · Total: ${formatearDinero(reserva.total)} · Abonado: ${formatearDinero(reserva.montoAbonado)} · Saldo: ${formatearDinero(reserva.saldoPendiente)}',
                         ),
                       ),
                     ),
@@ -321,17 +330,35 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                       child: Align(
                         alignment: Alignment.centerRight,
-                        child: FilledButton.icon(
-                          onPressed: () => _crearEstadia(reserva),
-                          icon: const Icon(Icons.login),
-                          label: const Text('Crear estadía'),
+                        child: Wrap(
+                          spacing: 8,
+                          children: [
+                            if (reserva.saldoPendiente > .001)
+                              OutlinedButton.icon(
+                                onPressed: () => _abonarReserva(reserva),
+                                icon: const Icon(Icons.payments_outlined),
+                                label: const Text('Registrar abono'),
+                              ),
+                            FilledButton.icon(
+                              onPressed: () => _crearEstadia(reserva),
+                              icon: const Icon(Icons.login),
+                              label: const Text('Crear estadía'),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: _abrirNuevaReserva,
+            icon: const Icon(Icons.add),
+            label: const Text('Crear reserva'),
+          ),
         ],
+        ),
       );
     },
   );

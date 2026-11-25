@@ -38,11 +38,12 @@ class Habitacion {
   final String numero;
   final int piso;
 
-  /// Matrimonial, individual o familiar.
+  /// Común (una cama) o especial (matrimonial o familiar).
   final TipoCuarto tipoCuarto;
   final EstadoHabitacion estado;
 
-  /// Cantidad de camas. Las familiares tienen 2, 3 o 4; las demás, 1.
+  /// Cantidad de camas. Las comunes tienen una; las especiales pueden tener
+  /// una (matrimonial) o más (familiar).
   final int camas;
 
   /// Nombre del huésped que la ocupa (solo si el estado es ocupada).
@@ -148,19 +149,7 @@ class Habitacion {
     final tipoNombre = rawTipo is Map
         ? (rawTipo['name'] ?? rawTipo['type'] ?? rawTipo['nombre'])
         : rawTipo;
-    final tipoTexto = tipoNombre.toString().toLowerCase();
-    final tipo = switch (tipoTexto) {
-      'matrimonial' ||
-      'double' ||
-      'doubled' ||
-      'queen' ||
-      'king' => TipoCuarto.matrimonial,
-      'familiar' || 'family' => TipoCuarto.familiar,
-      'individual' || 'single' || 'twin' => TipoCuarto.individual,
-      _ => throw FormatException(
-        'Tipo de habitación no reconocido: $tipoTexto',
-      ),
-    };
+    final tipo = TipoCuarto.desdeNombre(tipoNombre.toString());
 
     final estadoTexto = rawEstado.toString().toLowerCase();
     final estado = switch (estadoTexto) {
@@ -177,6 +166,11 @@ class Habitacion {
     };
 
     final rawStay = json['active_stay'] ?? json['activeStay'];
+    final tasks = json['tasks'] is List
+        ? (json['tasks'] as List).whereType<Map>().map(Map<String, dynamic>.from).toList()
+        : const <Map<String, dynamic>>[];
+    final cleaningTask = tasks.where((task) => task['type'] == 'limpieza').firstOrNull;
+    final maintenanceTask = tasks.where((task) => task['type'] == 'mantenimiento').firstOrNull;
     final stayGuest = rawStay is Map ? rawStay['guest'] : null;
     final rawGuest = json['guest'] ?? stayGuest ?? json['huesped'];
     final guestName = rawGuest is Map
@@ -195,13 +189,13 @@ class Habitacion {
       limpiezaSolicitada:
           json['cleaning_requested'] as bool? ??
           json['limpiezaSolicitada'] as bool? ??
-          estado == EstadoHabitacion.ocupadaYLimpieza,
+          cleaningTask != null || estado == EstadoHabitacion.ocupadaYLimpieza,
       id: rawId.toString(),
       asignadoLimpiezaId:
-          (json['assigned_cleaner_id'] ?? json['asignadoLimpiezaId'])
+          (json['assigned_cleaner_id'] ?? json['asignadoLimpiezaId'] ?? cleaningTask?['assigned_to'])
               ?.toString(),
       asignadoMantenimientoId:
-          (json['assigned_maintenance_id'] ?? json['asignadoMantenimientoId'])
+          (json['assigned_maintenance_id'] ?? json['asignadoMantenimientoId'] ?? maintenanceTask?['assigned_to'])
               ?.toString(),
       reservaActivaId:
           (json['active_reservation_id'] ?? json['reservaActivaId'])
@@ -215,10 +209,7 @@ class Habitacion {
   factory Habitacion.fromJson(Map<String, dynamic> j) => Habitacion(
     j['numero'] as String,
     j['piso'] as int,
-    TipoCuarto.values.firstWhere(
-      (t) => t.name == j['tipoCuarto'],
-      orElse: () => TipoCuarto.individual,
-    ),
+    TipoCuarto.desdeNombre(j['tipoCuarto'] as String? ?? 'comun'),
     EstadoHabitacion.desdeJson(j['estado'] as String? ?? 'disponible'),
     camas: j['camas'] as int? ?? 1,
     huesped: j['huesped'] as String?,

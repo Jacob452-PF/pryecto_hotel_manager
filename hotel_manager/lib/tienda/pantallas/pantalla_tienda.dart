@@ -35,6 +35,7 @@ class _EstadoPantallaTienda extends State<PantallaTienda> {
     super.initState();
     _habitaciones.addListener(_alCambiarHabitaciones);
     _inventario.addListener(_alCambiarInventario);
+    _inventario.sincronizar();
   }
 
   /// Check-in / check-out: la lista de "¿A quién se le carga?" se actualiza sola.
@@ -136,6 +137,24 @@ class _EstadoPantallaTienda extends State<PantallaTienda> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
                 children: [
+                  if (_inventario.error != null)
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.cloud_off_outlined),
+                        title: const Text('No se pudo cargar el catálogo'),
+                        subtitle: Text(_inventario.error!),
+                        trailing: IconButton(
+                          tooltip: 'Reintentar',
+                          onPressed: _inventario.sincronizar,
+                          icon: const Icon(Icons.refresh),
+                        ),
+                      ),
+                    ),
+                  if (_inventario.cargando && _inventario.productos.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(28),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                   _Panel(
                     child: Column(
                       children: [
@@ -179,7 +198,11 @@ class _EstadoPantallaTienda extends State<PantallaTienda> {
                             padding: EdgeInsets.all(24),
                             child: Center(
                               child: Text(
-                                'No hay artículos que coincidan con tu búsqueda.',
+                                _inventario.error != null
+                                    ? 'El catálogo remoto no está disponible.'
+                                    : _inventario.cargando
+                                    ? 'Cargando catálogo…'
+                                    : 'No hay productos disponibles en el catálogo del servidor.',
                                 textAlign: TextAlign.center,
                               ),
                             ),

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../servicios/servicio_inventario.dart';
+import '../../servicios/servicio_sesion.dart';
+import '../../modelos/usuario.dart';
 import '../modelos/producto_inventario.dart';
 import '../widgets/chip_categoria_inventario.dart';
 import '../widgets/fila_producto_inventario.dart';
-import '../widgets/gastos_inventario.dart';
 import '../widgets/hoja_agregar_producto.dart';
 import '../widgets/hoja_ajustar_stock.dart';
 import '../widgets/resumen_inventario.dart';
@@ -26,6 +27,7 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
   void initState() {
     super.initState();
     _servicio.addListener(_refrescar);
+    _servicio.sincronizar();
   }
 
   void _refrescar() {
@@ -39,30 +41,27 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
     super.dispose();
   }
 
-  void _eliminar(ProductoInventario producto) {
-    _servicio.eliminar(producto.id);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('${producto.nombre} eliminado'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF0A1020),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          action: SnackBarAction(
-            label: 'Deshacer',
-            textColor: const Color(0xFF5B9BFF),
-            onPressed: () => _servicio.restaurar(producto.id),
-          ),
-        ),
-      );
+  Future<void> _eliminar(ProductoInventario producto) async {
+    try {
+      await _servicio.desactivarRemoto(producto.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${producto.nombre} desactivado')),
+        );
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final productos = _servicio.productos;
+    final puedeEditar = ServicioSesion.instancia.usuario?.rol == RolUsuario.admin;
     final texto = _busqueda.text.trim().toLowerCase();
     final visibles = productos.where((p) {
       if (_categoria != CategoriaInventario.todos &&
@@ -73,7 +72,6 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
     }).toList();
 
     final stockBajo = productos.where((p) => p.stockBajo).length;
-    final eliminados = _servicio.eliminados;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -101,13 +99,10 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                       ),
                     ),
                   ),
-                  FilledButton.icon(
+                  if (puedeEditar) FilledButton.icon(
                     onPressed: () => mostrarAgregarProducto(context),
                     icon: const Icon(Icons.add_circle_outline, size: 22),
-                    label: const Text(
-                      'Agregar producto',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                    label: const Text('Agregar producto', style: TextStyle(fontWeight: FontWeight.bold)),
                     style: FilledButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -172,9 +167,26 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                     ultimaActualizacion: _servicio.ultimaActualizacion,
                   ),
                   const SizedBox(height: 10),
-                  // Cuánto gastó el hotel en comprar productos / reponer stock
-                  const GastosInventario(),
-                  const SizedBox(height: 10),
+                  if (_servicio.error != null)
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.cloud_off_outlined),
+                        title: const Text('No se pudo cargar el inventario'),
+                        subtitle: Text(_servicio.error!),
+                        trailing: IconButton(
+                          tooltip: 'Reintentar',
+                          onPressed: _servicio.sincronizar,
+                          icon: const Icon(Icons.refresh),
+                        ),
+                      ),
+                    ),
+                  if (_servicio.cargando && productos.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
                   // Listado
                   _Panel(
                     child: Column(
@@ -189,12 +201,12 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        if (visibles.isEmpty)
+                        if (visibles.isEmpty && !_servicio.cargando && _servicio.error == null)
                           const Padding(
                             padding: EdgeInsets.all(24),
                             child: Center(
                               child: Text(
-                                'No hay productos que coincidan.',
+                                'No hay productos en el catálogo del servidor.',
                                 textAlign: TextAlign.center,
                               ),
                             ),
@@ -204,32 +216,8 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                             producto: p,
                             onAjustar: () => mostrarAjustarStock(context, p),
                             onEliminar: () => _eliminar(p),
+                            puedeEditar: puedeEditar,
                           ),
-                        if (eliminados.isNotEmpty) ...[
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              const Icon(Icons.timer_outlined, size: 24),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Productos eliminados (${eliminados.length})',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 18),
-                          for (final p in eliminados)
-                            _FilaEliminada(
-                              producto: p,
-                              onRestaurar: () => _servicio.restaurar(p.id),
-                            ),
-                        ],
                       ],
                     ),
                   ),
@@ -238,66 +226,6 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _FilaEliminada extends StatelessWidget {
-  final ProductoInventario producto;
-  final VoidCallback onRestaurar;
-
-  const _FilaEliminada({required this.producto, required this.onRestaurar});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          MiniaturaProducto(
-            imagen: producto.imagen,
-            imagenBytes: producto.imagenBytes,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  producto.nombre,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                Text(
-                  '\$${producto.precio.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          OutlinedButton.icon(
-            onPressed: onRestaurar,
-            icon: const Icon(Icons.sync, size: 18),
-            label: const Text('Restaurar'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF1E56A8),
-              side: const BorderSide(color: Color(0xFF3B7DE0), width: 1.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

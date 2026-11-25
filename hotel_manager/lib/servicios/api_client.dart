@@ -34,14 +34,18 @@ class Product {
   final int stock;
   final int minStock;
   final String? category;
+  final int? categoryId;
+  final bool active;
 
   Product.fromJson(Map<String, dynamic> j)
-    : id = j['id'] as int,
-      name = j['name'] as String,
+    : id = int.parse(j['id'].toString()),
+      name = j['name']?.toString() ?? '',
       price = toDouble(j['price']),
-      stock = j['stock'] as int,
-      minStock = (j['min_stock'] ?? 0) as int,
-      category = (j['category'] as Map?)?['name'] as String?;
+      stock = int.tryParse(j['stock'].toString()) ?? 0,
+      minStock = int.tryParse((j['min_stock'] ?? 0).toString()) ?? 0,
+      category = (j['category'] as Map?)?['name']?.toString(),
+      categoryId = int.tryParse((j['category_id'] ?? '').toString()),
+      active = j['active'] as bool? ?? true;
 }
 
 class ApiClient {
@@ -284,6 +288,22 @@ class ApiClient {
   Future<List<dynamic>> categories() async =>
       _list(await _request('GET', '/categories'));
 
+  Future<Map<String, dynamic>> createCategory(String name) async =>
+      _map(await _request('POST', '/categories', body: {'name': name}));
+
+  Future<Map<String, dynamic>> updateCategory(
+    int id,
+    String name, {
+    bool partial = false,
+  }) async => _map(await _request(
+    partial ? 'PATCH' : 'PUT',
+    '/categories/$id',
+    body: {'name': name},
+  ));
+
+  Future<void> deleteCategory(int id) async =>
+      _request('DELETE', '/categories/$id');
+
   Future<List<Product>> products({String? search}) async {
     final qs = (search != null && search.isNotEmpty)
         ? '?q=${Uri.encodeQueryComponent(search)}'
@@ -291,6 +311,170 @@ class ApiClient {
     final list = _list(await _request('GET', '/products$qs'));
     return list.map((e) => Product.fromJson(_map(e))).toList();
   }
+
+  Future<Map<String, dynamic>> createProduct(Map<String, dynamic> product) async =>
+      _map(await _request('POST', '/products', body: product));
+
+  Future<Map<String, dynamic>> updateProduct(
+    int id,
+    Map<String, dynamic> product, {
+    bool partial = false,
+  }) async => _map(await _request(
+    partial ? 'PATCH' : 'PUT',
+    '/products/$id',
+    body: product,
+  ));
+
+  Future<void> deleteProduct(int id) async => _request('DELETE', '/products/$id');
+
+  Future<Map<String, dynamic>> createPurchase(
+    List<Map<String, dynamic>> items, {
+    int? supplierId,
+  }) async => _map(await _request('POST', '/purchases', body: {
+    if (supplierId != null) 'supplier_id': supplierId,
+    'items': items,
+  }));
+
+  Future<dynamic> purchases({int page = 1}) =>
+      _request('GET', '/purchases?page=$page');
+
+  Future<dynamic> inventoryMovements({int page = 1}) =>
+      _request('GET', '/inventory/movements?page=$page');
+
+  Future<Map<String, dynamic>> dashboardReport({int days = 7}) async =>
+      _map(await _request('GET', '/reports/dashboard?days=$days'));
+
+  Future<dynamic> users({int page = 1}) =>
+      _request('GET', '/users?page=$page');
+
+  Future<Map<String, dynamic>> createUser(Map<String, dynamic> user) async =>
+      _map(await _request('POST', '/users', body: user));
+
+  Future<Map<String, dynamic>> updateUser(
+    int id,
+    Map<String, dynamic> user,
+  ) async => _map(await _request('PUT', '/users/$id', body: user));
+
+  Future<dynamic> shifts({int page = 1}) =>
+      _request('GET', '/shifts?page=$page');
+
+  Future<Map<String, dynamic>> shift(int id) async =>
+      _map(await _request('GET', '/shifts/$id'));
+
+  Future<dynamic> rates() => _request('GET', '/rates');
+
+  Future<dynamic> reservations({int page = 1}) =>
+      _request('GET', '/reservations?page=$page&per_page=100');
+
+  Future<Map<String, dynamic>> createReservation(
+    Map<String, dynamic> reservation,
+  ) async => _map(await _request('POST', '/reservations', body: reservation));
+
+  Future<Map<String, dynamic>> cancelReservation(String id) async => _map(
+    await _request('POST', '/reservations/${Uri.encodeComponent(id)}/cancel'),
+  );
+
+  Future<Map<String, dynamic>> payReservation(
+    String id, {
+    required double amount,
+    required String paymentMethod,
+  }) async => _map(
+    await _request(
+      'POST',
+      '/reservations/${Uri.encodeComponent(id)}/payments',
+      body: {'amount': amount, 'payment_method': paymentMethod},
+    ),
+  );
+
+  Future<Map<String, dynamic>> checkInReservation(
+    String id, {
+    required String paymentMethod,
+    List<Map<String, int>> items = const [],
+  }) async => _map(
+    await _request(
+      'POST',
+      '/reservations/${Uri.encodeComponent(id)}/check-in',
+      body: {
+        'payment_method': paymentMethod,
+        if (items.isNotEmpty) 'items': items,
+      },
+    ),
+  );
+
+  Future<Map<String, dynamic>> createStay(
+    Map<String, dynamic> stay,
+  ) async => _map(await _request('POST', '/stays', body: stay));
+
+  Future<dynamic> stays({int page = 1}) =>
+      _request('GET', '/stays?page=$page');
+
+  Future<Map<String, dynamic>> chargeStay(
+    String id, {
+    double? amount,
+    String? description,
+    List<Map<String, int>> items = const [],
+    required bool payNow,
+    String? paymentMethod,
+  }) async => _map(
+    await _request(
+      'POST',
+      '/stays/${Uri.encodeComponent(id)}/charge',
+      body: {
+        if (amount != null) 'amount': amount,
+        if (description != null) 'description': description,
+        if (items.isNotEmpty) 'items': items,
+        'pay_now': payNow,
+        if (paymentMethod != null) 'payment_method': paymentMethod,
+      },
+    ),
+  );
+
+  Future<Map<String, dynamic>> checkoutStay(
+    String id, {
+    String? paymentMethod,
+  }) async => _map(
+    await _request(
+      'POST',
+      '/stays/${Uri.encodeComponent(id)}/checkout',
+      body: {if (paymentMethod != null) 'payment_method': paymentMethod},
+    ),
+  );
+
+  Future<dynamic> tasks({int page = 1}) =>
+      _request('GET', '/tasks?page=$page&per_page=100');
+
+  Future<Map<String, dynamic>> createTask(
+    Map<String, dynamic> task,
+  ) async => _map(await _request('POST', '/tasks', body: task));
+
+  Future<Map<String, dynamic>> assignTask(
+    String id,
+    String userId,
+  ) async {
+    final assignedTo = int.tryParse(userId);
+    if (assignedTo == null) {
+      throw ArgumentError.value(userId, 'userId', 'Debe ser un ID numérico del servidor.');
+    }
+    return _map(
+      await _request(
+        'PATCH',
+        '/tasks/${Uri.encodeComponent(id)}/assign',
+        body: {'assigned_to': assignedTo},
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>> updateTaskStatus(
+    String id,
+    String status, {
+    String? result,
+  }) async => _map(
+    await _request(
+      'PATCH',
+      '/tasks/${Uri.encodeComponent(id)}/status',
+      body: {'status': status, if (result != null) 'result': result},
+    ),
+  );
 
   // ---------------------------------------------------------------------------
   // Turnos y cierre de caja

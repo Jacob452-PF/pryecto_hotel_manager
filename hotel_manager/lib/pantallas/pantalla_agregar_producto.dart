@@ -13,7 +13,6 @@ class DatosNuevoProducto {
   final int paquetes;
   final int unidadesPorPaquete;
   final double costoPaquete;
-  final int stockMaximo;
   final int stockMinimo;
   final Uint8List? foto;
 
@@ -24,7 +23,6 @@ class DatosNuevoProducto {
     required this.paquetes,
     required this.unidadesPorPaquete,
     required this.costoPaquete,
-    required this.stockMaximo,
     required this.stockMinimo,
     this.foto,
   });
@@ -44,7 +42,6 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
   final _paquetes = TextEditingController(text: '1');
   final _unidades = TextEditingController(text: '1');
   final _costo = TextEditingController();
-  final _stockMaximo = TextEditingController(text: '50');
   final _stockMinimo = TextEditingController(text: '5');
   CategoriaInventario _categoria = CategoriaInventario.alimentos;
   Uint8List? _foto;
@@ -56,7 +53,6 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
       _paquetes,
       _unidades,
       _costo,
-      _stockMaximo,
       _stockMinimo,
     ]) {
       c.dispose();
@@ -88,8 +84,6 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
 
   void _guardar() {
     if (!_llave.currentState!.validate()) return;
-    final stock = int.parse(_paquetes.text) * int.parse(_unidades.text);
-    final maximo = int.tryParse(_stockMaximo.text) ?? 50;
     Navigator.pop(
       context,
       DatosNuevoProducto(
@@ -99,7 +93,6 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
         paquetes: int.parse(_paquetes.text),
         unidadesPorPaquete: int.parse(_unidades.text),
         costoPaquete: _num(_costo.text)!,
-        stockMaximo: maximo < stock ? stock : maximo,
         stockMinimo: int.tryParse(_stockMinimo.text) ?? 5,
         foto: _foto,
       ),
@@ -191,12 +184,6 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
               validar: _validaPositivo,
               teclado: decimal,
               prefijo: '\$',
-            ),
-            _campo(
-              'Stock máximo',
-              _stockMaximo,
-              validar: _validaEntero,
-              teclado: TextInputType.number,
             ),
             _campo(
               'Stock mínimo para aviso',
