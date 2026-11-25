@@ -39,7 +39,7 @@ class ServicioHabitaciones extends ChangeNotifier {
       _habitaciones
         ..clear()
         ..addAll(habitaciones);
-      resumenApi = response['summary'] is Map
+      resumenApi = response is Map && response['summary'] is Map
           ? Map<String, dynamic>.from(response['summary'] as Map)
           : const {};
     } on ApiException catch (e) {

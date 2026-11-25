@@ -157,12 +157,27 @@ class ApiClient {
     if (response is! Map) {
       throw const FormatException('La respuesta no contiene una lista.');
     }
-    final value = collectionKey == null
-        ? response['data']
-        : response[collectionKey];
-    if (value is List) return List<dynamic>.from(value);
-    if (value is Map && value['data'] is List) {
-      return List<dynamic>.from(value['data'] as List);
+
+    // Soporta respuestas como {rooms: [...]}, {data: [...]},
+    // {data: {rooms: [...]}}, y la paginación Laravel {rooms: {data: [...]}}.
+    final candidatos = <dynamic>[
+      if (collectionKey != null) response[collectionKey],
+      response['data'],
+    ];
+    for (final candidato in candidatos) {
+      if (candidato is List) return List<dynamic>.from(candidato);
+      if (candidato is Map) {
+        final anidado = [
+          if (collectionKey != null) candidato[collectionKey],
+          candidato['data'],
+        ];
+        for (final valor in anidado) {
+          if (valor is List) return List<dynamic>.from(valor);
+          if (valor is Map && valor['data'] is List) {
+            return List<dynamic>.from(valor['data'] as List);
+          }
+        }
+      }
     }
     throw FormatException(
       'La respuesta no contiene la lista esperada'
@@ -205,9 +220,10 @@ class ApiClient {
   // Habitaciones y huéspedes
   // ---------------------------------------------------------------------------
 
-  /// El contrato de la API devuelve `{summary, rooms}`; no es una lista raíz.
-  Future<Map<String, dynamic>> rooms() async =>
-      _map(await _request('GET', '/rooms'));
+  /// El endpoint puede devolver `{summary, rooms}` o una lista directamente.
+  /// Se conserva la respuesta original para que el servicio normalice ambos
+  /// formatos (incluida la paginación Laravel).
+  Future<dynamic> rooms() => _request('GET', '/rooms');
 
   Future<Map<String, dynamic>> updateRoomStatus(
     String roomId,
