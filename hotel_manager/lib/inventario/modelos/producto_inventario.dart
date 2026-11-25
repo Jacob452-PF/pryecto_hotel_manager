@@ -15,12 +15,12 @@ enum CategoriaInventario {
   const CategoriaInventario(this.etiqueta);
 }
 
-/// Ganancia que el hotel se queda sobre el costo de cada unidad (30%).
+/// Ganancia que el hotel se queda sobre el costo de cada unidad (20% por defecto).
 /// Para cambiarla, solo se modifica este número.
 double get margenGanancia =>
     ServicioConfiguracion.instancia.valor.margenGananciaProducto;
 
-/// Precio de venta de UNA unidad: su costo + la ganancia (30%).
+/// Precio de venta de UNA unidad: su costo + la ganancia configurada.
 /// Ejemplo: costo $1.00 → precio $1.30.
 double precioDeVenta(double costoUnitario) =>
     (costoUnitario * (1 + margenGanancia) * 100).round() / 100;

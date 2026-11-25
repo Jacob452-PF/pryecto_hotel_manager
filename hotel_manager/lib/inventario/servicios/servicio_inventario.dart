@@ -36,7 +36,9 @@ class ServicioInventario extends ChangeNotifier {
   /// Indica si [compra] es la compra más reciente de su producto.
   bool esUltimaCompra(CompraInventario compra) {
     final indice = _compras.lastIndexWhere(
-      (c) => c.productoId == compra.productoId,
+      (c) =>
+          c.productoId == compra.productoId &&
+          c.tipo == TipoMovimientoCompra.compra,
     );
     return indice != -1 && _compras[indice].id == compra.id;
   }
@@ -54,6 +56,8 @@ class ServicioInventario extends ChangeNotifier {
     required int unidadesPorPaquete,
     required double costoPaquete,
     required bool esNuevo,
+    TipoMovimientoCompra tipo = TipoMovimientoCompra.compra,
+    String descripcion = '',
   }) {
     _compras.add(
       CompraInventario(
@@ -64,7 +68,9 @@ class ServicioInventario extends ChangeNotifier {
         unidadesPorPaquete: unidadesPorPaquete,
         costoPaquete: costoPaquete,
         esNuevo: esNuevo,
+        tipo: tipo,
         fecha: DateTime.now(),
+        descripcion: descripcion,
       ),
     );
   }
@@ -80,22 +86,30 @@ class ServicioInventario extends ChangeNotifier {
         unidadesPorPaquete: producto.unidadesPorPaquete,
         costoPaquete: producto.costoPaquete,
         esNuevo: true,
+        descripcion: 'Stock inicial del producto nuevo',
       );
     }
     _cambio();
   }
 
-  /// Repone stock comprando paquetes. Sube el stock, guarda el gasto y, si
-  /// [actualizarPrecio], recalcula el precio de venta (costo por unidad + 30%).
-  /// Sirve cuando el paquete subió (o bajó) de precio.
+  /// Repone stock comprando unidades y registra su gasto.
   void reponerStock(
     String id, {
     required int paquetes,
     required int unidadesPorPaquete,
     required double costoPaquete,
     bool actualizarPrecio = true,
+    double? precioVenta,
     String nota = '',
   }) {
+    if (paquetes < 1 ||
+        unidadesPorPaquete < 1 ||
+        !costoPaquete.isFinite ||
+        costoPaquete < 0 ||
+        (precioVenta != null &&
+            (!precioVenta.isFinite || precioVenta < 0))) {
+      return;
+    }
     final i = _productos.indexWhere((p) => p.id == id);
     if (i == -1) return;
     final unidades = paquetes * unidadesPorPaquete;
@@ -106,9 +120,10 @@ class ServicioInventario extends ChangeNotifier {
     final costoUnidad = unidadesPorPaquete > 0
         ? costoPaquete / unidadesPorPaquete
         : 0.0;
-    final nuevoPrecio = (actualizarPrecio && costoUnidad > 0)
-        ? precioDeVenta(costoUnidad)
+    final nuevoPrecio = actualizarPrecio
+        ? precioVenta ?? precioDeVenta(costoUnidad)
         : anterior.precio;
+    if (!nuevoPrecio.isFinite || nuevoPrecio < 0) return;
 
     _productos[i] = anterior.copyWith(
       stock: nuevoStock,
@@ -129,16 +144,70 @@ class ServicioInventario extends ChangeNotifier {
         fecha: DateTime.now(),
       ),
     );
-    if (costoPaquete > 0) {
-      _registrarCompra(
-        anterior,
-        paquetes: paquetes,
-        unidadesPorPaquete: unidadesPorPaquete,
-        costoPaquete: costoPaquete,
-        esNuevo: false,
-      );
-    }
+    _registrarCompra(
+      anterior,
+      paquetes: paquetes,
+      unidadesPorPaquete: unidadesPorPaquete,
+      costoPaquete: costoPaquete,
+      esNuevo: false,
+      descripcion: nota.isEmpty
+          ? 'Reposición de stock'
+          : 'Reposición de stock: $nota',
+    );
     _cambio();
+  }
+
+  /// Registra una devolución y su efecto tanto en existencias como en caja.
+  /// Las devoluciones de clientes vuelven al stock y son un reembolso;
+  /// las devoluciones al proveedor salen del stock y reducen el gasto neto.
+  bool registrarDevolucion(
+    String id, {
+    required int cantidad,
+    required double precioUnitario,
+    required bool deCliente,
+    String nota = '',
+  }) {
+    final i = _productos.indexWhere((p) => p.id == id);
+    if (i == -1 ||
+        cantidad < 1 ||
+        !precioUnitario.isFinite ||
+        precioUnitario < 0) {
+      return false;
+    }
+
+    final anterior = _productos[i];
+    if (!deCliente && cantidad > anterior.stock) return false;
+    final nuevoStock = deCliente
+        ? anterior.stock + cantidad
+        : anterior.stock - cantidad;
+    _productos[i] = anterior.copyWith(
+      stock: nuevoStock,
+      stockMaximo: nuevoStock > anterior.stockMaximo ? nuevoStock : null,
+    );
+    _movimientos.add(
+      MovimientoInventario(
+        productoId: id,
+        producto: anterior.nombre,
+        stockAnterior: anterior.stock,
+        stockNuevo: nuevoStock,
+        motivo: deCliente ? 'Devolución de cliente' : 'Devolución a proveedor',
+        nota: nota,
+        fecha: DateTime.now(),
+      ),
+    );
+    _registrarCompra(
+      anterior,
+      paquetes: cantidad,
+      unidadesPorPaquete: 1,
+      costoPaquete: precioUnitario,
+      esNuevo: false,
+      tipo: deCliente
+          ? TipoMovimientoCompra.devolucionCliente
+          : TipoMovimientoCompra.devolucionProveedor,
+      descripcion: nota,
+    );
+    _cambio();
+    return true;
   }
 
   /// Corrige una compra registrada y ajusta el stock según los paquetes
@@ -156,6 +225,7 @@ class ServicioInventario extends ChangeNotifier {
     if (indice == -1) return;
 
     final anterior = _compras[indice];
+    if (anterior.tipo != TipoMovimientoCompra.compra) return;
     final esUltima = esUltimaCompra(anterior);
     final totalAnterior = anterior.total;
     final totalNuevo = paquetes * costoPaquete;

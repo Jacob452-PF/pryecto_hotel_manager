@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../inventario/servicios/servicio_inventario.dart';
+import '../../inventario/modelos/compra_inventario.dart';
 import '../../modelos/habitacion.dart';
 import '../../servicios/servicio_habitaciones.dart';
 import '../../servicios/servicio_caja.dart';
@@ -77,7 +78,11 @@ class ServicioHistorial extends ChangeNotifier {
         for (final c in ServicioInventario.instancia.comprasDelTurno)
           GastoInventarioTurno(
             c.producto,
-            '${c.esNuevo ? 'Nuevo' : 'Reposición'} · ${c.paquetes} ${c.paquetes == 1 ? 'paquete' : 'paquetes'} (${c.cantidad} uds)${c.editada ? ' · editado' : ''}',
+            '${switch (c.tipo) {
+              TipoMovimientoCompra.compra => c.esNuevo ? 'Nuevo' : 'Reposición',
+              TipoMovimientoCompra.devolucionCliente => 'Devolución de cliente',
+              TipoMovimientoCompra.devolucionProveedor => 'Devolución a proveedor',
+            }} · ${c.cantidad} ${c.cantidad == 1 ? 'unidad' : 'unidades'} × \$${c.costoUnitario.toStringAsFixed(2)}${c.editada ? ' · editado' : ''}',
             c.total,
             c.editada ? c.totalOriginal : null,
           ),
