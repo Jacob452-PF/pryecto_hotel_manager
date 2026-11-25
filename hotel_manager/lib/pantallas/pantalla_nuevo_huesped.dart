@@ -114,7 +114,9 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
 
   /// El precio por hora o por noche depende de la cantidad de camas.
   List<TarifaRemota> get _tarifasCompatibles => _tarifas
-      .where((t) => t.tipoHabitacion == null || t.tipoHabitacion == _cuarto.valorApi)
+      .where((t) =>
+          t.tipoHabitacion == _cuarto.valorApi &&
+          t.camas == _camasSeleccionadas)
       .toList();
 
   double get _precioUnitario => _tarifaRemota?.precio ?? 0;
@@ -378,7 +380,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                       if (_cargandoTarifas)
                         const LinearProgressIndicator()
                       else if (_tarifasCompatibles.isEmpty)
-                        Text(_errorTarifas ?? 'No hay tarifas para este tipo de habitación.')
+                        Text(_errorTarifas ?? 'No hay tarifas para ${_cuarto.etiqueta.toLowerCase()} de $_camasSeleccionadas ${_camasSeleccionadas == 1 ? 'cama' : 'camas'}.')
                       else
                         DropdownButtonFormField<TarifaRemota>(
                           value: _tarifasCompatibles.contains(_tarifaRemota)
@@ -389,7 +391,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                             for (final tarifa in _tarifasCompatibles)
                               DropdownMenuItem(
                                 value: tarifa,
-                                child: Text('${tarifa.nombre} · ${tarifa.horas} h · ${formatearDinero(tarifa.precio)}'),
+                                child: Text('${tarifa.etiquetaDuracion} · ${formatearDinero(tarifa.precio)}'),
                               ),
                           ],
                           onChanged: (tarifa) => setState(() {
@@ -441,6 +443,10 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                       icono: (_) => Icons.bed,
                       alCambiar: (n) => setState(() {
                         _camas = n;
+                        _tarifaRemota = _tarifasCompatibles.firstOrNull;
+                        _tarifa = (_tarifaRemota?.horas ?? 24) <= 6
+                            ? TipoTarifa.porHora
+                            : TipoTarifa.porNoche;
                         _revisarSeleccion();
                       }),
                     ),

@@ -42,7 +42,9 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
   int get _camasSeleccionadas => _tipo == TipoCuarto.comun ? 1 : _camas;
   double get _total => (_tarifa?.precio ?? 0) * _cantidad;
   List<TarifaRemota> get _tarifasCompatibles => _tarifas
-      .where((t) => t.tipoHabitacion == null || t.tipoHabitacion == _tipo.valorApi)
+      .where((t) =>
+          t.tipoHabitacion == _tipo.valorApi &&
+          t.camas == _camasSeleccionadas)
       .toList();
 
   @override
@@ -241,9 +243,8 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                       icono: (tipo) => tipo.icono,
                       alCambiar: (tipo) => setState(() {
                         _tipo = tipo;
-                        if (!_tarifasCompatibles.contains(_tarifa)) {
-                          _tarifa = _tarifasCompatibles.firstOrNull;
-                        }
+                        _tarifa = _tarifasCompatibles.firstOrNull;
+                        _cantidad = 1;
                       }),
                     ),
                     if (_tipo == TipoCuarto.especial) ...[
@@ -257,6 +258,8 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                         icono: (_) => Icons.bed_outlined,
                         alCambiar: (cantidad) => setState(() {
                           _camas = cantidad;
+                          _tarifa = _tarifasCompatibles.firstOrNull;
+                          _cantidad = 1;
                         }),
                       ),
                     ],
@@ -265,6 +268,8 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                       const Center(child: CircularProgressIndicator())
                     else if (_errorTarifas != null)
                       Text(_errorTarifas!, style: const TextStyle(color: Colors.red))
+                    else if (_tarifasCompatibles.isEmpty)
+                      Text('No hay tarifas para ${_tipo.etiqueta.toLowerCase()} de $_camasSeleccionadas ${_camasSeleccionadas == 1 ? 'cama' : 'camas'}.')
                     else
                       SelectorOpciones<TarifaRemota>(
                         opciones: _tarifasCompatibles,
@@ -357,7 +362,9 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
               ),
               const SizedBox(height: 18),
               FilledButton.icon(
-                onPressed: _guardando ? null : _guardar,
+                onPressed: _guardando || _cargandoTarifas || _tarifa == null
+                    ? null
+                    : _guardar,
                 icon: _guardando
                     ? const SizedBox.square(
                         dimension: 18,

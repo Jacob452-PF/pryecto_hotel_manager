@@ -44,6 +44,7 @@ class TarifaRemota {
   final int horas;
   final double precio;
   final String? tipoHabitacion;
+  final int? camas;
 
   const TarifaRemota({
     required this.id,
@@ -51,6 +52,7 @@ class TarifaRemota {
     required this.horas,
     required this.precio,
     this.tipoHabitacion,
+    this.camas,
   });
 
   factory TarifaRemota.fromJson(Map<String, dynamic> json) => TarifaRemota(
@@ -59,7 +61,8 @@ class TarifaRemota {
     horas: int.parse(json['hours'].toString()),
     precio: double.parse(json['price'].toString()),
     tipoHabitacion: json['room_type']?.toString(),
+    camas: int.tryParse(json['beds']?.toString() ?? ''),
   );
 
-  String get etiquetaDuracion => '$nombre · $horas h';
+  String get etiquetaDuracion => '$nombre · $horas h · ${camas ?? '?'} camas';
 }

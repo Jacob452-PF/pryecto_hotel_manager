@@ -194,7 +194,7 @@ class _EstadoPantallaTienda extends State<PantallaTienda> {
                   const SizedBox(height: 12),
                   _Panel(
                     child: secciones.isEmpty
-                        ? const Padding(
+                        ? Padding(
                             padding: EdgeInsets.all(24),
                             child: Center(
                               child: Text(

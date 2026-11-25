@@ -1,11 +1,12 @@
 import '../../inventario/servicios/servicio_inventario.dart';
+import '../../inventario/modelos/producto_inventario.dart';
 import '../modelos/articulo_tienda.dart';
 
 /// Solo productos activos y disponibles del catálogo remoto.
 List<ArticuloTienda> articulosDeTienda() {
-  final delInventario = ServicioInventario.instancia.productos
+  final List<ArticuloTienda> delInventario = ServicioInventario.instancia.productos
       .where((p) => !p.agotado) // sin stock no se vende
-      .map(_aArticulo)
+      .map<ArticuloTienda>(_aArticulo)
       .toList();
   return delInventario;
 }
