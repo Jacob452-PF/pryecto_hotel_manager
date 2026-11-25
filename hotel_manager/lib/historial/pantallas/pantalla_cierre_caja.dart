@@ -135,6 +135,8 @@ class PantallaCierreCaja extends StatelessWidget {
       animation: Listenable.merge([
         ServicioConsumos.instancia,
         ServicioHistorial.instancia,
+        ServicioCaja.instancia,
+        ServicioAbonos.instancia,
       ]),
       builder: (context, _) => _construir(context),
     );
@@ -205,6 +207,12 @@ class PantallaCierreCaja extends StatelessWidget {
     final turno = ServicioHistorial.instancia.turnoActual;
     final cajaActual = ServicioCaja.instancia.cajaActual;
     final ahora = DateTime.now();
+    final cobrosEnEfectivo = ServicioAbonos.instancia.efectivoRecibidoEnCaja(
+      cajaActual?.id ?? '',
+    );
+    final efectivoEsperado = ServicioCaja.instancia.esperadoAlCerrar(
+      cobrosEnEfectivo - turno.gastosTotales,
+    );
 
     final pendientes = turno.clientes.where((c) => !c.pagado).toList();
     final pagados = turno.clientes.where((c) => c.pagado).toList();
@@ -294,22 +302,45 @@ class PantallaCierreCaja extends StatelessWidget {
                 icon: const Icon(Icons.arrow_back_ios_new, size: 20),
               ),
             ),
-            // En pantallas anchas la fecha va a la derecha; en celular, abajo.
+            // En pantallas anchas la fecha y el desglose comparten una fila.
             LayoutBuilder(
               builder: (context, c) {
-                if (c.maxWidth >= 520) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: titulo),
-                      const SizedBox(width: 12),
-                      SizedBox(width: 190, child: tarjetaFecha),
-                    ],
-                  );
-                }
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [titulo, const SizedBox(height: 10), tarjetaFecha],
+                  children: [
+                    titulo,
+                    const SizedBox(height: 10),
+                    if (c.maxWidth >= 380)
+                      IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(child: tarjetaFecha),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _DesgloseCaja(
+                                apertura: cajaActual?.montoApertura ?? 0,
+                                cobrosEnEfectivo: cobrosEnEfectivo,
+                                compras: turno.totalGastosInventario,
+                                otrosGastos: turno.totalGastos,
+                                esperado: efectivoEsperado,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else ...[
+                      tarjetaFecha,
+                      const SizedBox(height: 10),
+                      _DesgloseCaja(
+                        apertura: cajaActual?.montoApertura ?? 0,
+                        cobrosEnEfectivo: cobrosEnEfectivo,
+                        compras: turno.totalGastosInventario,
+                        otrosGastos: turno.totalGastos,
+                        esperado: efectivoEsperado,
+                      ),
+                    ],
+                  ],
                 );
               },
             ),
@@ -321,7 +352,7 @@ class PantallaCierreCaja extends StatelessWidget {
               cantidadGastos: turno.cantidadGastos,
               habitacionesOcupadas: turno.habitacionesOcupadas,
               habitacionesTotal: turno.habitacionesTotal,
-              totalEnCaja: turno.totalEnCaja,
+              totalEnCaja: efectivoEsperado,
             ),
             const SizedBox(height: 12),
             SeccionTabla(
@@ -486,12 +517,114 @@ class PantallaCierreCaja extends StatelessWidget {
         cargos: cargos,
       );
     } catch (error) {
-      if (context.mounted)
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error.toString().replaceFirst('Bad state: ', '')),
           ),
         );
+      }
     }
+  }
+}
+
+class _DesgloseCaja extends StatelessWidget {
+  final double apertura;
+  final double cobrosEnEfectivo;
+  final double compras;
+  final double otrosGastos;
+  final double esperado;
+
+  const _DesgloseCaja({
+    required this.apertura,
+    required this.cobrosEnEfectivo,
+    required this.compras,
+    required this.otrosGastos,
+    required this.esperado,
+  });
+
+  String _importeConSigno(double importe, {required bool esGasto}) {
+    final positivo = esGasto ? importe < 0 : importe >= 0;
+    return '${positivo ? '+' : '-'} ${dinero(importe.abs())}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Desglose de caja',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 7),
+          _FilaDesglose(etiqueta: 'Apertura', importe: dinero(apertura)),
+          _FilaDesglose(
+            etiqueta: 'Ventas y habitaciones',
+            importe: _importeConSigno(cobrosEnEfectivo, esGasto: false),
+          ),
+          _FilaDesglose(
+            etiqueta: 'Productos adquiridos',
+            importe: _importeConSigno(compras, esGasto: true),
+          ),
+          _FilaDesglose(
+            etiqueta: 'Otros gastos',
+            importe: _importeConSigno(otrosGastos, esGasto: true),
+          ),
+          const Divider(height: 12),
+          _FilaDesglose(
+            etiqueta: 'Debe quedar',
+            importe: dinero(esperado),
+            destacado: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilaDesglose extends StatelessWidget {
+  final String etiqueta;
+  final String importe;
+  final bool destacado;
+
+  const _FilaDesglose({
+    required this.etiqueta,
+    required this.importe,
+    this.destacado = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(
+      fontSize: destacado ? 10 : 9,
+      fontWeight: destacado ? FontWeight.bold : FontWeight.normal,
+      fontFamily: destacado ? fuenteTitulo : null,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              etiqueta,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: style,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(importe, style: style),
+        ],
+      ),
+    );
   }
 }

@@ -57,7 +57,7 @@ class ResumenTurno extends StatelessWidget {
             child: _Tarjeta(
               etiqueta: 'Total en caja',
               valor: dinero(totalEnCaja),
-              detalle: '(Ventas - Gastos)',
+              detalle: 'Efectivo esperado',
             ),
           ),
         ],
@@ -106,7 +106,10 @@ class _Tarjeta extends StatelessWidget {
           if (detalle != null)
             Text(
               detalle!,
-              style: TextStyle(fontSize: 8.5, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 8.5,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
         ],
       ),
