@@ -8,6 +8,7 @@ class FormularioDesgloseEfectivo extends StatefulWidget {
   final String boton;
   final DesgloseEfectivo? inicial;
   final double? montoEsperado;
+  final bool estiloApertura;
   final ValueChanged<DesgloseEfectivo> alConfirmar;
   final VoidCallback? alCancelar;
   const FormularioDesgloseEfectivo({
@@ -17,6 +18,7 @@ class FormularioDesgloseEfectivo extends StatefulWidget {
     required this.alConfirmar,
     this.inicial,
     this.montoEsperado,
+    this.estiloApertura = false,
     this.alCancelar,
   });
   @override
@@ -31,12 +33,16 @@ class _FormularioDesgloseEfectivoState
       key: TextEditingController(
         text: widget.inicial == null
             ? ''
-            : (widget.inicial!.valores[key] ?? 0).toStringAsFixed(2),
+            : ((widget.inicial!.valores[key] ?? 0) / denominacionesUsd[key]!)
+                  .round()
+                  .toString(),
       ),
   };
   @override
   void dispose() {
-    for (final c in _campos.values) c.dispose();
+    for (final c in _campos.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -44,57 +50,78 @@ class _FormularioDesgloseEfectivoState
     valores: {
       for (final e in _campos.entries)
         e.key:
-            ((double.tryParse(e.value.text.trim().replaceAll(',', '.')) ?? 0)
-                        .clamp(0, 100000000) *
-                    100)
-                .roundToDouble() /
-            100,
+            (((int.tryParse(e.value.text.trim()) ?? 0).clamp(0, 100000000) *
+                (denominacionesUsd[e.key]! * 100).round()) /
+            100),
     },
   );
   String _usd(double value) => '\$${value.toStringAsFixed(2)}';
-  bool _noEsMultiplo(String key) {
-    final monto = _desglose.valores[key] ?? 0;
-    final centavos = (monto * 100).round();
-    final denominacion = (denominacionesUsd[key]! * 100).round();
-    return centavos % denominacion != 0;
-  }
 
   @override
   Widget build(BuildContext context) {
     final d = _desglose;
-    final hayDenominacionInvalida = denominacionesUsd.keys.any(_noEsMultiplo);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(widget.titulo, style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          widget.titulo,
+          style: widget.estiloApertura
+              ? Theme.of(context).textTheme.headlineSmall
+              : Theme.of(context).textTheme.titleLarge,
+        ),
         if (widget.montoEsperado != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text('Efectivo esperado: ${_usd(widget.montoEsperado!)}'),
           ),
+        const Padding(
+          padding: EdgeInsets.only(top: 8, bottom: 4),
+          child: Text(
+            'Ingresa cuántas monedas o billetes hay de cada denominación.',
+          ),
+        ),
         const SizedBox(height: 8),
         for (final denomination in denominacionesUsd.entries)
           Builder(
             builder: (context) {
-              final invalida = _noEsMultiplo(denomination.key);
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
+                padding: EdgeInsets.symmetric(
+                  vertical: widget.estiloApertura ? 4 : 3,
+                ),
                 child: Row(
                   children: [
                     SizedBox(width: 54, child: Text(denomination.key)),
                     Expanded(
                       child: TextFormField(
                         controller: _campos[denomination.key],
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: const [_FormatoCentavos()],
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                         decoration: InputDecoration(
-                          labelText: 'Valor contado',
-                          isDense: true,
-                          errorText: invalida
-                              ? 'Use múltiplos de ${denomination.key}.'
+                          labelText: 'Cantidad de piezas',
+                          isDense: !widget.estiloApertura,
+                          contentPadding: widget.estiloApertura
+                              ? const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 14,
+                                )
+                              : null,
+                          border: widget.estiloApertura
+                              ? OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(28),
+                                )
+                              : null,
+                          enabledBorder: widget.estiloApertura
+                              ? OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(28),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outlineVariant,
+                                  ),
+                                )
                               : null,
                         ),
                         onChanged: (_) => setState(() {}),
@@ -119,41 +146,26 @@ class _FormularioDesgloseEfectivoState
           style: Theme.of(context).textTheme.titleMedium,
         ),
         if (widget.alCancelar != null)
-          TextButton(
-            onPressed: widget.alCancelar,
-            child: const Text('Cancelar'),
-          ),
+          widget.estiloApertura
+              ? Center(
+                  child: TextButton(
+                    onPressed: widget.alCancelar,
+                    child: const Text('Cancelar'),
+                  ),
+                )
+              : TextButton(
+                  onPressed: widget.alCancelar,
+                  child: const Text('Cancelar'),
+                ),
         const SizedBox(height: 8),
         FilledButton(
-          onPressed: hayDenominacionInvalida
-              ? null
-              : () => widget.alConfirmar(d),
+          onPressed: () => widget.alConfirmar(d),
+          style: widget.estiloApertura
+              ? FilledButton.styleFrom(minimumSize: const Size.fromHeight(48))
+              : null,
           child: Text(widget.boton),
         ),
       ],
-    );
-  }
-}
-
-/// Convierte los dígitos tecleados en centavos: 1 → 0.01, 10 → 0.10,
-/// 100 → 1.00. Permite pegar importes con punto o coma también.
-class _FormatoCentavos extends TextInputFormatter {
-  const _FormatoCentavos();
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final raw = newValue.text.trim();
-    if (raw.isEmpty) return newValue;
-    final digits = raw.replaceAll(RegExp(r'\D'), '');
-    if (digits.isEmpty) return const TextEditingValue();
-    final cents = int.tryParse(digits);
-    if (cents == null) return oldValue;
-    final text = (cents / 100).toStringAsFixed(2);
-    return TextEditingValue(
-      text: text,
-      selection: TextSelection.collapsed(offset: text.length),
     );
   }
 }

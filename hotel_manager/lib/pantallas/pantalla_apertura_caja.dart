@@ -13,6 +13,7 @@ class PantallaAperturaCaja extends StatelessWidget {
       child: FormularioDesgloseEfectivo(
         titulo: 'Desglose de apertura (USD)',
         boton: 'Confirmar apertura',
+        estiloApertura: true,
         alCancelar: () => Navigator.pop(context),
         alConfirmar: (d) async {
           try {
