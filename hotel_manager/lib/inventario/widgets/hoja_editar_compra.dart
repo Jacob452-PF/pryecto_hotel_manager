@@ -155,7 +155,7 @@ class _EstadoDialogoEditar extends State<_DialogoEditar> {
                 ),
               if (esUltima && costo > 0)
                 FilaResumen(
-                  'Precio de venta (+30%)',
+                  'Precio de venta (+${(margenGanancia * 100).round()}%)',
                   _d(precioDeVenta(costoUnidad)),
                 ),
             ],

@@ -6,10 +6,7 @@ import '../servicios/servicio_inventario.dart';
 import 'dialogo_inventario.dart';
 import 'fila_producto_inventario.dart';
 
-/// Ventana "Ajustar producto": nuevo stock, motivo del ajuste y nota.
-/// Con el motivo "Reposición de stock" se compran PAQUETES: se puede cambiar
-/// el costo del paquete (si subió de precio) y el precio de venta se
-/// recalcula solo (costo por unidad + 30%).
+/// Ventana para corregir existencias, reponer unidades y registrar devoluciones.
 Future<void> mostrarAjustarStock(
   BuildContext context,
   ProductoInventario producto,
@@ -20,14 +17,12 @@ Future<void> mostrarAjustarStock(
   );
 }
 
-const _motivoReposicion = 'Reposición de stock';
 const _motivos = [
-  'Merma',
-  _motivoReposicion,
   'Corrección de inventario',
+  'Reposición de stock',
   'Devolución',
-  'Otro',
 ];
+const _tiposDevolucion = ['De cliente', 'A proveedor'];
 
 class _DialogoAjustar extends StatefulWidget {
   final ProductoInventario producto;
@@ -43,19 +38,23 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
   );
   final TextEditingController _nota = TextEditingController();
 
-  // Solo para "Reposición de stock"
   final TextEditingController _paquetes = TextEditingController(text: '1');
-  late final TextEditingController _unidades = TextEditingController(
-    text: '${widget.producto.unidadesPorPaquete}',
-  );
   late final TextEditingController _costo = TextEditingController(
-    text: widget.producto.costoPaquete > 0
-        ? widget.producto.costoPaquete.toStringAsFixed(2)
+    text: widget.producto.costoUnitario > 0
+        ? widget.producto.costoUnitario.toStringAsFixed(2)
         : '',
   );
-  bool _actualizarPrecio = true;
+  late final TextEditingController _precioVenta = TextEditingController(
+    text: widget.producto.precio.toStringAsFixed(2),
+  );
+  late final TextEditingController _precioDevolucion = TextEditingController(
+    text: widget.producto.precio.toStringAsFixed(2),
+  );
+  late bool _actualizarPrecio = widget.producto.costoUnitario <= 0;
+  bool _precioEditadoManualmente = false;
 
   String _motivo = _motivos.first;
+  String _tipoDevolucion = _tiposDevolucion.first;
   String? _error;
 
   @override
@@ -63,39 +62,48 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
     _stock.dispose();
     _nota.dispose();
     _paquetes.dispose();
-    _unidades.dispose();
     _costo.dispose();
+    _precioVenta.dispose();
+    _precioDevolucion.dispose();
     super.dispose();
   }
 
-  bool get _esReposicion => _motivo == _motivoReposicion;
+  bool get _esReposicion => _motivo == 'Reposición de stock';
+  bool get _esDevolucion => _motivo == 'Devolución';
+  bool get _esDevolucionCliente => _tipoDevolucion == 'De cliente';
 
   double? _leerDinero(String texto) =>
       double.tryParse(texto.trim().replaceAll(',', '.'));
 
   int get _numPaquetes => int.tryParse(_paquetes.text.trim()) ?? 0;
-  int get _numUnidades => int.tryParse(_unidades.text.trim()) ?? 0;
-  int get _unidadesQueEntran => _numPaquetes * _numUnidades;
+  int get _unidadesQueEntran => _numPaquetes;
   int get _stockResultante => widget.producto.stock + _unidadesQueEntran;
 
   String _d(double v) => '\$${v.toStringAsFixed(2)}';
 
-  /// En reposición los botones − y + cambian los paquetes; en los demás
-  /// motivos cambian el stock de uno en uno.
   void _sumar(int delta) {
     setState(() {
       _error = null;
-      if (_esReposicion) {
-        final nuevo = _numPaquetes + delta;
-        _paquetes.text = '${nuevo < 0 ? 0 : nuevo}';
-      } else {
-        var nuevo = (int.tryParse(_stock.text.trim()) ?? 0) + delta;
-        if (nuevo < 0) nuevo = 0;
-        if (nuevo > widget.producto.stockMaximo) {
-          nuevo = widget.producto.stockMaximo;
-        }
-        _stock.text = '$nuevo';
+      var nuevo = (int.tryParse(_stock.text.trim()) ?? 0) + delta;
+      if (nuevo < 0) nuevo = 0;
+      if (nuevo > widget.producto.stockMaximo) {
+        nuevo = widget.producto.stockMaximo;
       }
+      _stock.text = '$nuevo';
+    });
+  }
+
+  void _costoCambiado(String _) {
+    final costo = _leerDinero(_costo.text);
+    final costoActual = widget.producto.costoUnitario;
+    if (!_precioEditadoManualmente && costo != null && costo > 0) {
+      _precioVenta.text = precioDeVenta(costo).toStringAsFixed(2);
+    }
+    setState(() {
+      _error = null;
+      _actualizarPrecio =
+          costoActual <= 0 ||
+          (costo != null && (costo - costoActual).abs() > 0.001);
     });
   }
 
@@ -106,28 +114,63 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
     if (_esReposicion) {
       final costo = _leerDinero(_costo.text);
       if (_numPaquetes < 1) {
-        setState(() => _error = 'Escribe cuántos paquetes compraste.');
-        return;
-      }
-      if (_numUnidades < 1) {
-        setState(() => _error = 'Escribe cuántas unidades trae cada paquete.');
+        setState(() => _error = 'Escribe cuántos productos agregaste.');
         return;
       }
       if (costo == null || costo < 0) {
         setState(
           () =>
-              _error = 'Escribe cuánto costó el paquete (0 si no tuvo costo).',
+              _error = 'Escribe cuánto costó cada producto (0 si no tuvo costo).',
         );
+        return;
+      }
+      final precio = _leerDinero(_precioVenta.text);
+      if (_actualizarPrecio &&
+          (precio == null || !precio.isFinite || precio < 0)) {
+        setState(() => _error = 'Escribe un precio de venta válido.');
         return;
       }
       servicio.reponerStock(
         p.id,
         paquetes: _numPaquetes,
-        unidadesPorPaquete: _numUnidades,
+        unidadesPorPaquete: 1,
         costoPaquete: costo,
         actualizarPrecio: _actualizarPrecio,
+        precioVenta: precio,
         nota: _nota.text.trim(),
       );
+      Navigator.of(context).pop();
+      return;
+    }
+
+    if (_esDevolucion) {
+      final cantidad = _numPaquetes;
+      final precio = _leerDinero(_precioDevolucion.text);
+      if (cantidad < 1) {
+        setState(() => _error = 'Escribe cuántos productos se devuelven.');
+        return;
+      }
+      if (precio == null || !precio.isFinite || precio < 0) {
+        setState(() => _error = 'Escribe un precio válido para la devolución.');
+        return;
+      }
+      if (!_esDevolucionCliente && cantidad > p.stock) {
+        setState(
+          () => _error = 'Solo hay ${p.stock} unidades disponibles para devolver.',
+        );
+        return;
+      }
+      final guardado = servicio.registrarDevolucion(
+        p.id,
+        cantidad: cantidad,
+        precioUnitario: precio,
+        deCliente: _esDevolucionCliente,
+        nota: _nota.text.trim(),
+      );
+      if (!guardado) {
+        setState(() => _error = 'No se pudo registrar la devolución.');
+        return;
+      }
       Navigator.of(context).pop();
       return;
     }
@@ -176,23 +219,21 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
     );
   }
 
-  /// Campos y cuentas de la compra de paquetes.
+  /// Cantidad, costo unitario y precio sugerido/editable de la reposición.
   Widget _panelReposicion() {
     final p = widget.producto;
     final costo = _leerDinero(_costo.text) ?? 0.0;
-    final unidades = _numUnidades;
-    final hayDatos = costo > 0 && unidades > 0;
-    final costoUnidad = hayDatos ? costo / unidades : 0.0;
-    final precioNuevo = hayDatos ? precioDeVenta(costoUnidad) : p.precio;
+    final hayDatos = _numPaquetes > 0;
+    final precioNuevo = _leerDinero(_precioVenta.text) ?? p.precio;
     final cambioCosto =
-        p.costoPaquete > 0 && costo > 0 && costo != p.costoPaquete;
+        p.costoUnitario > 0 && costo > 0 && costo != p.costoUnitario;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 18),
         const Text(
-          'Compra del paquete',
+          'Entrada de productos',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -202,55 +243,53 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
           ],
-          onChanged: (_) => setState(() {}),
+          onChanged: _costoCambiado,
           decoration: _decoracion(
-            etiqueta: 'Costo del paquete',
+            etiqueta: 'Costo por producto',
             prefijo: '\$ ',
-            ayuda: p.costoPaquete > 0
-                ? 'Antes: ${_d(p.costoPaquete)}. Si subió de precio, escribe el nuevo costo.'
-                : 'Lo que le costó al hotel cada paquete.',
+            ayuda: p.costoUnitario > 0
+                ? 'Costo anterior: ${_d(p.costoUnitario)} por unidad.'
+                : 'Lo que le costó al hotel cada unidad.',
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _paquetes,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (_) => setState(() {}),
-                decoration: _decoracion(etiqueta: 'Paquetes comprados'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: _unidades,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (_) => setState(() {}),
-                decoration: _decoracion(etiqueta: 'Unidades por paquete'),
-              ),
-            ),
+        TextField(
+          controller: _paquetes,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          onChanged: (_) => setState(() {}),
+          decoration: _decoracion(etiqueta: 'Productos que deseas agregar'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _precioVenta,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
           ],
+          enabled: _actualizarPrecio,
+          onChanged: (_) => setState(() => _precioEditadoManualmente = true),
+          decoration: _decoracion(
+            etiqueta: 'Precio de venta por producto',
+            prefijo: '\$ ',
+            ayuda: 'Sugerido con ${((margenGanancia) * 100).round()}% de ganancia; puedes cambiarlo.',
+          ),
         ),
         const SizedBox(height: 12),
         ResumenCompra(
           filas: [
             FilaResumen('Unidades que entran', '$_unidadesQueEntran'),
-            FilaResumen('Costo por unidad', hayDatos ? _d(costoUnidad) : '—'),
+            FilaResumen('Stock después de agregar', '$_stockResultante'),
+            FilaResumen('Costo por unidad', _d(costo)),
             FilaResumen(
-              'Gasto total ($_numPaquetes × ${costo > 0 ? _d(costo) : '—'})',
-              hayDatos ? _d(_numPaquetes * costo) : '—',
+              'Gasto total ($_numPaquetes × ${_d(costo)})',
+              _d(_numPaquetes * costo),
             ),
             FilaResumen(
-              'Precio de venta (+20%)',
+              'Precio de venta',
               hayDatos ? _d(precioNuevo) : _d(p.precio),
               destacar: true,
             ),
-            if (hayDatos && precioNuevo != p.precio)
-              FilaResumen('Precio actual', _d(p.precio)),
           ],
         ),
         SwitchListTile(
@@ -260,7 +299,7 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
           onChanged: (v) => setState(() => _actualizarPrecio = v),
           title: Text(
             cambioCosto
-                ? 'El paquete cambió de precio: actualizar precio de venta'
+                ? 'Cambió el costo: actualizar el precio de venta'
                 : 'Actualizar el precio de venta',
             style: const TextStyle(fontSize: 13),
           ),
@@ -270,6 +309,73 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
             'El stock máximo subirá a $_stockResultante.',
             style: const TextStyle(fontSize: 12, color: Color(0xFF55555F)),
           ),
+      ],
+    );
+  }
+
+  Widget _panelDevolucion() {
+    final cantidad = _numPaquetes;
+    final precio = _leerDinero(_precioDevolucion.text) ?? 0;
+    final importe = cantidad * precio;
+    final stockResultante = _esDevolucionCliente
+        ? widget.producto.stock + cantidad
+        : widget.producto.stock - cantidad;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 18),
+        const Text(
+          'Tipo de devolución',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          initialValue: _tipoDevolucion,
+          decoration: _decoracion(),
+          items: [
+            for (final tipo in _tiposDevolucion)
+              DropdownMenuItem(value: tipo, child: Text(tipo)),
+          ],
+          onChanged: (tipo) => setState(() {
+            _tipoDevolucion = tipo ?? _tipoDevolucion;
+            _error = null;
+          }),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _paquetes,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          onChanged: (_) => setState(() {}),
+          decoration: _decoracion(etiqueta: 'Cantidad de productos'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _precioDevolucion,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+          ],
+          onChanged: (_) => setState(() {}),
+          decoration: _decoracion(
+            etiqueta: _esDevolucionCliente
+                ? 'Reembolso por producto'
+                : 'Importe devuelto por el proveedor (por producto)',
+            prefijo: '\$ ',
+          ),
+        ),
+        const SizedBox(height: 12),
+        ResumenCompra(
+          filas: [
+            FilaResumen('Importe de la devolución', _d(importe), destacar: true),
+            FilaResumen('Stock después del movimiento', '$stockResultante'),
+            FilaResumen(
+              'Registro en gastos',
+              _esDevolucionCliente ? 'Reembolso' : 'Reduce el gasto neto',
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -331,31 +437,25 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Nuevo stock',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 2),
                 Text(
                   _esReposicion
-                      ? 'Stock actual + lo que traen los paquetes (− y + cambian los paquetes)'
+                      ? 'Stock después de agregar'
+                      : _esDevolucion
+                      ? 'Stock después de la devolución'
                       : 'Nuevo stock',
-                  style: const TextStyle(fontSize: 14),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _esReposicion
-                          // En reposición el stock se calcula solo
-                          ? InputDecorator(
-                              decoration: _decoracion(relleno: Colors.white),
-                              child: Text(
-                                '$_stockResultante',
-                                style: const TextStyle(fontSize: 17),
-                              ),
-                            )
-                          : TextField(
+                if (!_esReposicion && !_esDevolucion) ...[
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Escribe el stock final que debe quedar.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
                               controller: _stock,
                               keyboardType: TextInputType.number,
                               inputFormatters: [
@@ -364,16 +464,17 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
                               style: const TextStyle(fontSize: 17),
                               decoration: _decoracion(relleno: Colors.white),
                             ),
-                    ),
-                    const SizedBox(width: 10),
-                    _BotonCuadrado(
-                      icono: Icons.remove,
-                      onTap: () => _sumar(-1),
-                    ),
-                    const SizedBox(width: 8),
-                    _BotonCuadrado(icono: Icons.add, onTap: () => _sumar(1)),
-                  ],
-                ),
+                      ),
+                      const SizedBox(width: 10),
+                      _BotonCuadrado(
+                        icono: Icons.remove,
+                        onTap: () => _sumar(-1),
+                      ),
+                      const SizedBox(width: 8),
+                      _BotonCuadrado(icono: Icons.add, onTap: () => _sumar(1)),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -409,6 +510,7 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
             ),
           ),
           if (_esReposicion) _panelReposicion(),
+          if (_esDevolucion) _panelDevolucion(),
           const SizedBox(height: 18),
           const Text(
             'Nota (opcional)',

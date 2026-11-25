@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../servicios/servicio_inventario.dart';
+import '../modelos/compra_inventario.dart';
 import 'hoja_editar_compra.dart';
 
 String _dinero(double v) => '\$${v.toStringAsFixed(2)}';
+
+String _montoMovimiento(CompraInventario c) =>
+    c.tipo == TipoMovimientoCompra.devolucionProveedor
+    ? '−${_dinero(c.total.abs())}'
+    : _dinero(c.total);
 
 String _hora(DateTime d) {
   final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
@@ -68,7 +74,7 @@ class GastosInventario extends StatelessWidget {
                 ],
               ),
               Text(
-                'Lo que el hotel gastó en productos desde el último cierre de caja',
+                'Compras y devoluciones desde el último cierre de caja',
                 style: TextStyle(
                   fontSize: 11,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -79,7 +85,7 @@ class GastosInventario extends StatelessWidget {
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 8),
                   child: Text(
-                    'Todavía no hay compras en este turno.',
+                    'Todavía no hay movimientos de inventario en este turno.',
                     style: TextStyle(fontSize: 12),
                   ),
                 ),
@@ -92,7 +98,11 @@ class GastosInventario extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Icon(
-                          c.esNuevo ? Icons.fiber_new : Icons.add_box_outlined,
+                          c.tipo == TipoMovimientoCompra.compra
+                              ? (c.esNuevo
+                                    ? Icons.fiber_new
+                                    : Icons.add_box_outlined)
+                              : Icons.assignment_return_outlined,
                           size: 20,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -113,8 +123,11 @@ class GastosInventario extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              '${c.esNuevo ? 'Producto nuevo' : 'Reposición'} · '
-                              '${c.paquetes} ${c.paquetes == 1 ? 'paquete' : 'paquetes'} × ${_dinero(c.costoPaquete)} · ${_hora(c.fecha)}',
+                              '${switch (c.tipo) {
+                                TipoMovimientoCompra.compra => c.esNuevo ? 'Producto nuevo' : 'Reposición',
+                                TipoMovimientoCompra.devolucionCliente => 'Devolución de cliente',
+                                TipoMovimientoCompra.devolucionProveedor => 'Devolución a proveedor',
+                              }} · ${c.cantidad} ${c.cantidad == 1 ? 'unidad' : 'unidades'} × ${_dinero(c.costoUnitario)} · ${_hora(c.fecha)}',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Theme.of(context)
@@ -122,6 +135,21 @@ class GastosInventario extends StatelessWidget {
                                     .onSurfaceVariant,
                               ),
                             ),
+                            if (c.descripcion.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  'Nota: ${c.descripcion}',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
                             // Si se corrigió: lo que se gastó antes y ahora
                             if (c.editada)
                               Padding(
@@ -140,7 +168,7 @@ class GastosInventario extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        _dinero(c.total),
+                        _montoMovimiento(c),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -149,17 +177,18 @@ class GastosInventario extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       // Botón de editar, a la par de la compra
-                      SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: IconButton(
-                          onPressed: () => mostrarEditarCompra(context, c),
-                          tooltip: 'Editar',
-                          padding: EdgeInsets.zero,
-                          icon: const Icon(Icons.edit_outlined, size: 20),
-                          color: const Color(0xFF2B8CFF),
+                      if (c.tipo == TipoMovimientoCompra.compra)
+                        SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: IconButton(
+                            onPressed: () => mostrarEditarCompra(context, c),
+                            tooltip: 'Editar',
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            color: const Color(0xFF2B8CFF),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),

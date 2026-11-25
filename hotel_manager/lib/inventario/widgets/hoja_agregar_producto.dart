@@ -133,7 +133,7 @@ class _EstadoDialogoAgregar extends State<_DialogoAgregar> {
       ProductoInventario(
         id: servicio.nuevoId(),
         nombre: nombre,
-        precio: precioDeVenta(costo / unidades), // costo por unidad + 30%
+        precio: precioDeVenta(costo / unidades),
         categoria: _categoria,
         stock: stock,
         stockMaximo: maximo,

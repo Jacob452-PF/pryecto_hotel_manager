@@ -16,9 +16,10 @@ class EdicionCompra {
   });
 }
 
-/// Una compra de mercadería: lo que el hotel gastó al agregar un producto
-/// nuevo o al reponer su stock. Se compra por PAQUETES.
-/// Cuando tengan base de datos, se guarda cada compra en una tabla.
+enum TipoMovimientoCompra { compra, devolucionCliente, devolucionProveedor }
+
+/// Compra o devolución de mercadería registrada en gastos de inventario.
+/// Cuando tengan base de datos, se guarda cada movimiento en una tabla.
 class CompraInventario {
   final String id;
   final String productoId;
@@ -35,7 +36,11 @@ class CompraInventario {
 
   /// true: producto nuevo; false: reposición de stock.
   final bool esNuevo;
+  final TipoMovimientoCompra tipo;
   final DateTime fecha;
+
+  /// Motivo o nota escrita al registrar la compra.
+  final String descripcion;
 
   /// Número de la caja en que se cerró este gasto (null = todavía del turno actual).
   final String? cajaNumero;
@@ -51,7 +56,9 @@ class CompraInventario {
     required this.unidadesPorPaquete,
     required this.costoPaquete,
     required this.esNuevo,
+    this.tipo = TipoMovimientoCompra.compra,
     required this.fecha,
+    this.descripcion = '',
     this.cajaNumero,
     this.ediciones = const [],
   });
@@ -63,8 +70,13 @@ class CompraInventario {
   double get costoUnitario =>
       unidadesPorPaquete > 0 ? costoPaquete / unidadesPorPaquete : 0;
 
-  /// Lo que gastó el hotel en total (ya con las correcciones).
-  double get total => paquetes * costoPaquete;
+  /// Importe del movimiento; devolver mercancía al proveedor reduce el gasto.
+  double get total {
+    final importe = paquetes * costoPaquete;
+    return tipo == TipoMovimientoCompra.devolucionProveedor
+        ? -importe
+        : importe;
+  }
 
   /// ¿Se corrigió alguna vez?
   bool get editada => ediciones.isNotEmpty;
@@ -80,6 +92,7 @@ class CompraInventario {
     double? costoPaquete,
     String? cajaNumero,
     List<EdicionCompra>? ediciones,
+    String? descripcion,
   }) => CompraInventario(
     id: id,
     productoId: productoId,
@@ -88,7 +101,9 @@ class CompraInventario {
     unidadesPorPaquete: unidadesPorPaquete,
     costoPaquete: costoPaquete ?? this.costoPaquete,
     esNuevo: esNuevo,
+    tipo: tipo,
     fecha: fecha,
+    descripcion: descripcion ?? this.descripcion,
     cajaNumero: cajaNumero ?? this.cajaNumero,
     ediciones: ediciones ?? this.ediciones,
   );
