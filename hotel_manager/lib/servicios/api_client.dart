@@ -4,8 +4,12 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
-/// URL base de la API (Render). Si algún día cambia, se cambia solo aquí.
-const String kApiBase = 'https://hotel-manager-api-ttg7.onrender.com/api';
+/// URL base de la API. Puede cambiarse por entorno al compilar:
+/// flutter run --dart-define=API_BASE_URL=https://.../api
+const String kApiBase = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'https://hotel-manager-api-ttg7.onrender.com/api',
+);
 
 /// La API manda algunos números como texto ("1.50"). Esto los convierte a double.
 double toDouble(dynamic v) {
@@ -32,12 +36,12 @@ class Product {
   final String? category;
 
   Product.fromJson(Map<String, dynamic> j)
-      : id = j['id'] as int,
-        name = j['name'] as String,
-        price = toDouble(j['price']),
-        stock = j['stock'] as int,
-        minStock = (j['min_stock'] ?? 0) as int,
-        category = (j['category'] as Map?)?['name'] as String?;
+    : id = j['id'] as int,
+      name = j['name'] as String,
+      price = toDouble(j['price']),
+      stock = j['stock'] as int,
+      minStock = (j['min_stock'] ?? 0) as int,
+      category = (j['category'] as Map?)?['name'] as String?;
 }
 
 class ApiClient {
@@ -88,15 +92,25 @@ class ApiClient {
         res = await http
             .put(uri, headers: headers, body: payload)
             .timeout(_timeout);
+      } else if (method == 'PATCH') {
+        res = await http
+            .patch(uri, headers: headers, body: payload)
+            .timeout(_timeout);
+      } else if (method == 'DELETE') {
+        res = await http
+            .delete(uri, headers: headers, body: payload)
+            .timeout(_timeout);
       } else {
         res = await http.get(uri, headers: headers).timeout(_timeout);
       }
     } on TimeoutException {
       throw ApiException(
-          'El servidor tardó demasiado en responder. Intenta de nuevo.');
+        'El servidor tardó demasiado en responder. Intenta de nuevo.',
+      );
     } catch (_) {
       throw ApiException(
-          'No se pudo conectar con el servidor. Revisa tu conexión a internet.');
+        'No se pudo conectar con el servidor. Revisa tu conexión a internet.',
+      );
     }
 
     // La API responde con Content-Type: text/html, por eso el JSON se
@@ -136,15 +150,57 @@ class ApiClient {
   Map<String, dynamic> _map(dynamic v) => Map<String, dynamic>.from(v as Map);
   List<dynamic> _list(dynamic v) => List<dynamic>.from(v as List);
 
+  /// Normaliza listas simples y respuestas paginadas Laravel sin asumir que
+  /// todos los endpoints devuelven la colección en la raíz.
+  List<dynamic> listFromResponse(dynamic response, {String? collectionKey}) {
+    if (response is List) return List<dynamic>.from(response);
+    if (response is! Map) {
+      throw const FormatException('La respuesta no contiene una lista.');
+    }
+
+    // Soporta respuestas como {rooms: [...]}, {data: [...]},
+    // {data: {rooms: [...]}}, y la paginación Laravel {rooms: {data: [...]}}.
+    final candidatos = <dynamic>[
+      if (collectionKey != null) response[collectionKey],
+      response['data'],
+    ];
+    for (final candidato in candidatos) {
+      if (candidato is List) return List<dynamic>.from(candidato);
+      if (candidato is Map) {
+        final anidado = [
+          if (collectionKey != null) candidato[collectionKey],
+          candidato['data'],
+        ];
+        for (final valor in anidado) {
+          if (valor is List) return List<dynamic>.from(valor);
+          if (valor is Map && valor['data'] is List) {
+            return List<dynamic>.from(valor['data'] as List);
+          }
+        }
+      }
+    }
+    throw FormatException(
+      'La respuesta no contiene la lista esperada'
+      '${collectionKey == null ? '' : ' "$collectionKey"'}.',
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Sesión
   // ---------------------------------------------------------------------------
 
   /// Inicia sesión, guarda el token y devuelve los datos del usuario
   /// ({id, name, email, role}).
-  Future<Map<String, dynamic>> login(String email, String password) async {
-    final data = await _request('POST', '/login',
-        body: {'email': email, 'password': password});
+  Future<Map<String, dynamic>> login(
+    String email,
+    String password, {
+    String deviceName = 'flutter',
+  }) async {
+    final data = await _request(
+      'POST',
+      '/login',
+      body: {'email': email, 'password': password, 'device_name': deviceName},
+    );
     await _saveToken(data['token'] as String);
     return _map(data['user']);
   }
@@ -159,6 +215,68 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> me() async => _map(await _request('GET', '/me'));
+
+  // ---------------------------------------------------------------------------
+  // Habitaciones y huéspedes
+  // ---------------------------------------------------------------------------
+
+  /// El endpoint puede devolver `{summary, rooms}` o una lista directamente.
+  /// Se conserva la respuesta original para que el servicio normalice ambos
+  /// formatos (incluida la paginación Laravel).
+  Future<dynamic> rooms() => _request('GET', '/rooms');
+
+  Future<Map<String, dynamic>> updateRoomStatus(
+    String roomId,
+    Map<String, dynamic> payload,
+  ) async => _map(
+    await _request(
+      'PATCH',
+      '/rooms/${Uri.encodeComponent(roomId)}/status',
+      body: payload,
+    ),
+  );
+
+  Future<Map<String, dynamic>> createRoom(Map<String, dynamic> room) async =>
+      _map(await _request('POST', '/rooms', body: room));
+
+  Future<Map<String, dynamic>> updateRoom(
+    String roomId,
+    Map<String, dynamic> room,
+  ) async => _map(
+    await _request('PUT', '/rooms/${Uri.encodeComponent(roomId)}', body: room),
+  );
+
+  Future<dynamic> guests({
+    int page = 1,
+    int perPage = 100,
+    String? query,
+  }) async {
+    final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
+    if (query != null && query.trim().isNotEmpty) {
+      params['q'] = query.trim();
+    }
+    return _request('GET', '/guests?${Uri(queryParameters: params).query}');
+  }
+
+  Future<dynamic> guest(String guestId) async =>
+      _request('GET', '/guests/${Uri.encodeComponent(guestId)}');
+
+  Future<dynamic> createGuest(Map<String, dynamic> guest) async =>
+      _request('POST', '/guests', body: guest);
+
+  Future<dynamic> updateGuest(
+    String guestId,
+    Map<String, dynamic> guest, {
+    bool partial = false,
+  }) async => _request(
+    partial ? 'PATCH' : 'PUT',
+    '/guests/${Uri.encodeComponent(guestId)}',
+    body: guest,
+  );
+
+  Future<void> deleteGuest(String guestId) async {
+    await _request('DELETE', '/guests/${Uri.encodeComponent(guestId)}');
+  }
 
   // ---------------------------------------------------------------------------
   // Catálogo
@@ -188,18 +306,29 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> openShift(double openingAmount) async =>
-      _map(await _request('POST', '/shifts/open',
-          body: {'opening_amount': openingAmount}));
+  Future<Map<String, dynamic>> openShift(double openingAmount) async => _map(
+    await _request(
+      'POST',
+      '/shifts/open',
+      body: {'opening_amount': openingAmount},
+    ),
+  );
 
   /// Cierre a ciegas: se manda lo contado y la respuesta trae
   /// {shift, summary} con lo esperado y la diferencia.
-  Future<Map<String, dynamic>> closeShift(double countedAmount,
-          {String? notes}) async =>
-      _map(await _request('POST', '/shifts/close', body: {
+  Future<Map<String, dynamic>> closeShift(
+    double countedAmount, {
+    String? notes,
+  }) async => _map(
+    await _request(
+      'POST',
+      '/shifts/close',
+      body: {
         'counted_amount': countedAmount,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
-      }));
+      },
+    ),
+  );
 
   // ---------------------------------------------------------------------------
   // Ventas
@@ -211,9 +340,13 @@ class ApiClient {
   Future<Map<String, dynamic>> createSale({
     required String paymentMethod,
     required List<Map<String, int>> items,
-  }) async =>
-      _map(await _request('POST', '/sales',
-          body: {'payment_method': paymentMethod, 'items': items}));
+  }) async => _map(
+    await _request(
+      'POST',
+      '/sales',
+      body: {'payment_method': paymentMethod, 'items': items},
+    ),
+  );
 
   /// Historial paginado: {data: [...], current_page, last_page, ...}.
   Future<Map<String, dynamic>> sales({int page = 1}) async =>
@@ -229,7 +362,13 @@ class ApiClient {
       _map(await _request('GET', '/expenses?page=$page'));
 
   Future<Map<String, dynamic>> createExpense(
-          String description, double amount) async =>
-      _map(await _request('POST', '/expenses',
-          body: {'description': description, 'amount': amount}));
+    String description,
+    double amount,
+  ) async => _map(
+    await _request(
+      'POST',
+      '/expenses',
+      body: {'description': description, 'amount': amount},
+    ),
+  );
 }

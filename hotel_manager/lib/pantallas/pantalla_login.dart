@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../modelos/usuario.dart';
 import '../servicios/api_client.dart';
+import '../servicios/servicio_habitaciones.dart';
+import '../servicios/servicio_huespedes.dart';
 import '../servicios/servicio_sesion.dart';
 import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
@@ -38,17 +40,21 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
       _errorAcceso = null;
     });
     try {
-      final data = await ApiClient.instance.login(
+      await ApiClient.instance.login(
         _controladorUsuario.text.trim(),
         _controladorContrasena.text,
       );
-      if (!mounted) return;
+      final data = await ApiClient.instance.me();
+      if (!mounted) {
+        return;
+      }
       final role = (data['role'] ?? '').toString().toLowerCase();
       final rol = switch (role) {
-        'admin' || 'administrador' => RolUsuario.admin,
-        'limpieza' || 'housekeeping' => RolUsuario.limpieza,
-        'mantenimiento' || 'maintenance' => RolUsuario.mantenimiento,
-        _ => RolUsuario.recepcion,
+        'admin' => RolUsuario.admin,
+        'recepcionista' => RolUsuario.recepcion,
+        'limpieza' => RolUsuario.limpieza,
+        'mantenimiento' => RolUsuario.mantenimiento,
+        _ => throw ApiException('El servidor devolvió un rol no reconocido.'),
       };
       ServicioSesion.instancia.iniciarSesion(
         Usuario(
@@ -60,19 +66,29 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
           cargo: role,
         ),
       );
+      await Future.wait([
+        ServicioHabitaciones.instancia.sincronizar(),
+        ServicioHuespedes.instancia.sincronizar(),
+      ]);
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const ContenedorPrincipal()),
       );
     } on ApiException catch (e) {
-      if (mounted) setState(() => _errorAcceso = e.message);
+      if (mounted) {
+        setState(() => _errorAcceso = e.message);
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _errorAcceso = 'No se pudo iniciar sesión. Intenta de nuevo.',
         );
+      }
     } finally {
-      if (mounted) setState(() => _cargando = false);
+      if (mounted) {
+        setState(() => _cargando = false);
+      }
     }
   }
 

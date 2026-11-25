@@ -149,77 +149,114 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
             children: [
               const TarjetaEncabezado(),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    if (sesion?.rol == RolUsuario.admin ||
-                        sesion?.rol == RolUsuario.recepcion)
+                child: RefreshIndicator(
+                  onRefresh: ServicioHabitaciones.instancia.sincronizar,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      if (ServicioHabitaciones.instancia.cargando)
+                        const LinearProgressIndicator(),
+                      if (ServicioHabitaciones.instancia.error != null)
+                        Card(
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.cloud_off,
+                              color: Colors.red,
+                            ),
+                            title: const Text(
+                              'No se pudieron actualizar las habitaciones',
+                            ),
+                            subtitle: Text(
+                              ServicioHabitaciones.instancia.error!,
+                            ),
+                            trailing: IconButton(
+                              tooltip: 'Reintentar',
+                              onPressed:
+                                  ServicioHabitaciones.instancia.sincronizar,
+                              icon: const Icon(Icons.refresh),
+                            ),
+                          ),
+                        ),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const PantallaTareas(),
-                            ),
-                          ),
-                          icon: const Icon(Icons.assignment),
-                          label: const Text('Ver solicitudes y tareas'),
+                        child: IconButton(
+                          tooltip: 'Actualizar habitaciones',
+                          onPressed: ServicioHabitaciones.instancia.sincronizar,
+                          icon: const Icon(Icons.refresh),
                         ),
                       ),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        for (final dato in resumen) CuadroResumen(dato: dato),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TarjetaSeccion(
-                      titulo: 'Habitaciones',
-                      icono: Icons.hotel,
-                      hijo: FiltroHabitaciones(
-                        controladorBusqueda: _controladorBusqueda,
-                        alCambiarBusqueda: (valor) =>
-                            setState(() => _busqueda = valor),
-                        estado: _estado,
-                        alCambiarEstado: (valor) =>
-                            setState(() => _estado = valor),
-                        camas: _camas,
-                        alCambiarCamas: (valor) =>
-                            setState(() => _camas = valor),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (filtradas.isEmpty)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 32),
-                          child: Text(
-                            'No hay habitaciones con esos filtros',
-                            style: EstilosTexto.textoVacio,
+                      if (sesion?.rol == RolUsuario.admin ||
+                          sesion?.rol == RolUsuario.recepcion)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PantallaTareas(),
+                              ),
+                            ),
+                            icon: const Icon(Icons.assignment),
+                            label: const Text('Ver solicitudes y tareas'),
                           ),
                         ),
-                      )
-                    else
-                      for (final piso in habitacionesPorPiso.entries) ...[
-                        TarjetaSeccion(
-                          titulo: 'Piso ${piso.key}',
-                          icono: Icons.layers,
-                          hijo: SizedBox(
-                            height: 126,
-                            child: ListView(
-                              scrollDirection: Axis.horizontal,
-                              children: [
-                                for (final habitacion in piso.value)
-                                  TarjetaHabitacion(habitacion: habitacion),
-                              ],
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          for (final dato in resumen) CuadroResumen(dato: dato),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TarjetaSeccion(
+                        titulo: 'Habitaciones',
+                        icono: Icons.hotel,
+                        hijo: FiltroHabitaciones(
+                          controladorBusqueda: _controladorBusqueda,
+                          alCambiarBusqueda: (valor) =>
+                              setState(() => _busqueda = valor),
+                          estado: _estado,
+                          alCambiarEstado: (valor) =>
+                              setState(() => _estado = valor),
+                          camas: _camas,
+                          alCambiarCamas: (valor) =>
+                              setState(() => _camas = valor),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (filtradas.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 32),
+                            child: Text(
+                              todas.isEmpty
+                                  ? 'El servidor no devolvió habitaciones.'
+                                  : 'No hay habitaciones con esos filtros',
+                              style: EstilosTexto.textoVacio,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                  ],
+                        )
+                      else
+                        for (final piso in habitacionesPorPiso.entries) ...[
+                          TarjetaSeccion(
+                            titulo: 'Piso ${piso.key}',
+                            icono: Icons.layers,
+                            hijo: SizedBox(
+                              height: 126,
+                              child: ListView(
+                                scrollDirection: Axis.horizontal,
+                                children: [
+                                  for (final habitacion in piso.value)
+                                    TarjetaHabitacion(habitacion: habitacion),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                    ],
+                  ),
                 ),
               ),
             ],

@@ -174,7 +174,6 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                 hijo: Column(
                   children: [
                     SelectorHuespedGuardado(
-                      huespedes: ServicioHuespedes.instancia.huespedes,
                       seleccionadoId: _huespedSeleccionadoId,
                       alCambiar: (Huesped? h) => setState(() {
                         _huespedSeleccionadoId = h?.id;
