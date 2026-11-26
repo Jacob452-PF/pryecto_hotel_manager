@@ -1,0 +1,40 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "hotel-manager-3f70d",
+          "appId": "1:514260260099:android:4379f04ddc9f2c0fc6c536",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "hotel-manager-3f70d",
+          "configurations": {
+            "android": "1:514260260099:android:4379f04ddc9f2c0fc6c536",
+            "ios": "1:514260260099:ios:f269c396265cf6bac6c536",
+            "macos": "1:514260260099:ios:f269c396265cf6bac6c536",
+            "web": "1:514260260099:web:5b3cdf5270d59c9dc6c536",
+            "windows": "1:514260260099:web:d2982eb9cee6c82ec6c536"
+          }
+        }
+      }
+    }
+  },
+
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
