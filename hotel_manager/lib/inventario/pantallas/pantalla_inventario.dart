@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../servicios/servicio_inventario.dart';
 import '../modelos/producto_inventario.dart';
+import '../tema_inventario.dart';
 import '../widgets/chip_categoria_inventario.dart';
 import '../widgets/fila_producto_inventario.dart';
 import '../widgets/gastos_inventario.dart';
@@ -75,168 +76,173 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
     final stockBajo = productos.where((p) => p.stockBajo).length;
     final eliminados = _servicio.eliminados;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Encabezado
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: 34,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Inventario',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
+    return Theme(
+      data: temaInventario(context),
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Encabezado
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: 34,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Inventario',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
                     ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: () => mostrarAgregarProducto(context),
-                    icon: const Icon(Icons.add_circle_outline, size: 22),
-                    label: const Text(
-                      'Agregar producto',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 14,
+                    FilledButton.icon(
+                      onPressed: () => mostrarAgregarProducto(context),
+                      icon: const Icon(Icons.add_circle_outline, size: 22),
+                      label: const Text(
+                        'Agregar producto',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(context)
+                            .colorScheme
+                            .onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                children: [
-                  // Buscador + categorías
-                  _Panel(
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _busqueda,
-                          onChanged: (_) => setState(() {}),
-                          decoration: InputDecoration(
-                            hintText: 'Buscar',
-                            isDense: true,
-                            suffixIcon: const Icon(Icons.search, size: 20),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            for (final c in CategoriaInventario.values) ...[
-                              ChipCategoriaInventario(
-                                categoria: c,
-                                seleccionada: c == _categoria,
-                                onTap: () => setState(() => _categoria = c),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                  children: [
+                    // Buscador + categorías
+                    _Panel(
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: _busqueda,
+                            onChanged: (_) => setState(() {}),
+                            decoration: InputDecoration(
+                              hintText: 'Buscar',
+                              isDense: true,
+                              suffixIcon: const Icon(Icons.search, size: 20),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
                               ),
-                              if (c != CategoriaInventario.values.last)
-                                const SizedBox(width: 6),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ResumenInventario(
-                    total: productos.length,
-                    stockBajo: stockBajo,
-                    enStock: productos.length - stockBajo,
-                    ultimaActualizacion: _servicio.ultimaActualizacion,
-                  ),
-                  const SizedBox(height: 10),
-                  // Cuánto gastó el hotel en comprar productos / reponer stock
-                  const GastosInventario(),
-                  const SizedBox(height: 10),
-                  // Listado
-                  _Panel(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Listado de productos',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        if (visibles.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Center(
-                              child: Text(
-                                'No hay productos que coincidan.',
-                                textAlign: TextAlign.center,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
                             ),
                           ),
-                        for (final p in visibles)
-                          FilaProductoInventario(
-                            producto: p,
-                            onAjustar: () => mostrarAjustarStock(context, p),
-                            onEliminar: () => _eliminar(p),
-                          ),
-                        if (eliminados.isNotEmpty) ...[
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           Row(
                             children: [
-                              const Icon(Icons.timer_outlined, size: 24),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Productos eliminados (${eliminados.length})',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface,
+                              for (final c in CategoriaInventario.values) ...[
+                                ChipCategoriaInventario(
+                                  categoria: c,
+                                  seleccionada: c == _categoria,
+                                  onTap: () => setState(() => _categoria = c),
                                 ),
-                              ),
+                                if (c != CategoriaInventario.values.last)
+                                  const SizedBox(width: 6),
+                              ],
                             ],
                           ),
-                          const Divider(height: 18),
-                          for (final p in eliminados)
-                            _FilaEliminada(
-                              producto: p,
-                              onRestaurar: () => _servicio.restaurar(p.id),
-                            ),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    ResumenInventario(
+                      total: productos.length,
+                      stockBajo: stockBajo,
+                      enStock: productos.length - stockBajo,
+                      ultimaActualizacion: _servicio.ultimaActualizacion,
+                    ),
+                    const SizedBox(height: 10),
+                    // Cuánto gastó el hotel en comprar productos / reponer stock
+                    const GastosInventario(),
+                    const SizedBox(height: 10),
+                    // Listado
+                    _Panel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Listado de productos',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          if (visibles.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Center(
+                                child: Text(
+                                  'No hay productos que coincidan.',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          for (final p in visibles)
+                            FilaProductoInventario(
+                              producto: p,
+                              onAjustar: () => mostrarAjustarStock(context, p),
+                              onEliminar: () => _eliminar(p),
+                            ),
+                          if (eliminados.isNotEmpty) ...[
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                const Icon(Icons.timer_outlined, size: 24),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Productos eliminados (${eliminados.length})',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 18),
+                            for (final p in eliminados)
+                              _FilaEliminada(
+                                producto: p,
+                                onRestaurar: () => _servicio.restaurar(p.id),
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
