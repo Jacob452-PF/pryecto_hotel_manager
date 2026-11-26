@@ -38,10 +38,14 @@ dependencies:
   image_picker: ^1.2.4
   http: ^1.6.0
   flutter_secure_storage: ^10.0.0
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.0
+  cloud_firestore: ^5.6.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -63,6 +67,14 @@ flutter:
 
   assets:
   - assets/imagenes/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/imagenes/icono_hotel_manager.png
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/imagenes/icono_hotel_manager.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

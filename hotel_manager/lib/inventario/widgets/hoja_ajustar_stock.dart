@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../modelos/producto_inventario.dart';
 import '../servicios/servicio_inventario.dart';
+import '../tema_inventario.dart';
 import 'dialogo_inventario.dart';
 import 'fila_producto_inventario.dart';
 
@@ -13,7 +14,10 @@ Future<void> mostrarAjustarStock(
 ) {
   return showDialog<void>(
     context: context,
-    builder: (_) => _DialogoAjustar(producto: producto),
+    builder: (_) => Theme(
+      data: temaInventario(context),
+      child: _DialogoAjustar(producto: producto),
+    ),
   );
 }
 
@@ -116,8 +120,8 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
       }
       if (costo == null || costo < 0) {
         setState(
-          () =>
-              _error = 'Escribe cuánto costó cada producto (0 si no tuvo costo).',
+          () => _error =
+              'Escribe cuánto costó cada producto (0 si no tuvo costo).',
         );
         return;
       }
@@ -154,7 +158,8 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
       }
       if (!_esDevolucionCliente && cantidad > p.stock) {
         setState(
-          () => _error = 'Solo hay ${p.stock} unidades disponibles para devolver.',
+          () => _error =
+              'Solo hay ${p.stock} unidades disponibles para devolver.',
         );
         return;
       }
@@ -267,7 +272,8 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
           decoration: _decoracion(
             etiqueta: 'Precio de venta por producto',
             prefijo: '\$ ',
-            ayuda: 'Sugerido con ${((margenGanancia) * 100).round()}% de ganancia; puedes cambiarlo.',
+            ayuda:
+                'Sugerido con ${((margenGanancia) * 100).round()}% de ganancia; puedes cambiarlo.',
           ),
         ),
         const SizedBox(height: 12),
@@ -358,7 +364,11 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
         const SizedBox(height: 12),
         ResumenCompra(
           filas: [
-            FilaResumen('Importe de la devolución', _d(importe), destacar: true),
+            FilaResumen(
+              'Importe de la devolución',
+              _d(importe),
+              destacar: true,
+            ),
             FilaResumen('Stock después del movimiento', '$stockResultante'),
             FilaResumen(
               'Registro en gastos',
@@ -446,14 +456,14 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
                     children: [
                       Expanded(
                         child: TextField(
-                              controller: _stock,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              style: const TextStyle(fontSize: 17),
-                              decoration: _decoracion(relleno: Colors.white),
-                            ),
+                          controller: _stock,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          style: const TextStyle(fontSize: 17),
+                          decoration: _decoracion(relleno: Colors.white),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       _BotonCuadrado(

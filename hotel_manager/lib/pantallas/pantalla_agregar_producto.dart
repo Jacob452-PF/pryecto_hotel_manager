@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../inventario/modelos/producto_inventario.dart';
+import '../inventario/tema_inventario.dart';
 import '../widgets/selector_foto_producto.dart';
 
 /// Lo que devuelve el formulario al guardar.
@@ -48,13 +49,7 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
 
   @override
   void dispose() {
-    for (final c in [
-      _nombre,
-      _paquetes,
-      _unidades,
-      _costo,
-      _stockMinimo,
-    ]) {
+    for (final c in [_nombre, _paquetes, _unidades, _costo, _stockMinimo]) {
       c.dispose();
     }
     super.dispose();
@@ -125,88 +120,93 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
   @override
   Widget build(BuildContext context) {
     const decimal = TextInputType.numberWithOptions(decimal: true);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Agregar producto')),
-      body: Form(
-        key: _llave,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            SelectorFotoProducto(
-              foto: _foto,
-              onCambio: (f) => setState(() => _foto = f),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                for (final categoria in CategoriaInventario.values)
-                  if (categoria != CategoriaInventario.todos)
-                    ChoiceChip(
-                      label: Text(categoria.etiqueta),
-                      selected: _categoria == categoria,
-                      onSelected: (_) => setState(() => _categoria = categoria),
-                    ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _campo(
-              'Nombre',
-              _nombre,
-              validar: (t) =>
-                  (t == null || t.trim().isEmpty) ? 'Escribe el nombre' : null,
-            ),
-            InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'Precio de venta (+20%)',
-                prefixText: '\$ ',
-                border: OutlineInputBorder(),
+    return Theme(
+      data: temaInventario(context),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Agregar producto')),
+        body: Form(
+          key: _llave,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              SelectorFotoProducto(
+                foto: _foto,
+                onCambio: (f) => setState(() => _foto = f),
               ),
-              child: Text(_precioVenta.toStringAsFixed(2)),
-            ),
-            const SizedBox(height: 12),
-            _campo(
-              'Paquetes comprados',
-              _paquetes,
-              validar: _validaEntero,
-              teclado: TextInputType.number,
-            ),
-            _campo(
-              'Unidades por paquete',
-              _unidades,
-              validar: _validaEntero,
-              teclado: TextInputType.number,
-            ),
-            _campo(
-              'Costo de cada paquete',
-              _costo,
-              validar: _validaPositivo,
-              teclado: decimal,
-              prefijo: '\$',
-            ),
-            _campo(
-              'Stock mínimo para aviso',
-              _stockMinimo,
-              validar: _validaEntero,
-              teclado: TextInputType.number,
-            ),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F0FA),
-                borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final categoria in CategoriaInventario.values)
+                    if (categoria != CategoriaInventario.todos)
+                      ChoiceChip(
+                        label: Text(categoria.etiqueta),
+                        selected: _categoria == categoria,
+                        onSelected: (_) =>
+                            setState(() => _categoria = categoria),
+                      ),
+                ],
               ),
-              child: Text(
-                'Gasto total: \$${_totalGasto.toStringAsFixed(2)}   ·   Costo por unidad: \$${_costoUnidad.toStringAsFixed(2)}',
+              const SizedBox(height: 12),
+              _campo(
+                'Nombre',
+                _nombre,
+                validar: (t) => (t == null || t.trim().isEmpty)
+                    ? 'Escribe el nombre'
+                    : null,
               ),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _guardar,
-              child: const Text('Guardar producto'),
-            ),
-          ],
+              InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Precio de venta (+20%)',
+                  prefixText: '\$ ',
+                  border: OutlineInputBorder(),
+                ),
+                child: Text(_precioVenta.toStringAsFixed(2)),
+              ),
+              const SizedBox(height: 12),
+              _campo(
+                'Paquetes comprados',
+                _paquetes,
+                validar: _validaEntero,
+                teclado: TextInputType.number,
+              ),
+              _campo(
+                'Unidades por paquete',
+                _unidades,
+                validar: _validaEntero,
+                teclado: TextInputType.number,
+              ),
+              _campo(
+                'Costo de cada paquete',
+                _costo,
+                validar: _validaPositivo,
+                teclado: decimal,
+                prefijo: '\$',
+              ),
+              _campo(
+                'Stock mínimo para aviso',
+                _stockMinimo,
+                validar: _validaEntero,
+                teclado: TextInputType.number,
+              ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F0FA),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Gasto total: \$${_totalGasto.toStringAsFixed(2)}   ·   Costo por unidad: \$${_costoUnidad.toStringAsFixed(2)}',
+                ),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _guardar,
+                child: const Text('Guardar producto'),
+              ),
+            ],
+          ),
         ),
       ),
     );

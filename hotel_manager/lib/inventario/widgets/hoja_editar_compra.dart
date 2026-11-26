@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../modelos/compra_inventario.dart';
 import '../modelos/producto_inventario.dart';
 import '../servicios/servicio_inventario.dart';
+import '../tema_inventario.dart';
 import 'dialogo_inventario.dart';
 
 /// Ventana "Editar compra": sirve para corregir un error (por ejemplo, el
@@ -15,7 +16,10 @@ Future<void> mostrarEditarCompra(
 ) {
   return showDialog<void>(
     context: context,
-    builder: (_) => _DialogoEditar(compra: compra),
+    builder: (_) => Theme(
+      data: temaInventario(context),
+      child: _DialogoEditar(compra: compra),
+    ),
   );
 }
 
