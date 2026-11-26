@@ -47,12 +47,10 @@ class _PantallaCierreCajaState extends State<PantallaCierreCaja> {
       return;
     }
     if (!context.mounted) return;
-    if (cajaService.cajaActual == null || cajaService.resumenServidor == null) {
+    if (cajaService.cajaActual == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'El servidor no devolvió una caja abierta con su resumen. Actualiza o vuelve a iniciar la caja.',
-          ),
+          content: Text('No hay una caja abierta para cerrar.'),
         ),
       );
       return;
