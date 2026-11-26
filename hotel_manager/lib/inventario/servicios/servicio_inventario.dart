@@ -20,6 +20,7 @@ class ServicioInventario extends ChangeNotifier {
   DateTime _ultimaActualizacion = DateTime.now();
   String? error;
   bool cargando = false;
+  bool _sincronizacionEnCurso = false;
 
   List<ProductoInventario> get productos => List.unmodifiable(_productos);
   List<ProductoInventario> get eliminados => List.unmodifiable(_eliminados);
@@ -27,6 +28,8 @@ class ServicioInventario extends ChangeNotifier {
   DateTime get ultimaActualizacion => _ultimaActualizacion;
 
   Future<void> sincronizar() async {
+    if (_sincronizacionEnCurso) return;
+    _sincronizacionEnCurso = true;
     cargando = true;
     error = null;
     notifyListeners();
@@ -77,10 +80,10 @@ class ServicioInventario extends ChangeNotifier {
         );
       _ultimaActualizacion = DateTime.now();
     } on Object catch (e) {
-      _productos.clear();
       error = e.toString().replaceFirst('Exception: ', '');
     } finally {
       cargando = false;
+      _sincronizacionEnCurso = false;
       notifyListeners();
     }
   }

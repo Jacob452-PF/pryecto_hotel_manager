@@ -65,7 +65,7 @@ class _PantallaFacturaState extends State<PantallaFactura> {
                 ),
                 const SizedBox(height: 16),
                 TarjetaSeccion(
-                  titulo: 'Huésped',
+                  titulo: 'Cliente',
                   icono: Icons.person,
                   hijo: Column(
                     children: [
@@ -78,13 +78,17 @@ class _PantallaFacturaState extends State<PantallaFactura> {
                       FilaInformacion(
                         icono: Icons.credit_card,
                         etiqueta: 'DUI',
-                        valor: formatearDui(factura.dui),
+                        valor: factura.dui.isEmpty
+                            ? 'No proporcionado'
+                            : formatearDui(factura.dui),
                       ),
                       const Divider(height: 1),
                       FilaInformacion(
                         icono: Icons.phone,
                         etiqueta: 'Teléfono',
-                        valor: formatearTelefono(factura.telefono),
+                        valor: factura.telefono.isEmpty
+                            ? 'No proporcionado'
+                            : formatearTelefono(factura.telefono),
                       ),
                     ],
                   ),

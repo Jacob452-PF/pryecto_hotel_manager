@@ -37,7 +37,7 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
           children: [
             ListTile(
               leading: const Icon(Icons.person_add),
-              title: const Text('Registrar estadía'),
+              title: const Text('Venta directa de habitación'),
               onTap: () => Navigator.pop(contexto, false),
             ),
             ListTile(
@@ -267,7 +267,7 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
               ? FloatingActionButton.extended(
                   onPressed: _abrirRegistro,
                   icon: const Icon(Icons.person_add),
-                  label: const Text('Nuevo huésped'),
+                  label: const Text('Nueva venta'),
                 )
               : null,
         );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../modelos/usuario.dart';
 import '../servicios/api_client.dart';
+import '../servicios/servicio_actualizacion.dart';
 import '../servicios/servicio_sesion.dart';
 import '../tema/colores_app.dart';
 import '../widgets/tarjeta_opcion_perfil.dart';
@@ -51,6 +52,7 @@ class PantallaPerfilCaja extends StatelessWidget {
 
     if (confirmado == true && context.mounted) {
       await ApiClient.instance.logout();
+      ServicioActualizacion.instancia.detener();
       if (!context.mounted) return;
       await ServicioSesion.instancia.cerrarSesion();
       if (!context.mounted) return;

@@ -68,8 +68,13 @@ class DatosEstadia {
     final units = int.tryParse(json['rate_units']?.toString() ?? '') ?? 1;
     return DatosEstadia(
       id: json['id'].toString(),
+<<<<<<< Updated upstream
       entrada: TiempoHotel.desdeApi(json['check_in_at'].toString()),
       salida: TiempoHotel.desdeApi(json['expected_checkout_at'].toString()),
+=======
+      entrada: DateTime.parse(json['check_in_at'].toString()),
+      salida: DateTime.parse(json['expected_checkout_at'].toString()),
+>>>>>>> Stashed changes
       precioEstadia:
           (double.tryParse(rate['price']?.toString() ?? '') ?? 0) * units,
       cargosIniciales: const [],
@@ -90,10 +95,13 @@ class ServicioEstadias extends ChangeNotifier {
   DatosEstadia? buscar(String habitacion) => _estadias[habitacion];
   bool cargando = false;
   String? error;
+  bool _sincronizacionEnCurso = false;
 
   Future<void> cargar() => sincronizar();
 
   Future<void> sincronizar() async {
+    if (_sincronizacionEnCurso) return;
+    _sincronizacionEnCurso = true;
     cargando = true;
     error = null;
     notifyListeners();
@@ -130,10 +138,10 @@ class ServicioEstadias extends ChangeNotifier {
         ..clear()
         ..addAll(rooms);
     } on Object catch (e) {
-      _estadias.clear();
       error = e.toString().replaceFirst('Exception: ', '');
     } finally {
       cargando = false;
+      _sincronizacionEnCurso = false;
       notifyListeners();
     }
   }

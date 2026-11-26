@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../servicios/servicio_caja.dart';
+import '../servicios/servicio_notificaciones.dart';
 import '../widgets/formulario_desglose_efectivo.dart';
 
 class PantallaAperturaCaja extends StatelessWidget {
@@ -18,6 +19,7 @@ class PantallaAperturaCaja extends StatelessWidget {
         alConfirmar: (d) async {
           try {
             final c = await ServicioCaja.instancia.abrir(d);
+            ServicioNotificaciones.instancia.notificarReservasParaManana();
             if (context.mounted) {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(

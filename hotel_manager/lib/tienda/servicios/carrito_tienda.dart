@@ -82,7 +82,7 @@ class CarritoTienda extends ChangeNotifier {
     notifyListeners();
   }
 
-  void seleccionarHuesped(HuespedTienda huesped) {
+  void seleccionarHuesped(HuespedTienda? huesped) {
     _huesped = huesped;
     notifyListeners();
   }

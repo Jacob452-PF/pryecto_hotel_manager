@@ -17,10 +17,13 @@ class ServicioHabitaciones extends ChangeNotifier {
   bool cargando = false;
   String? error;
   Map<String, dynamic> resumenApi = const {};
+  bool _sincronizacionEnCurso = false;
 
   Future<void> cargar() => sincronizar();
 
   Future<void> sincronizar() async {
+    if (_sincronizacionEnCurso) return;
+    _sincronizacionEnCurso = true;
     cargando = true;
     error = null;
     notifyListeners();
@@ -43,17 +46,15 @@ class ServicioHabitaciones extends ChangeNotifier {
           ? Map<String, dynamic>.from(response['summary'] as Map)
           : const {};
     } on ApiException catch (e) {
-      _habitaciones.clear();
       error = e.message;
     } on FormatException catch (e) {
-      _habitaciones.clear();
       error =
           'La respuesta de habitaciones no tiene el formato esperado: ${e.message}';
     } catch (_) {
-      _habitaciones.clear();
       error = 'No se pudieron cargar las habitaciones desde el servidor.';
     } finally {
       cargando = false;
+      _sincronizacionEnCurso = false;
       notifyListeners();
     }
   }

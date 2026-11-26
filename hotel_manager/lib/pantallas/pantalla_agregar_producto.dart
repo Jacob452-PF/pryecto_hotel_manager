@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../inventario/modelos/producto_inventario.dart';
 import '../servicios/api_client.dart';
+<<<<<<< Updated upstream
 import '../inventario/tema_inventario.dart';
+=======
+>>>>>>> Stashed changes
 import '../widgets/selector_foto_producto.dart';
 
 /// Lo que devuelve el formulario al guardar.
@@ -61,10 +64,17 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
 
   Future<void> _cargarProveedores() async {
     try {
+<<<<<<< Updated upstream
       final proveedores = await ApiClient.instance.suppliers();
       if (!mounted) return;
       setState(() {
         _proveedores = proveedores
+=======
+      final items = await ApiClient.instance.suppliers();
+      if (!mounted) return;
+      setState(() {
+        _proveedores = items
+>>>>>>> Stashed changes
             .whereType<Map>()
             .map(Map<String, dynamic>.from)
             .toList();
@@ -128,13 +138,20 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
         _proveedorId = int.tryParse(proveedor['id'].toString());
       });
     } on Object catch (error) {
+<<<<<<< Updated upstream
       if (mounted) {
+=======
+      if (mounted)
+>>>>>>> Stashed changes
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error.toString().replaceFirst('Exception: ', '')),
           ),
         );
+<<<<<<< Updated upstream
       }
+=======
+>>>>>>> Stashed changes
     }
   }
 
@@ -313,12 +330,86 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
                   ),
                 ],
               ),
+<<<<<<< Updated upstream
               const SizedBox(height: 12),
               _campo(
                 'Stock mínimo para aviso',
                 _stockMinimo,
                 validar: _validaEntero,
                 teclado: TextInputType.number,
+=======
+              child: Text(_precioVenta.toStringAsFixed(2)),
+            ),
+            const SizedBox(height: 12),
+            _campo(
+              'Paquetes comprados',
+              _paquetes,
+              validar: _validaEntero,
+              teclado: TextInputType.number,
+            ),
+            _campo(
+              'Unidades por paquete',
+              _unidades,
+              validar: _validaEntero,
+              teclado: TextInputType.number,
+            ),
+            _campo(
+              'Costo de cada paquete',
+              _costo,
+              validar: _validaPositivo,
+              teclado: decimal,
+              prefijo: '\$',
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int?>(
+                    value: _proveedorId,
+                    decoration: InputDecoration(
+                      labelText: 'Proveedor de la compra inicial',
+                      border: const OutlineInputBorder(),
+                      helperText: _cargandoProveedores
+                          ? 'Cargando proveedores…'
+                          : null,
+                    ),
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('Sin proveedor'),
+                      ),
+                      ..._proveedores.map(
+                        (p) => DropdownMenuItem<int?>(
+                          value: int.tryParse(p['id'].toString()),
+                          child: Text(p['name']?.toString() ?? 'Proveedor'),
+                        ),
+                      ),
+                    ],
+                    onChanged: _cargandoProveedores
+                        ? null
+                        : (id) => setState(() => _proveedorId = id),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Agregar proveedor',
+                  onPressed: _agregarProveedor,
+                  icon: const Icon(Icons.person_add_alt_1),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _campo(
+              'Stock mínimo para aviso',
+              _stockMinimo,
+              validar: _validaEntero,
+              teclado: TextInputType.number,
+            ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F0FA),
+                borderRadius: BorderRadius.circular(12),
+>>>>>>> Stashed changes
               ),
               Container(
                 padding: const EdgeInsets.all(12),

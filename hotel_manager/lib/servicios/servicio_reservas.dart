@@ -27,6 +27,7 @@ class ServicioReservas extends ChangeNotifier {
   static const _clave = 'hotel.reservas';
   final List<Reserva> _reservas = [];
   Timer? _reloj;
+  bool _sincronizacionEnCurso = false;
   final AvisoExternoService _avisoExterno = const AvisoExternoService();
   List<Reserva> get reservas => List.unmodifiable(_reservas);
   String? error;
@@ -43,6 +44,8 @@ class ServicioReservas extends ChangeNotifier {
   }
 
   Future<void> sincronizar() async {
+    if (_sincronizacionEnCurso) return;
+    _sincronizacionEnCurso = true;
     error = null;
     try {
       final recibidas = <Reserva>[];
@@ -53,14 +56,12 @@ class ServicioReservas extends ChangeNotifier {
         final rows = ApiClient.instance.listFromResponse(response);
         recibidas.addAll(
           rows.map(
-            (row) => Reserva.fromApiJson(
-              Map<String, dynamic>.from(row as Map),
-            ),
+            (row) => Reserva.fromApiJson(Map<String, dynamic>.from(row as Map)),
           ),
         );
         if (response is Map) {
-          lastPage = int.tryParse(response['last_page']?.toString() ?? '') ??
-              page;
+          lastPage =
+              int.tryParse(response['last_page']?.toString() ?? '') ?? page;
         }
         page++;
       } while (page <= lastPage);
@@ -69,15 +70,13 @@ class ServicioReservas extends ChangeNotifier {
         ..clear()
         ..addAll(recibidas);
     } on ApiException catch (e) {
-      _reservas.clear();
       error = e.message;
     } on FormatException catch (e) {
-      _reservas.clear();
       error = 'La respuesta de reservas no tiene el formato esperado: $e';
     } catch (_) {
-      _reservas.clear();
       error = 'No se pudieron cargar las reservas desde el servidor.';
     } finally {
+      _sincronizacionEnCurso = false;
       notifyListeners();
     }
   }
@@ -204,10 +203,12 @@ class ServicioReservas extends ChangeNotifier {
     }
   }
 
-  String _nombreHuesped(String id) => ServicioHuespedes.instancia.huespedes
-      .where((h) => h.id == id)
-      .map((h) => h.nombre)
-      .firstOrNull ?? 'Huésped';
+  String _nombreHuesped(String id) =>
+      ServicioHuespedes.instancia.huespedes
+          .where((h) => h.id == id)
+          .map((h) => h.nombre)
+          .firstOrNull ??
+      'Huésped';
 
   Future<void> _guardar() => ServicioStorage.instancia.guardarLista(
     _clave,
@@ -238,6 +239,7 @@ class ServicioReservas extends ChangeNotifier {
     );
     await sincronizar();
   }
+
   @override
   void dispose() {
     _reloj?.cancel();

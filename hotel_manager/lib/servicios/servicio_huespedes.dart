@@ -13,6 +13,7 @@ class ServicioHuespedes extends ChangeNotifier {
   List<Huesped> get huespedes => List.unmodifiable(_huespedes);
   bool cargando = false;
   String? error;
+  bool _sincronizacionEnCurso = false;
 
   Huesped? porDui(String dui) {
     final clave = _normalizar(dui);
@@ -28,6 +29,8 @@ class ServicioHuespedes extends ChangeNotifier {
   Future<void> cargar() => sincronizar();
 
   Future<void> sincronizar({String? busqueda}) async {
+    if (_sincronizacionEnCurso) return;
+    _sincronizacionEnCurso = true;
     cargando = true;
     error = null;
     notifyListeners();
@@ -65,17 +68,15 @@ class ServicioHuespedes extends ChangeNotifier {
         ..clear()
         ..addAll(recibidos);
     } on ApiException catch (e) {
-      _huespedes.clear();
       error = e.message;
     } on FormatException catch (e) {
-      _huespedes.clear();
       error =
           'La respuesta de huéspedes no tiene el formato esperado: ${e.message}';
     } catch (_) {
-      _huespedes.clear();
       error = 'No se pudieron cargar los huéspedes desde el servidor.';
     } finally {
       cargando = false;
+      _sincronizacionEnCurso = false;
       notifyListeners();
     }
   }
