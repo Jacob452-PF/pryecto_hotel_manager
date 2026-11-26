@@ -4,12 +4,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../servicios/api_client.dart';
-<<<<<<< Updated upstream
-=======
-import '../../servicios/servicio_estadias.dart';
-import '../../servicios/servicio_huespedes.dart';
-import '../modelos/articulo_tienda.dart';
->>>>>>> Stashed changes
 import '../servicios/carrito_tienda.dart';
 import '../../inventario/servicios/servicio_inventario.dart';
 import '../../servicios/servicio_huespedes.dart';
@@ -47,18 +41,10 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
   LineaCarrito? _avisoEliminada; // para la barra "Deshacer"
   Timer? _temporizador;
   bool _enviando = false;
-  bool _pagarAhora = true;
-  String? _clienteRegistradoId;
-  final _nombreCliente = TextEditingController();
-  final _documentoCliente = TextEditingController();
-  final _telefonoCliente = TextEditingController();
 
   @override
   void dispose() {
     _temporizador?.cancel();
-    _nombreCliente.dispose();
-    _documentoCliente.dispose();
-    _telefonoCliente.dispose();
     super.dispose();
   }
 
@@ -77,7 +63,6 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
   }
 
   Future<void> _confirmar() async {
-<<<<<<< Updated upstream
     if (_enviando || _c.lineas.isEmpty) return;
     final messenger = ScaffoldMessenger.of(context);
     final modo = await showDialog<String>(
@@ -165,13 +150,6 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
     final huesped = _c.huesped;
     final stayId = huesped?.estadiaIdApi;
     if (huesped == null || stayId == null) {
-=======
-    final habitacion = _c.huesped;
-    if (_enviando || _c.lineas.isEmpty) return;
-    final messenger = ScaffoldMessenger.of(context);
-    final stayId = habitacion?.estadiaIdApi;
-    if (!_pagarAhora && stayId == null) {
->>>>>>> Stashed changes
       messenger.showSnackBar(
         const SnackBar(
           content: Text(
@@ -181,7 +159,6 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
       );
       return;
     }
-<<<<<<< Updated upstream
     final pagarAhora = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -206,36 +183,9 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
         ? await mostrarDialogoCobro(context, saldo: _c.totalPagar)
         : null;
     if (pagarAhora && (pago == null || !mounted)) return;
-=======
-    String? metodoPago;
-    if (_pagarAhora) {
-      metodoPago = await showDialog<String>(
-        context: context,
-        builder: (ctx) => SimpleDialog(
-          title: const Text('Forma de pago'),
-          children: [
-            for (final metodo in const ['efectivo', 'tarjeta', 'transferencia'])
-              SimpleDialogOption(
-                onPressed: () => Navigator.pop(ctx, metodo),
-                child: Text(metodo[0].toUpperCase() + metodo.substring(1)),
-              ),
-          ],
-        ),
-      );
-      if (metodoPago == null || !mounted) return;
-    }
->>>>>>> Stashed changes
-
-    final clienteSeleccionado = _clienteRegistradoId == null
-        ? null
-        : ServicioHuespedes.instancia.huespedes
-              .where((h) => h.id == _clienteRegistradoId)
-              .firstOrNull;
-    final guestId = int.tryParse(clienteSeleccionado?.id ?? '');
 
     setState(() => _enviando = true);
     try {
-<<<<<<< Updated upstream
       await ApiClient.instance.chargeStay(
         stayId,
         items: [
@@ -248,41 +198,11 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
         payNow: pagarAhora,
         paymentMethod: pago?.metodo.name,
       );
-=======
-      final items = [
-        for (final line in _c.lineas)
-          {
-            'product_id': int.parse(line.articulo.id),
-            'quantity': line.cantidad,
-          },
-      ];
-      if (_pagarAhora) {
-        final venta = await ApiClient.instance.createSale(
-          paymentMethod: metodoPago!,
-          items: items,
-          guestId: guestId,
-          customerName: clienteSeleccionado?.nombre ?? _nombreCliente.text,
-          customerDocument: clienteSeleccionado?.dui ?? _documentoCliente.text,
-          customerPhone: clienteSeleccionado?.telefono ?? _telefonoCliente.text,
-        );
-        final totalReal =
-            double.tryParse(venta['total']?.toString() ?? '') ?? _c.totalPagar;
-        await ServicioInventario.instancia.sincronizar();
-        if (!mounted) return;
-        await _mostrarFacturaVenta(venta, totalReal);
-        if (!mounted) return;
-        _c.vaciar();
-        Navigator.of(context).pop();
-        return;
-      }
-
-      await ApiClient.instance.chargeStay(stayId!, items: items, payNow: false);
->>>>>>> Stashed changes
       await ServicioInventario.instancia.sincronizar();
-      await ServicioEstadias.instancia.sincronizar();
       if (!mounted) return;
-      final mensaje =
-          'Consumo agregado al saldo de habitación ${habitacion!.habitacion}.';
+      final mensaje = pagarAhora
+          ? 'Pago de ${_dinero(_c.totalPagar)} registrado para ${huesped.nombre}.'
+          : 'Consumo agregado al saldo de ${huesped.nombre}.';
       _c.vaciar();
       Navigator.of(context).pop();
       messenger.showSnackBar(SnackBar(content: Text(mensaje)));
@@ -297,7 +217,6 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
     }
   }
 
-<<<<<<< Updated upstream
   Future<Map<String, dynamic>?> _pedirDatosFactura() async {
     final huespedes = ServicioHuespedes.instancia.huespedes;
     final nombre = TextEditingController();
@@ -436,105 +355,14 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                   ),
                 ),
                 Text('Pago: ${venta['payment_method'] ?? 'Registrado'}'),
-=======
-  Future<void> _mostrarFacturaVenta(
-    Map<String, dynamic> venta,
-    double total,
-  ) async {
-    final guest = venta['guest'] is Map
-        ? Map<String, dynamic>.from(venta['guest'] as Map)
-        : const <String, dynamic>{};
-    final cliente = (venta['customer_name'] ?? guest['name'])?.toString();
-    final documento = (venta['customer_document'] ?? guest['document'])
-        ?.toString();
-    final telefono = (venta['customer_phone'] ?? guest['phone'])?.toString();
-    final creada = DateTime.tryParse(venta['created_at']?.toString() ?? '');
-    final items = venta['items'] is List
-        ? (venta['items'] as List).whereType<Map>().toList()
-        : const <Map>[];
-    await showDialog<void>(
-      context: context,
-      builder: (contexto) => AlertDialog(
-        title: const Text('Factura de venta'),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Cliente: ${cliente?.isNotEmpty == true ? cliente : 'Consumidor final'}',
-                ),
-                if (documento?.isNotEmpty == true)
-                  Text('Documento: $documento'),
-                if (telefono?.isNotEmpty == true) Text('Teléfono: $telefono'),
-                if (creada != null)
-                  Text(
-                    'Fecha: ${creada.day.toString().padLeft(2, '0')}/${creada.month.toString().padLeft(2, '0')}/${creada.year} ${creada.hour.toString().padLeft(2, '0')}:${creada.minute.toString().padLeft(2, '0')}',
-                  ),
-                const Divider(height: 24),
-                for (final row in items) ...[
-                  Builder(
-                    builder: (_) {
-                      final item = Map<String, dynamic>.from(row);
-                      final producto = item['product'] is Map
-                          ? Map<String, dynamic>.from(item['product'] as Map)
-                          : const <String, dynamic>{};
-                      final cantidad =
-                          int.tryParse(item['quantity']?.toString() ?? '') ?? 1;
-                      final monto =
-                          double.tryParse(item['subtotal']?.toString() ?? '') ??
-                          0;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${producto['name'] ?? 'Producto'} × $cantidad',
-                              ),
-                            ),
-                            Text(_dinero(monto)),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Total',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      _dinero(total),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                if (venta['payment_method'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text('Forma de pago: ${venta['payment_method']}'),
-                  ),
->>>>>>> Stashed changes
               ],
             ),
           ),
         ),
         actions: [
           FilledButton(
-<<<<<<< Updated upstream
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cerrar factura'),
-=======
-            onPressed: () => Navigator.of(contexto).pop(),
-            child: const Text('Listo'),
->>>>>>> Stashed changes
           ),
         ],
       ),
@@ -664,7 +492,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                                     colorValor: colores.primary,
                                   ),
                                   const SizedBox(height: 18),
-                                  _seccionDestino(),
+                                  _seccionHuesped(),
                                   if (_c.eliminadas.isNotEmpty)
                                     _seccionEliminados(),
                                 ],
@@ -675,14 +503,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                               child: SizedBox(
                                 width: double.infinity,
                                 child: FilledButton(
-<<<<<<< Updated upstream
                                   onPressed: (n == 0 || _enviando)
-=======
-                                  onPressed:
-                                      (n == 0 ||
-                                          _enviando ||
-                                          (!_pagarAhora && _c.huesped == null))
->>>>>>> Stashed changes
                                       ? null
                                       : _confirmar,
                                   style: FilledButton.styleFrom(
@@ -698,13 +519,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                                   child: Text(
                                     _enviando
                                         ? 'Registrando…'
-<<<<<<< Updated upstream
                                         : 'Continuar al cobro',
-=======
-                                        : _pagarAhora
-                                        ? 'Pagar ahora'
-                                        : 'Cargar a habitación',
->>>>>>> Stashed changes
                                     style: const TextStyle(fontSize: 16),
                                   ),
                                 ),
@@ -795,7 +610,6 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
     );
   }
 
-<<<<<<< Updated upstream
   Widget _seccionHuesped() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -836,134 +650,26 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
               label: const Text('Quitar habitación'),
             ),
           ),
-=======
-  Widget _seccionDestino() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        '¿Cómo quieres registrar el consumo?',
-        style: Theme.of(context).textTheme.titleMedium
-            ?.copyWith(fontWeight: FontWeight.bold),
-      ),
-      RadioListTile<bool>(
-        contentPadding: EdgeInsets.zero,
-        value: true,
-        groupValue: _pagarAhora,
-        title: const Text('Pagar ahora'),
-        subtitle: const Text('No necesitas seleccionar cliente ni habitación.'),
-        onChanged: (value) => setState(() {
-          _pagarAhora = value ?? true;
-        }),
-      ),
-      RadioListTile<bool>(
-        contentPadding: EdgeInsets.zero,
-        value: false,
-        groupValue: _pagarAhora,
-        title: const Text('Cargar a una habitación'),
-        subtitle: const Text('El saldo se agrega a una estadía activa.'),
-        onChanged: (value) => setState(() {
-          _pagarAhora = value ?? false;
-        }),
-      ),
-      if (_pagarAhora) _datosFactura(),
-      if (!_pagarAhora) ...[
->>>>>>> Stashed changes
         if (_c.huespedes.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8),
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
             child: Text(
-<<<<<<< Updated upstream
               'No hay habitaciones con estadía activa para cargar consumos.',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
-=======
-              'No hay estadías activas disponibles para cargar el consumo.',
-            ),
-          )
-        else
-          DropdownButtonFormField<String>(
-            initialValue: _c.huesped?.id ?? '',
-            decoration: const InputDecoration(
-              labelText: 'Habitación o cliente alojado',
-              prefixIcon: Icon(Icons.meeting_room_outlined),
-            ),
-            items: [
-              const DropdownMenuItem(
-                value: '',
-                child: Text('Selecciona una habitación'),
->>>>>>> Stashed changes
               ),
-              for (final destino in _c.huespedes)
-                DropdownMenuItem(
-                  value: destino.id,
-                  child: Text('Hab. ${destino.habitacion} · ${destino.nombre}'),
-                ),
-            ],
-            onChanged: (id) => _c.seleccionarHuesped(
-              _c.huespedes.where((h) => h.id == id).firstOrNull,
             ),
           ),
+        for (final h in _c.huespedes)
+          _TarjetaHuesped(
+            nombre: h.nombre,
+            habitacion: h.habitacion,
+            seleccionado: _c.huesped?.id == h.id,
+            onTap: () => _c.seleccionarHuesped(h),
+          ),
       ],
-    ],
-  );
-
-  Widget _datosFactura() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const SizedBox(height: 8),
-      Text(
-        'Datos para la factura (opcionales)',
-        style: Theme.of(context).textTheme.titleSmall
-            ?.copyWith(fontWeight: FontWeight.w600),
-      ),
-      const SizedBox(height: 8),
-      ListenableBuilder(
-        listenable: ServicioHuespedes.instancia,
-        builder: (context, _) {
-          final huespedes = ServicioHuespedes.instancia.huespedes;
-          return DropdownButtonFormField<String>(
-            initialValue: _clienteRegistradoId ?? '',
-            decoration: const InputDecoration(
-              labelText: 'Cliente registrado',
-              prefixIcon: Icon(Icons.person_search_outlined),
-            ),
-            items: [
-              const DropdownMenuItem(value: '', child: Text('Sin cliente')),
-              for (final cliente in huespedes)
-                DropdownMenuItem(
-                  value: cliente.id,
-                  child: Text(cliente.nombre, overflow: TextOverflow.ellipsis),
-                ),
-            ],
-            onChanged: (id) {
-              final cliente = huespedes.where((h) => h.id == id).firstOrNull;
-              setState(() {
-                _clienteRegistradoId = id == null || id.isEmpty ? null : id;
-                _nombreCliente.text = cliente?.nombre ?? '';
-                _documentoCliente.text = cliente?.dui ?? '';
-                _telefonoCliente.text = cliente?.telefono ?? '';
-              });
-            },
-          );
-        },
-      ),
-      const SizedBox(height: 8),
-      TextField(
-        controller: _nombreCliente,
-        textCapitalization: TextCapitalization.words,
-        decoration: const InputDecoration(labelText: 'Nombre o razón social'),
-      ),
-      TextField(
-        controller: _documentoCliente,
-        decoration: const InputDecoration(labelText: 'Documento (opcional)'),
-      ),
-      TextField(
-        controller: _telefonoCliente,
-        keyboardType: TextInputType.phone,
-        decoration: const InputDecoration(labelText: 'Teléfono (opcional)'),
-      ),
-    ],
-  );
+    );
+  }
 
   Widget _seccionEliminados() {
     return Column(

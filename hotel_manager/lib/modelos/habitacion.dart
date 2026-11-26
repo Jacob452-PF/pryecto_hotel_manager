@@ -49,16 +49,9 @@ class Habitacion {
 
   /// Nombre del huésped que la ocupa (solo si el estado es ocupada).
   final String? huesped;
-<<<<<<< Updated upstream
   final String? huespedDocumento;
   final String? huespedTelefono;
   final String? huespedIdApi;
-=======
-  final String? huespedId;
-  final String? huespedDocumento;
-  final String? huespedTelefono;
-  final String? huespedCorreo;
->>>>>>> Stashed changes
   final DateTime? entradaEstadia;
   final DateTime? salidaEstadia;
   final String? nombreTarifa;
@@ -89,16 +82,9 @@ class Habitacion {
     this.estado, {
     this.camas = 1,
     this.huesped,
-<<<<<<< Updated upstream
     this.huespedDocumento,
     this.huespedTelefono,
     this.huespedIdApi,
-=======
-    this.huespedId,
-    this.huespedDocumento,
-    this.huespedTelefono,
-    this.huespedCorreo,
->>>>>>> Stashed changes
     this.entradaEstadia,
     this.salidaEstadia,
     this.nombreTarifa,
@@ -128,16 +114,9 @@ class Habitacion {
       nuevoEstado,
       camas: camas,
       huesped: huesped,
-<<<<<<< Updated upstream
       huespedDocumento: huespedDocumento,
       huespedTelefono: huespedTelefono,
       huespedIdApi: huespedIdApi,
-=======
-      huespedId: huespedId,
-      huespedDocumento: huespedDocumento,
-      huespedTelefono: huespedTelefono,
-      huespedCorreo: huespedCorreo,
->>>>>>> Stashed changes
       entradaEstadia: entradaEstadia,
       salidaEstadia: salidaEstadia,
       nombreTarifa: nombreTarifa,
@@ -167,16 +146,9 @@ class Habitacion {
     'estado': estado.valor,
     'camas': camas,
     'huesped': huesped,
-<<<<<<< Updated upstream
     'huespedDocumento': huespedDocumento,
     'huespedTelefono': huespedTelefono,
     'huespedIdApi': huespedIdApi,
-=======
-    'huespedId': huespedId,
-    'huespedDocumento': huespedDocumento,
-    'huespedTelefono': huespedTelefono,
-    'huespedCorreo': huespedCorreo,
->>>>>>> Stashed changes
     'entradaEstadia': entradaEstadia?.toIso8601String(),
     'salidaEstadia': salidaEstadia?.toIso8601String(),
     'nombreTarifa': nombreTarifa,
@@ -242,14 +214,9 @@ class Habitacion {
     final stay = rawStay is Map
         ? Map<String, dynamic>.from(rawStay)
         : const <String, dynamic>{};
-<<<<<<< Updated upstream
     final rawRate = stay['rate'];
     final rate = rawRate is Map
         ? Map<String, dynamic>.from(rawRate)
-=======
-    final rate = stay['rate'] is Map
-        ? Map<String, dynamic>.from(stay['rate'] as Map)
->>>>>>> Stashed changes
         : const <String, dynamic>{};
     final tasks = json['tasks'] is List
         ? (json['tasks'] as List)
@@ -268,8 +235,6 @@ class Habitacion {
     final guestName = rawGuest is Map
         ? (rawGuest['name'] ?? rawGuest['nombre'])?.toString()
         : rawGuest?.toString();
-    final stayGuestName = (stay['guest_name'] ?? json['guest_name'])
-        ?.toString();
     final rawUpdatedAt = json['updated_at'] ?? json['updatedAt'];
 
     return Habitacion(
@@ -279,18 +244,11 @@ class Habitacion {
       tipo,
       estado,
       camas: int.tryParse(rawCamas?.toString() ?? '') ?? 1,
-<<<<<<< Updated upstream
       huesped: guestName ?? stay['guest_name']?.toString(),
-=======
-      huesped: guestName ?? stayGuestName,
-      huespedId: (stay['guest_id'] ?? (rawGuest is Map ? rawGuest['id'] : null))
-          ?.toString(),
->>>>>>> Stashed changes
       huespedDocumento:
           (rawGuest is Map ? rawGuest['document'] : null)?.toString() ??
           stay['guest_document']?.toString(),
       huespedTelefono: (rawGuest is Map ? rawGuest['phone'] : null)?.toString(),
-<<<<<<< Updated upstream
       huespedIdApi:
           (stay['guest_id'] ?? (rawGuest is Map ? rawGuest['id'] : null))
               ?.toString(),
@@ -299,12 +257,6 @@ class Habitacion {
       ),
       salidaEstadia: TiempoHotel.intentarDesdeApi(
         stay['expected_checkout_at']?.toString(),
-=======
-      huespedCorreo: (rawGuest is Map ? rawGuest['email'] : null)?.toString(),
-      entradaEstadia: DateTime.tryParse(stay['check_in_at']?.toString() ?? ''),
-      salidaEstadia: DateTime.tryParse(
-        stay['expected_checkout_at']?.toString() ?? '',
->>>>>>> Stashed changes
       ),
       nombreTarifa: rate['name']?.toString(),
       precioTarifa: double.tryParse(rate['price']?.toString() ?? ''),
@@ -343,7 +295,6 @@ class Habitacion {
     EstadoHabitacion.desdeJson(j['estado'] as String? ?? 'disponible'),
     camas: j['camas'] as int? ?? 1,
     huesped: j['huesped'] as String?,
-<<<<<<< Updated upstream
     huespedDocumento: j['huespedDocumento'] as String?,
     huespedTelefono: j['huespedTelefono'] as String?,
     huespedIdApi: j['huespedIdApi'] as String?,
@@ -351,14 +302,6 @@ class Habitacion {
       j['entradaEstadia'] as String?,
     ),
     salidaEstadia: TiempoHotel.intentarDesdeApi(j['salidaEstadia'] as String?),
-=======
-    huespedId: j['huespedId'] as String?,
-    huespedDocumento: j['huespedDocumento'] as String?,
-    huespedTelefono: j['huespedTelefono'] as String?,
-    huespedCorreo: j['huespedCorreo'] as String?,
-    entradaEstadia: DateTime.tryParse(j['entradaEstadia'] as String? ?? ''),
-    salidaEstadia: DateTime.tryParse(j['salidaEstadia'] as String? ?? ''),
->>>>>>> Stashed changes
     nombreTarifa: j['nombreTarifa'] as String?,
     precioTarifa: (j['precioTarifa'] as num?)?.toDouble(),
     cantidadHuespedes: j['cantidadHuespedes'] as int?,

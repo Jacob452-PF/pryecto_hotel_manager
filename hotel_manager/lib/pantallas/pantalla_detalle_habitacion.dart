@@ -210,20 +210,11 @@ class PantallaDetalleHabitacion extends StatelessWidget {
         final ocupada =
             estado == EstadoHabitacion.ocupada ||
             estado == EstadoHabitacion.ocupadaYLimpieza;
-<<<<<<< Updated upstream
         String fecha(DateTime? valor) {
           if (valor == null) return '—';
           final salvador = TiempoHotel.relojElSalvador(valor);
           return '${salvador.day.toString().padLeft(2, '0')}/${salvador.month.toString().padLeft(2, '0')}/${salvador.year} ${salvador.hour.toString().padLeft(2, '0')}:${salvador.minute.toString().padLeft(2, '0')}';
         }
-=======
-        final mostrarDatosCliente =
-            usuario?.rol == RolUsuario.recepcion ||
-            usuario?.rol == RolUsuario.admin;
-        String fecha(DateTime? valor) => valor == null
-            ? '—'
-            : '${valor.day.toString().padLeft(2, '0')}/${valor.month.toString().padLeft(2, '0')}/${valor.year} ${valor.hour.toString().padLeft(2, '0')}:${valor.minute.toString().padLeft(2, '0')}';
->>>>>>> Stashed changes
 
         return Scaffold(
           appBar: AppBar(title: Text('Habitación ${habitacion.numero}')),
@@ -232,12 +223,8 @@ class PantallaDetalleHabitacion extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-<<<<<<< Updated upstream
                 if (usuario?.rol == RolUsuario.recepcion ||
                     usuario?.rol == RolUsuario.admin) ...[
-=======
-                if (mostrarDatosCliente) ...[
->>>>>>> Stashed changes
                   TarjetaSeccion(
                     titulo: 'Datos del cliente',
                     icono: Icons.person_outline,
@@ -252,68 +239,23 @@ class PantallaDetalleHabitacion extends StatelessWidget {
                                     : 'Cliente sin registrar')
                               : 'Sin cliente alojado',
                         ),
-<<<<<<< Updated upstream
                         if (ocupada &&
                             habitacion.huespedDocumento?.isNotEmpty ==
                                 true) ...[
-=======
-                        if (ocupada) ...[
->>>>>>> Stashed changes
                           const Divider(height: 1),
                           FilaInformacion(
                             icono: Icons.badge_outlined,
                             etiqueta: 'Documento',
-<<<<<<< Updated upstream
                             valor: habitacion.huespedDocumento!,
                           ),
                         ],
                         if (ocupada &&
                             habitacion.huespedTelefono?.isNotEmpty == true) ...[
-=======
-                            valor:
-                                habitacion.huespedDocumento?.isNotEmpty == true
-                                ? habitacion.huespedDocumento!
-                                : 'No proporcionado',
-                          ),
->>>>>>> Stashed changes
                           const Divider(height: 1),
                           FilaInformacion(
                             icono: Icons.phone_outlined,
                             etiqueta: 'Teléfono',
-<<<<<<< Updated upstream
                             valor: habitacion.huespedTelefono!,
-=======
-                            valor:
-                                habitacion.huespedTelefono?.isNotEmpty == true
-                                ? habitacion.huespedTelefono!
-                                : 'No proporcionado',
-                          ),
-                          if (habitacion.huespedCorreo?.isNotEmpty == true) ...[
-                            const Divider(height: 1),
-                            FilaInformacion(
-                              icono: Icons.email_outlined,
-                              etiqueta: 'Correo',
-                              valor: habitacion.huespedCorreo!,
-                            ),
-                          ],
-                          const Divider(height: 1),
-                          FilaInformacion(
-                            icono: Icons.login,
-                            etiqueta: 'Ingreso',
-                            valor: fecha(habitacion.entradaEstadia),
-                          ),
-                          const Divider(height: 1),
-                          FilaInformacion(
-                            icono: Icons.logout,
-                            etiqueta: 'Salida prevista',
-                            valor: fecha(habitacion.salidaEstadia),
-                          ),
-                          const Divider(height: 1),
-                          FilaInformacion(
-                            icono: Icons.groups_outlined,
-                            etiqueta: 'Personas',
-                            valor: '${habitacion.cantidadHuespedes ?? 1}',
->>>>>>> Stashed changes
                           ),
                         ],
                       ],
@@ -331,15 +273,6 @@ class PantallaDetalleHabitacion extends StatelessWidget {
                         etiqueta: 'Número',
                         valor: habitacion.numero,
                       ),
-<<<<<<< Updated upstream
-=======
-                      const Divider(height: 1),
-                      FilaInformacion(
-                        icono: Icons.layers,
-                        etiqueta: 'Piso',
-                        valor: '${habitacion.piso}',
-                      ),
->>>>>>> Stashed changes
                       const Divider(height: 1),
                       FilaInformacion(
                         icono: habitacion.tipoCuarto.icono,
@@ -353,7 +286,6 @@ class PantallaDetalleHabitacion extends StatelessWidget {
                         valor:
                             '${habitacion.camas} ${habitacion.camas == 1 ? 'cama' : 'camas'}',
                       ),
-<<<<<<< Updated upstream
                       const Divider(height: 1),
                       FilaInformacion(
                         icono: Icons.layers,
@@ -398,40 +330,15 @@ class PantallaDetalleHabitacion extends StatelessWidget {
                             valor: habitacion.notasEstadia!,
                           ),
                         ],
-=======
-                      if (habitacion.nombreTarifa != null) ...[
-                        const Divider(height: 1),
-                        FilaInformacion(
-                          icono: Icons.payments_outlined,
-                          etiqueta: 'Tarifa actual',
-                          valor:
-                              '${habitacion.nombreTarifa} · ${habitacion.precioTarifa?.toStringAsFixed(2) ?? '—'} USD',
-                        ),
->>>>>>> Stashed changes
                       ],
                       if (habitacion.notasHabitacion?.isNotEmpty == true) ...[
                         const Divider(height: 1),
                         FilaInformacion(
                           icono: Icons.notes,
-<<<<<<< Updated upstream
                           etiqueta: 'Notas de habitación',
                           valor: habitacion.notasHabitacion!,
                         ),
                       ],
-=======
-                          etiqueta: 'Notas',
-                          valor: habitacion.notasHabitacion!,
-                        ),
-                      ],
-                      if (habitacion.notasEstadia?.isNotEmpty == true) ...[
-                        const Divider(height: 1),
-                        FilaInformacion(
-                          icono: Icons.sticky_note_2_outlined,
-                          etiqueta: 'Notas de estadía',
-                          valor: habitacion.notasEstadia!,
-                        ),
-                      ],
->>>>>>> Stashed changes
                     ],
                   ),
                 ),
@@ -456,11 +363,7 @@ class PantallaDetalleHabitacion extends StatelessWidget {
                           valor: 'Solicitada',
                         ),
                       ],
-<<<<<<< Updated upstream
                       const SizedBox(height: 12),
-=======
-                      const SizedBox(height: 14),
->>>>>>> Stashed changes
                       ..._acciones(context, habitacion),
                     ],
                   ),
