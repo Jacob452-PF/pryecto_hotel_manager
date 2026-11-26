@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../datos/tarifas_ejemplo.dart';
-import '../historial/historial.dart';
 import '../inventario/servicios/servicio_inventario.dart';
 import '../modelos/factura.dart';
 import '../modelos/habitacion.dart';
@@ -9,10 +7,11 @@ import '../modelos/huesped.dart';
 import '../modelos/producto.dart';
 import '../modelos/tarifa.dart';
 import '../modelos/tipo_cuarto.dart';
-import '../servicios/servicio_estadias.dart';
 import '../servicios/servicio_huespedes.dart';
 import '../servicios/servicio_reservas.dart';
 import '../servicios/servicio_habitaciones.dart';
+import '../servicios/api_client.dart';
+import '../widgets/dialogo_cobro.dart';
 import '../tema/estilos_botones.dart';
 import '../tema/estilos_texto.dart';
 import '../utilidades/formato.dart';
@@ -42,9 +41,14 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
 
   // Parte 4: selección de la reserva
   TipoTarifa _tarifa = TipoTarifa.porNoche;
+  final List<TarifaRemota> _tarifas = [];
+  TarifaRemota? _tarifaRemota;
+  String? _errorTarifas;
+  bool _cargandoTarifas = true;
+  bool _guardando = false;
   int _cantidad = 1; // horas o noches, según la tarifa
-  TipoCuarto _cuarto = TipoCuarto.matrimonial;
-  int _camas = 2; // solo se elige cuando el tipo de cuarto es familiar
+  TipoCuarto _cuarto = TipoCuarto.comun;
+  int _camas = 1; // las habitaciones especiales permiten elegir capacidad
   Habitacion? _habitacionSeleccionada;
 
   // Parte 3 y 5: productos agregados a la factura
@@ -54,13 +58,41 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       .instancia
       .productos
       .where((producto) => producto.stock > 0)
-      .map((producto) => Producto(producto.nombre, producto.precio))
+      .map((producto) => Producto(producto.nombre, producto.precio, idApi: producto.id))
       .toList(growable: false);
 
   @override
   void initState() {
     super.initState();
     ServicioInventario.instancia.addListener(_actualizarCatalogo);
+    _cargarTarifas();
+  }
+
+  Future<void> _cargarTarifas() async {
+    try {
+      final response = await ApiClient.instance.rates();
+      final rates = ApiClient.instance.listFromResponse(response)
+          .map((row) => TarifaRemota.fromJson(Map<String, dynamic>.from(row as Map)))
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _tarifas
+          ..clear()
+          ..addAll(rates);
+        _tarifaRemota = _tarifasCompatibles.firstOrNull;
+        _tarifa = (_tarifaRemota?.horas ?? 24) <= 6
+            ? TipoTarifa.porHora
+            : TipoTarifa.porNoche;
+        _cargandoTarifas = false;
+        _errorTarifas = rates.isEmpty ? 'No hay tarifas activas en el servidor.' : null;
+      });
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _cargandoTarifas = false;
+        _errorTarifas = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
   }
 
   void _actualizarCatalogo() {
@@ -76,13 +108,18 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     super.dispose();
   }
 
-  /// Matrimonial e individual tienen 1 cama; la familiar usa la elegida (2, 3 o 4).
-  int get _camasSeleccionadas => _cuarto == TipoCuarto.familiar ? _camas : 1;
+  /// Las comunes tienen una cama; las especiales admiten de una a cuatro.
+  int get _camasSeleccionadas =>
+      _cuarto == TipoCuarto.comun ? 1 : _camas;
 
   /// El precio por hora o por noche depende de la cantidad de camas.
-  double get _precioUnitario => tarifasEjemplo
-      .firstWhere((t) => t.tipo == _tarifa)
-      .precioPara(_camasSeleccionadas);
+  List<TarifaRemota> get _tarifasCompatibles => _tarifas
+      .where((t) =>
+          t.tipoHabitacion == _cuarto.valorApi &&
+          t.camas == _camasSeleccionadas)
+      .toList();
+
+  double get _precioUnitario => _tarifaRemota?.precio ?? 0;
 
   double get _montoEstadia => _precioUnitario * _cantidad;
 
@@ -91,7 +128,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       _productosAgregados.fold(0.0, (suma, p) => suma + p.precio);
 
   /// Habitaciones libres que cumplen lo elegido: el tipo de cuarto y,
-  /// si es familiar, la cantidad de camas.
+  /// si es especial, la cantidad de camas.
   List<Habitacion> get _habitacionesDisponibles => ServicioHabitaciones
       .instancia
       .habitaciones
@@ -99,7 +136,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
         (h) =>
             h.estado == EstadoHabitacion.disponible &&
             h.tipoCuarto == _cuarto &&
-            (_cuarto != TipoCuarto.familiar || h.camas == _camas),
+            (_cuarto != TipoCuarto.especial || h.camas == _camas),
       )
       .toList();
 
@@ -114,6 +151,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
   String _textoCamas(int n) => '$n ${n == 1 ? 'cama' : 'camas'}';
 
   Future<void> _confirmar() async {
+    if (_guardando) return;
     final mensajero = ScaffoldMessenger.of(context);
 
     if (!_claveFormulario.currentState!.validate()) {
@@ -130,11 +168,18 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       );
       return;
     }
+    final tarifaRemota = _tarifaRemota;
+    if (tarifaRemota == null || !_tarifasCompatibles.contains(tarifaRemota)) {
+      mensajero.showSnackBar(SnackBar(content: Text(_errorTarifas ?? 'Selecciona una tarifa del servidor.')));
+      return;
+    }
+    if (_total <= 0) {
+      mensajero.showSnackBar(const SnackBar(content: Text('El total de la estadía debe ser mayor que cero.')));
+      return;
+    }
 
     final fechaEntrada = DateTime.now();
-    final duracion = _tarifa == TipoTarifa.porHora
-        ? Duration(hours: _cantidad)
-        : Duration(days: _cantidad);
+    final duracion = Duration(hours: tarifaRemota.horas * _cantidad);
     if (!ServicioReservas.instancia.validarEstadiaContraReservas(
       habitacion: habitacionElegida.numero,
       inicio: fechaEntrada,
@@ -149,6 +194,10 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       );
       return;
     }
+
+    final pago = await mostrarDialogoCobro(context, saldo: _total);
+    if (pago == null || !mounted) return;
+    setState(() => _guardando = true);
 
     late final Huesped huesped;
     try {
@@ -166,6 +215,49 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
           ),
         ),
       );
+      if (mounted) setState(() => _guardando = false);
+      return;
+    }
+    if (!mounted) return;
+
+    final roomId = int.tryParse(habitacionElegida.id);
+    final guestId = int.tryParse(huesped.id);
+    if (roomId == null || guestId == null) {
+      setState(() => _guardando = false);
+      mensajero.showSnackBar(const SnackBar(content: Text('La habitación o el huésped no tiene un ID válido del servidor.')));
+      return;
+    }
+    final itemsPorProducto = <int, int>{};
+    for (final producto in _productosAgregados) {
+      final id = int.tryParse(producto.idApi ?? '');
+      if (id == null) {
+        setState(() => _guardando = false);
+        mensajero.showSnackBar(const SnackBar(content: Text('Un producto no pertenece al catálogo del servidor.')));
+        return;
+      }
+      itemsPorProducto.update(id, (cantidad) => cantidad + 1, ifAbsent: () => 1);
+    }
+    try {
+      await ApiClient.instance.createStay({
+        'room_id': roomId,
+        'guest_id': guestId,
+        'rate_id': tarifaRemota.id,
+        'rate_units': _cantidad,
+        'payment_method': pago.metodo.name,
+        if (itemsPorProducto.isNotEmpty)
+          'items': [
+            for (final entry in itemsPorProducto.entries)
+              {'product_id': entry.key, 'quantity': entry.value},
+          ],
+      });
+      await ServicioHabitaciones.instancia.sincronizar();
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _guardando = false);
+        mensajero.showSnackBar(
+          SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
       return;
     }
     if (!mounted) return;
@@ -182,44 +274,6 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       productos: List.of(_productosAgregados),
     );
 
-    // La habitación pasa a ocupada con el nombre del huésped.
-    ServicioHabitaciones.instancia.ocupar(
-      habitacionElegida.numero,
-      factura.huesped,
-    );
-    ServicioEstadias.instancia.iniciar(
-      habitacion: habitacionElegida.numero,
-      entrada: factura.fecha,
-      tarifa: factura.tarifa,
-      cantidad: factura.cantidad,
-      precioUnitario: factura.precioUnitario,
-      productos: factura.productos
-          .map((p) => CargoEstadia(p.nombre, p.precio))
-          .toList(),
-      huespedId: huesped.id,
-    );
-
-    // Se anota el consumo del cliente y su factura para el cierre de caja.
-    ServicioConsumos.instancia.registrar(
-      cliente: factura.huesped,
-      habitacion: habitacionElegida.numero,
-      factura: factura, // guarda la factura completa
-      lineas: [
-        LineaConsumo(
-          'Habitación ${habitacionElegida.numero}',
-          factura.precioUnitario,
-          factura.cantidad,
-          TipoVenta.habitaciones,
-        ),
-        for (final p in factura.productos)
-          LineaConsumo(p.nombre, p.precio, 1, TipoVenta.productos),
-      ],
-    );
-    // Baja el stock de los productos del catálogo rápido.
-    ServicioInventario.instancia.descontarPorNombre([
-      for (final p in factura.productos) (nombre: p.nombre, cantidad: 1),
-    ]);
-
     // Se reemplaza esta pantalla por la factura inicial.
     Navigator.pushReplacement(
       context,
@@ -235,7 +289,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     final lineasFactura = <LineaFactura>[
       LineaFactura(
         'Estadía (${_textoCamas(_camasSeleccionadas)}): '
-        '$_cantidad ${_tarifa.unidad(_cantidad)} × ${formatearDinero(_precioUnitario)}',
+        '$_cantidad bloque(s) de ${_tarifaRemota?.horas ?? 0} h × ${formatearDinero(_precioUnitario)}',
         _montoEstadia,
       ),
       for (var i = 0; i < _productosAgregados.length; i++)
@@ -323,27 +377,34 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                   hijo: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SelectorOpciones<TipoTarifa>(
-                        opciones: TipoTarifa.values,
-                        seleccionada: _tarifa,
-                        etiqueta: (t) => t.etiqueta,
-                        icono: (t) => t.icono,
-                        // Precio según las camas elegidas
-                        detalle: (t) => formatearDinero(
-                          tarifasEjemplo
-                              .firstWhere((x) => x.tipo == t)
-                              .precioPara(_camasSeleccionadas),
+                      if (_cargandoTarifas)
+                        const LinearProgressIndicator()
+                      else if (_tarifasCompatibles.isEmpty)
+                        Text(_errorTarifas ?? 'No hay tarifas para ${_cuarto.etiqueta.toLowerCase()} de $_camasSeleccionadas ${_camasSeleccionadas == 1 ? 'cama' : 'camas'}.')
+                      else
+                        DropdownButtonFormField<TarifaRemota>(
+                          value: _tarifasCompatibles.contains(_tarifaRemota)
+                              ? _tarifaRemota
+                              : _tarifasCompatibles.first,
+                          decoration: const InputDecoration(labelText: 'Tarifa del servidor'),
+                          items: [
+                            for (final tarifa in _tarifasCompatibles)
+                              DropdownMenuItem(
+                                value: tarifa,
+                                child: Text('${tarifa.etiquetaDuracion} · ${formatearDinero(tarifa.precio)}'),
+                              ),
+                          ],
+                          onChanged: (tarifa) => setState(() {
+                            _tarifaRemota = tarifa;
+                            _tarifa = (tarifa?.horas ?? 24) <= 6
+                                ? TipoTarifa.porHora
+                                : TipoTarifa.porNoche;
+                            _cantidad = 1;
+                          }),
                         ),
-                        alCambiar: (t) => setState(() {
-                          _tarifa = t;
-                          _cantidad = 1;
-                        }),
-                      ),
                       const SizedBox(height: 16),
                       ContadorCantidad(
-                        etiqueta: _tarifa == TipoTarifa.porHora
-                            ? 'Horas'
-                            : 'Noches',
+                        etiqueta: 'Bloques de ${_tarifaRemota?.horas ?? 0} horas',
                         valor: _cantidad,
                         alCambiar: (n) => setState(() => _cantidad = n),
                       ),
@@ -361,23 +422,31 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                     icono: (c) => c.icono,
                     alCambiar: (c) => setState(() {
                       _cuarto = c;
+                      _tarifaRemota = _tarifasCompatibles.firstOrNull;
+                      _tarifa = (_tarifaRemota?.horas ?? 24) <= 6
+                          ? TipoTarifa.porHora
+                          : TipoTarifa.porNoche;
                       _revisarSeleccion();
                     }),
                   ),
                 ),
-                // Las camas solo se eligen cuando el tipo es familiar (2, 3 o 4)
-                if (_cuarto == TipoCuarto.familiar) ...[
+                // Las habitaciones especiales permiten elegir de una a cuatro camas.
+                if (_cuarto == TipoCuarto.especial) ...[
                   const SizedBox(height: 16),
                   TarjetaSeccion(
                     titulo: 'Capacidad (camas)',
                     icono: Icons.bed,
                     hijo: SelectorOpciones<int>(
-                      opciones: const [2, 3, 4],
+                      opciones: const [1, 2, 3, 4],
                       seleccionada: _camas,
                       etiqueta: (n) => '$n camas',
                       icono: (_) => Icons.bed,
                       alCambiar: (n) => setState(() {
                         _camas = n;
+                        _tarifaRemota = _tarifasCompatibles.firstOrNull;
+                        _tarifa = (_tarifaRemota?.horas ?? 24) <= 6
+                            ? TipoTarifa.porHora
+                            : TipoTarifa.porNoche;
                         _revisarSeleccion();
                       }),
                     ),
@@ -429,8 +498,10 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton(
-                        onPressed: _confirmar,
-                        child: const Text('Confirmar'),
+                        onPressed: _guardando || _cargandoTarifas || _tarifaRemota == null
+                            ? null
+                            : _confirmar,
+                        child: Text(_guardando ? 'Registrando…' : 'Confirmar y cobrar'),
                       ),
                     ),
                   ],

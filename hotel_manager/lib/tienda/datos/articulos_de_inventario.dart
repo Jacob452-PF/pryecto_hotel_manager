@@ -1,24 +1,14 @@
-import '../../inventario/modelos/producto_inventario.dart';
 import '../../inventario/servicios/servicio_inventario.dart';
+import '../../inventario/modelos/producto_inventario.dart';
 import '../modelos/articulo_tienda.dart';
-import 'articulos_mock.dart';
 
-/// Todo lo que se muestra en la tienda:
-///  - los servicios (Limpieza, etc.) que siguen en `articulos_mock.dart`
-///  - los PRODUCTOS, que vienen del inventario (los que ya estaban y los
-///    que se agreguen después). Los eliminados y los agotados no se muestran.
+/// Solo productos activos y disponibles del catálogo remoto.
 List<ArticuloTienda> articulosDeTienda() {
-  final delInventario = ServicioInventario.instancia.productos
+  final List<ArticuloTienda> delInventario = ServicioInventario.instancia.productos
       .where((p) => !p.agotado) // sin stock no se vende
-      .map(_aArticulo)
+      .map<ArticuloTienda>(_aArticulo)
       .toList();
-
-  // Los productos escritos a mano en articulos_mock.dart ya no se usan.
-  final otros = articulosMock.where(
-    (a) => a.seccion != SeccionTienda.productos,
-  );
-
-  return [...otros, ...delInventario];
+  return delInventario;
 }
 
 ArticuloTienda _aArticulo(ProductoInventario p) {

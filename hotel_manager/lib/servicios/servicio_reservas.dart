@@ -4,8 +4,9 @@ import 'package:flutter/foundation.dart';
 
 import '../modelos/notificacion_app.dart';
 import '../modelos/reserva.dart';
+import '../modelos/abono.dart';
 import '../modelos/tipo_cuarto.dart';
-import '../modelos/tarifa.dart';
+import 'api_client.dart';
 import 'servicio_huespedes.dart';
 import 'servicio_aviso_externo.dart';
 import 'servicio_configuracion.dart';
@@ -27,6 +28,7 @@ class ServicioReservas extends ChangeNotifier {
   Timer? _reloj;
   final AvisoExternoService _avisoExterno = const AvisoExternoService();
   List<Reserva> get reservas => List.unmodifiable(_reservas);
+  String? error;
 
   Future<void> cargar() async {
     _reservas
@@ -37,6 +39,46 @@ class ServicioReservas extends ChangeNotifier {
       );
     await procesarVencimientos();
     notifyListeners();
+  }
+
+  Future<void> sincronizar() async {
+    error = null;
+    try {
+      final recibidas = <Reserva>[];
+      var page = 1;
+      var lastPage = 1;
+      do {
+        final response = await ApiClient.instance.reservations(page: page);
+        final rows = ApiClient.instance.listFromResponse(response);
+        recibidas.addAll(
+          rows.map(
+            (row) => Reserva.fromApiJson(
+              Map<String, dynamic>.from(row as Map),
+            ),
+          ),
+        );
+        if (response is Map) {
+          lastPage = int.tryParse(response['last_page']?.toString() ?? '') ??
+              page;
+        }
+        page++;
+      } while (page <= lastPage);
+
+      _reservas
+        ..clear()
+        ..addAll(recibidas);
+    } on ApiException catch (e) {
+      _reservas.clear();
+      error = e.message;
+    } on FormatException catch (e) {
+      _reservas.clear();
+      error = 'La respuesta de reservas no tiene el formato esperado: $e';
+    } catch (_) {
+      _reservas.clear();
+      error = 'No se pudieron cargar las reservas desde el servidor.';
+    } finally {
+      notifyListeners();
+    }
   }
 
   /// Una solicitud todavía no asigna una habitación concreta.
@@ -50,11 +92,11 @@ class ServicioReservas extends ChangeNotifier {
     required String huespedId,
     required DateTime inicio,
     required DateTime fin,
-    required double total,
     required TipoCuarto tipoCuarto,
     required int camas,
-    required TipoTarifa tarifa,
     required int cantidad,
+    required int tarifaId,
+    required String tarifaNombre,
   }) async {
     final rol = ServicioSesion.instancia.usuario?.rol;
     if (rol != RolUsuario.recepcion && rol != RolUsuario.admin) {
@@ -63,40 +105,27 @@ class ServicioReservas extends ChangeNotifier {
     if (!fin.isAfter(inicio)) {
       throw ArgumentError('La fecha final debe ser posterior a la inicial.');
     }
+    final guestApiId = int.tryParse(huespedId);
+    if (guestApiId == null) {
+      throw StateError('El huésped no tiene un ID válido del servidor.');
+    }
     final now = DateTime.now();
     if (inicio.isBefore(now)) {
       throw ArgumentError('La entrada de la reserva debe ser futura.');
     }
-    final reserva = Reserva(
-      id: 'res-${now.microsecondsSinceEpoch}',
-      huespedId: huespedId,
-      inicio: inicio,
-      fin: fin,
-      total: total,
-      tipoCuarto: tipoCuarto,
-      camas: camas,
-      tarifa: tarifa,
-      cantidad: cantidad,
-      createdAt: now,
-    );
-    // Persist before publishing the reservation to listeners. If the platform
-    // storage channel stalls or fails, the UI can report the error instead of
-    // leaving a half-created reservation in memory.
-    final reservasAnteriores = List<Reserva>.of(_reservas);
+    final response = await ApiClient.instance.createReservation({
+      'guest_id': guestApiId,
+      'room_type': tipoCuarto.valorApi,
+      'beds': camas,
+      'rate_id': tarifaId,
+      'rate_units': cantidad,
+      'check_in_at': inicio.toIso8601String(),
+      'expected_checkout_at': fin.toIso8601String(),
+      'guests': 1,
+    });
+    final reserva = Reserva.fromApiJson(response);
+    _reservas.removeWhere((r) => r.id == reserva.id);
     _reservas.add(reserva);
-    try {
-      await _guardar().timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw StateError(
-          'El almacenamiento tardó demasiado. Intenta guardar la reserva otra vez.',
-        ),
-      );
-    } on Object {
-      _reservas
-        ..clear()
-        ..addAll(reservasAnteriores);
-      rethrow;
-    }
     final huesped = ServicioHuespedes.instancia.huespedes
         .where((h) => h.id == huespedId)
         .firstOrNull;
@@ -104,7 +133,7 @@ class ServicioReservas extends ChangeNotifier {
       id: 'reserva-creada-${reserva.id}',
       titulo: 'Reserva creada',
       mensaje:
-          '${huesped?.nombre ?? 'Huésped'} · ${tipoCuarto.etiqueta}, $camas ${camas == 1 ? 'cama' : 'camas'} · ${tarifa.etiqueta} × $cantidad · ${_fechaHora(inicio)} a ${_fechaHora(fin)} · total ${total.toStringAsFixed(2)}.',
+          '${huesped?.nombre ?? 'Huésped'} · ${tipoCuarto.etiqueta}, $camas ${camas == 1 ? 'cama' : 'camas'} · ${reserva.tarifaNombre ?? tarifaNombre} × $cantidad · ${_fechaHora(inicio)} a ${_fechaHora(fin)} · total ${reserva.total.toStringAsFixed(2)}.',
       severidad: SeveridadNotificacion.leve,
     );
     notifyListeners();
@@ -125,25 +154,8 @@ class ServicioReservas extends ChangeNotifier {
       (r) => r.id == id && r.estado == EstadoReserva.activa,
     );
     if (i < 0) return;
-    final r = _reservas[i];
-    _reservas[i] = r.copyWith(estado: EstadoReserva.cancelada);
-    await _guardar();
-    notifyListeners();
-  }
-
-  Future<void> marcarConvertida(String id) async {
-    final rol = ServicioSesion.instancia.usuario?.rol;
-    if (rol != RolUsuario.recepcion && rol != RolUsuario.admin) {
-      throw StateError(
-        'Solo recepción o administración puede convertir reservas.',
-      );
-    }
-    final i = _reservas.indexWhere(
-      (r) => r.id == id && r.estado == EstadoReserva.activa,
-    );
-    if (i < 0) throw StateError('La reserva ya no está activa.');
-    _reservas[i] = _reservas[i].copyWith(estado: EstadoReserva.convertida);
-    await _guardar();
+    await ApiClient.instance.cancelReservation(id);
+    await sincronizar();
     notifyListeners();
   }
 
@@ -200,6 +212,31 @@ class ServicioReservas extends ChangeNotifier {
     _clave,
     _reservas.map((r) => r.toJson()).toList(),
   );
+
+  Future<Map<String, dynamic>> registrarCheckIn(
+    String id, {
+    required String metodoPago,
+  }) async {
+    final response = await ApiClient.instance.checkInReservation(
+      id,
+      paymentMethod: metodoPago,
+    );
+    await sincronizar();
+    return response;
+  }
+
+  Future<void> registrarAbono(
+    String id, {
+    required double monto,
+    required MetodoAbono metodo,
+  }) async {
+    await ApiClient.instance.payReservation(
+      id,
+      amount: monto,
+      paymentMethod: metodo.name,
+    );
+    await sincronizar();
+  }
   @override
   void dispose() {
     _reloj?.cancel();

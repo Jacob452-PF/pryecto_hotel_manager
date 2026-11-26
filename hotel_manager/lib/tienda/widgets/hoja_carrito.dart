@@ -3,12 +3,9 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../../historial/historial.dart';
-import '../../servicios/servicio_estadias.dart';
-import '../../servicios/servicio_tareas.dart';
+import '../../servicios/api_client.dart';
 import '../modelos/articulo_tienda.dart';
 import '../servicios/carrito_tienda.dart';
-import '../../historial/servicios/servicio_consumos.dart';
 import '../../inventario/servicios/servicio_inventario.dart';
 
 /// Abre el carrito como hoja inferior (bottom sheet).
@@ -42,6 +39,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
 
   LineaCarrito? _avisoEliminada; // para la barra "Deshacer"
   Timer? _temporizador;
+  bool _enviando = false;
 
   @override
   void dispose() {
@@ -65,75 +63,76 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
 
   Future<void> _confirmar() async {
     final huesped = _c.huesped;
-    if (huesped == null || _c.lineas.isEmpty) return;
+    if (_enviando || huesped == null || _c.lineas.isEmpty) return;
     final messenger = ScaffoldMessenger.of(context);
-
-    // NUEVO: se revisa que alcance el stock del inventario.
-    final items = [
-      for (final l in _c.lineas) (id: l.articulo.id, cantidad: l.cantidad),
-    ];
-    final problema = ServicioInventario.instancia.verificarStock(items);
-    if (problema != null) {
-      Navigator.of(context).pop();
+    final stayId = huesped.estadiaIdApi;
+    if (stayId == null) {
       messenger.showSnackBar(
-        SnackBar(content: Text('$problema. Ajusta la cantidad en el carrito.')),
+        const SnackBar(content: Text('No se encontró la estadía activa en el servidor. Actualiza las habitaciones e inténtalo de nuevo.')),
       );
       return;
     }
-
-    final mensaje =
-        '${_dinero(_c.totalPagar)} cargados a ${huesped.nombre} (Hab. ${huesped.habitacion})';
-    // TODO: guardar el cargo en la base de datos.
-    ServicioConsumos.instancia.registrar(
-      cliente: huesped.nombre,
-      habitacion: huesped.habitacion,
-      lineas: [
-        for (final l in _c.lineas)
-          LineaConsumo(
-            l.articulo.nombre,
-            l.articulo.precio,
-            l.cantidad,
-            l.articulo.seccion == SeccionTienda.servicio
-                ? TipoVenta.servicios
-                : TipoVenta.productos,
-          ),
-      ],
+    final pagarAhora = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Pago de productos'),
+        content: const Text('¿Cobrar ahora o agregar el consumo al saldo de la estadía?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Pagar al final')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cobrar ahora')),
+        ],
+      ),
     );
-    ServicioEstadias.instancia.asegurarEstadiaPredeterminada(
-      huesped.habitacion,
-    );
-    ServicioEstadias.instancia.agregarCargos(huesped.habitacion, [
-      for (final linea in _c.lineas)
-        (articulo: linea.articulo, cantidad: linea.cantidad),
-    ]);
-
-    final solicitoLimpieza = _c.lineas.any(
-      (l) =>
-          l.articulo.seccion == SeccionTienda.servicio &&
-          l.articulo.nombre.toLowerCase().contains('limpieza'),
-    );
-    if (solicitoLimpieza) {
-      try {
-        await ServicioTareas.instancia.solicitarLimpiezaHuesped(
-          huesped.habitacion,
-        );
-      } on Object catch (e) {
-        if (mounted)
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(e.toString().replaceFirst('Bad state: ', '')),
-            ),
-          );
-      }
+    if (pagarAhora == null || !mounted) return;
+    String? metodoPago;
+    if (pagarAhora) {
+      metodoPago = await showDialog<String>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: const Text('Forma de pago'),
+          children: [
+            for (final metodo in const ['efectivo', 'tarjeta', 'transferencia'])
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(ctx, metodo),
+                child: Text(metodo[0].toUpperCase() + metodo.substring(1)),
+              ),
+          ],
+        ),
+      );
+      if (metodoPago == null || !mounted) return;
     }
-    if (!mounted) return;
 
-    // NUEVO: baja el stock en el inventario.
-    ServicioInventario.instancia.descontarVenta(items);
-
-    _c.vaciar();
-    Navigator.of(context).pop();
-    messenger.showSnackBar(SnackBar(content: Text(mensaje)));
+    setState(() => _enviando = true);
+    try {
+      await ApiClient.instance.chargeStay(
+        stayId,
+        items: [
+          for (final line in _c.lineas)
+            {
+              'product_id': int.parse(line.articulo.id),
+              'quantity': line.cantidad,
+            },
+        ],
+        payNow: pagarAhora,
+        paymentMethod: metodoPago,
+      );
+      await ServicioInventario.instancia.sincronizar();
+      if (!mounted) return;
+      final mensaje = pagarAhora
+          ? 'Pago de ${_dinero(_c.totalPagar)} registrado para ${huesped.nombre}.'
+          : 'Consumo agregado al saldo de ${huesped.nombre}.';
+      _c.vaciar();
+      Navigator.of(context).pop();
+      messenger.showSnackBar(SnackBar(content: Text(mensaje)));
+    } on Object catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
   }
 
   @override
@@ -270,7 +269,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                               child: SizedBox(
                                 width: double.infinity,
                                 child: FilledButton(
-                                  onPressed: (n == 0 || _c.huesped == null)
+                                  onPressed: (n == 0 || _c.huesped == null || _enviando)
                                       ? null
                                       : _confirmar,
                                   style: FilledButton.styleFrom(
@@ -283,9 +282,9 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                   ),
-                                  child: const Text(
-                                    'Cargar a la habitación',
-                                    style: TextStyle(fontSize: 16),
+                                  child: Text(
+                                    _enviando ? 'Registrando…' : 'Registrar consumo',
+                                    style: const TextStyle(fontSize: 16),
                                   ),
                                 ),
                               ),

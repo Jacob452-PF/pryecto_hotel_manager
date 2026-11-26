@@ -4,6 +4,11 @@ import '../modelos/usuario.dart';
 import '../servicios/api_client.dart';
 import '../servicios/servicio_habitaciones.dart';
 import '../servicios/servicio_huespedes.dart';
+import '../servicios/servicio_reservas.dart';
+import '../servicios/servicio_caja.dart';
+import '../inventario/servicios/servicio_inventario.dart';
+import '../servicios/servicio_tareas.dart';
+import '../servicios/servicio_estadias.dart';
 import '../servicios/servicio_sesion.dart';
 import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
@@ -69,6 +74,12 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
       await Future.wait([
         ServicioHabitaciones.instancia.sincronizar(),
         ServicioHuespedes.instancia.sincronizar(),
+        ServicioReservas.instancia.sincronizar(),
+        ServicioTareas.instancia.sincronizar(),
+        ServicioEstadias.instancia.sincronizar(),
+        if (rol == RolUsuario.admin || rol == RolUsuario.recepcion)
+          ServicioInventario.instancia.sincronizar(),
+        ServicioCaja.instancia.sincronizar().catchError((_) {}),
       ]);
       if (!mounted) return;
       Navigator.pushReplacement(

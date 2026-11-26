@@ -6,7 +6,6 @@ import '../../modelos/habitacion.dart';
 import '../../servicios/servicio_habitaciones.dart';
 import '../../servicios/servicio_caja.dart';
 import '../../servicios/servicio_sesion.dart';
-import '../datos/cajas_mock.dart';
 import '../modelos/caja_cierre.dart';
 import '../modelos/consumo_cliente.dart';
 import '../modelos/turno_caja.dart';
@@ -24,8 +23,8 @@ class ServicioHistorial extends ChangeNotifier {
 
   static final ServicioHistorial instancia = ServicioHistorial._();
 
-  /// Cierres de muestra para que el historial tenga datos desde el inicio.
-  final List<CajaCierre> _cajas = crearCajasMock(DateTime.now());
+  /// No se muestran cierres de ejemplo como datos reales.
+  final List<CajaCierre> _cajas = [];
 
   /// Gastos registrados a mano (cocina, limpieza...). Empieza vacío: cuando
   /// haya una pantalla para registrarlos, se llenará aquí.
@@ -37,15 +36,7 @@ class ServicioHistorial extends ChangeNotifier {
     for (final c in ServicioCaja.instancia.cajasCerradas) {
       if (lista.any((x) => x.numero == c.id)) continue;
       final actual = ServicioSesion.instancia.usuario;
-      final nombre = c.usuarioId == actual?.id
-          ? actual?.nombre
-          : switch (c.usuarioId) {
-              'u-admin' => 'Administración de prueba',
-              'u-recep' => 'Recepción de prueba',
-              'u-limp' => 'Limpieza de prueba',
-              'u-mant' => 'Mantenimiento de prueba',
-              _ => c.usuarioId,
-            };
+      final nombre = c.usuarioId == actual?.id ? actual?.nombre : c.usuarioId;
       lista.add(
         CajaCierre(
           numero: c.id,

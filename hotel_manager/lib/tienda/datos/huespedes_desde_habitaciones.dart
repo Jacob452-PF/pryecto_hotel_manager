@@ -18,6 +18,7 @@ List<HuespedTienda> huespedesDeHabitaciones(List<Habitacion> habitaciones) {
           id: h.numero,
           nombre: h.huesped ?? '',
           habitacion: h.numero,
+          estadiaIdApi: h.estadiaActivaId,
         ),
       )
       .toList();

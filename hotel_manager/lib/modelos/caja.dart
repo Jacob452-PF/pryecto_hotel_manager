@@ -15,17 +15,24 @@ const Map<String, double> denominacionesUsd = {
 class DesgloseEfectivo {
   /// Importe total contado por denominación, no número de monedas/billetes.
   final Map<String, double> valores;
-  DesgloseEfectivo({Map<String, double>? valores})
+  final double montoNoDesglosado;
+  DesgloseEfectivo({
+    Map<String, double>? valores,
+    this.montoNoDesglosado = 0,
+  })
     : valores = Map.unmodifiable({
         for (final key in denominacionesUsd.keys)
           key: (((valores?[key] ?? 0) * 100).round() / 100),
       });
   double get total =>
-      (valores.values.fold<double>(0, (sum, value) => sum + value) * 100)
+      ((valores.values.fold<double>(0, (sum, value) => sum + value) +
+                  montoNoDesglosado) *
+              100)
           .round() /
       100;
   Map<String, dynamic> toJson() => {
     'valores': Map<String, dynamic>.from(valores),
+    'montoNoDesglosado': montoNoDesglosado,
   };
   factory DesgloseEfectivo.fromJson(Map<String, dynamic> j) {
     final raw = (j['valores'] as Map?)?.cast<String, dynamic>();
@@ -35,6 +42,8 @@ class DesgloseEfectivo {
           for (final k in denominacionesUsd.keys)
             k: (raw[k] as num?)?.toDouble() ?? 0,
         },
+        montoNoDesglosado:
+            (j['montoNoDesglosado'] as num?)?.toDouble() ?? 0,
       );
     }
     // Compatibilidad con cajas guardadas cuando se ingresaba cantidad de piezas.

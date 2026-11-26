@@ -43,11 +43,14 @@ class ServicioHabitaciones extends ChangeNotifier {
           ? Map<String, dynamic>.from(response['summary'] as Map)
           : const {};
     } on ApiException catch (e) {
+      _habitaciones.clear();
       error = e.message;
     } on FormatException catch (e) {
+      _habitaciones.clear();
       error =
           'La respuesta de habitaciones no tiene el formato esperado: ${e.message}';
     } catch (_) {
+      _habitaciones.clear();
       error = 'No se pudieron cargar las habitaciones desde el servidor.';
     } finally {
       cargando = false;

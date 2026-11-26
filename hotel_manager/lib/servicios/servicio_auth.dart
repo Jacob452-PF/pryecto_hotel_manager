@@ -1,111 +1,32 @@
 import '../modelos/usuario.dart';
-import 'servicio_storage.dart';
+import 'api_client.dart';
 
-/// Autenticación local de demostración. TODO(API): autenticación backend y tokens.
+/// Los usuarios operativos se consultan al backend; no se crean cuentas seed.
 class ServicioAuth {
   ServicioAuth._();
   static final instancia = ServicioAuth._();
-  static const _clave = 'hotel.usuarios';
-  static const contrasenaSeed = 'Hotel123!';
-
-  // Hash determinista simple para el stub local, no apto para credenciales reales.
-  String _hash(String input) {
-    var h = 0x811c9dc5;
-    for (final b in input.codeUnits) {
-      h = ((h ^ b) * 0x01000193) & 0xffffffff;
-    }
-    return h.toRadixString(16).padLeft(8, '0');
-  }
 
   Future<List<Usuario>> usuarios() async {
-    var data = await ServicioStorage.instancia.leerLista(_clave);
-    final seeds = [
-      _seed(
-        'u-admin',
-        'Administración de prueba',
-        '00000000-0',
-        'admin01',
-        RolUsuario.admin,
-      ),
-      _seed(
-        'u-recep',
-        'Recepción de prueba',
-        '11111111-1',
-        'recep01',
-        RolUsuario.recepcion,
-      ),
-      _seed(
-        'u-limp',
-        'Limpieza de prueba',
-        '22222222-2',
-        'limp01',
-        RolUsuario.limpieza,
-      ),
-      _seed(
-        'u-limp-02',
-        'Limpieza de prueba 2',
-        '22222222-3',
-        'limp02',
-        RolUsuario.limpieza,
-      ),
-      _seed(
-        'u-mant',
-        'Mantenimiento de prueba',
-        '33333333-3',
-        'mant01',
-        RolUsuario.mantenimiento,
-      ),
-      _seed(
-        'u-mant-02',
-        'Mantenimiento de prueba 2',
-        '33333333-4',
-        'mant02',
-        RolUsuario.mantenimiento,
-      ),
-    ];
-    if (data.isEmpty) {
-      data = [];
-    }
-    final ids = data.map((fila) => fila['id']).whereType<String>().toSet();
-    final faltantes = seeds.where((u) => !ids.contains(u.id)).toList();
-    if (faltantes.isNotEmpty) {
-      data = [...data, ...faltantes.map((u) => u.toJson())];
-      await ServicioStorage.instancia.guardarLista(_clave, data);
-    }
-    return data.map(Usuario.fromJson).toList();
-  }
-
-  Usuario _seed(
-    String id,
-    String nombre,
-    String dui,
-    String username,
-    RolUsuario rol,
-  ) => Usuario(
-    id: id,
-    nombre: nombre,
-    dui: dui,
-    telefono: '0000-0000',
-    username: username,
-    rol: rol,
-    cargo: switch (rol) {
-      RolUsuario.admin => 'Administrador',
-      RolUsuario.recepcion => 'Recepción',
-      RolUsuario.limpieza => 'Limpieza',
-      RolUsuario.mantenimiento => 'Mantenimiento',
-    },
-    passwordHash: _hash(contrasenaSeed),
-  );
-
-  Future<Usuario?> iniciarSesion(String username, String password) async {
-    final usuarios = await this.usuarios();
-    for (final user in usuarios) {
-      if (user.activo &&
-          user.username == username.trim() &&
-          user.passwordHash == _hash(password)) {
-        return user;
+    final recibidos = <Usuario>[];
+    var page = 1;
+    var lastPage = 1;
+    do {
+      final response = await ApiClient.instance.users(page: page);
+      final rows = ApiClient.instance.listFromResponse(response);
+      recibidos.addAll(rows.map((row) => Usuario.fromApiJson(
+            Map<String, dynamic>.from(row as Map),
+          )));
+      if (response is Map) {
+        final meta = response['meta'];
+        lastPage = int.tryParse(
+              (response['last_page'] ?? (meta is Map ? meta['last_page'] : null))
+                      ?.toString() ??
+                  '',
+            ) ??
+            page;
       }
-    }
-    return null;
+      page++;
+    } while (page <= lastPage);
+    return recibidos;
   }
 }

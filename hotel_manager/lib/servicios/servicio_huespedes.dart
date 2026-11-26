@@ -65,11 +65,14 @@ class ServicioHuespedes extends ChangeNotifier {
         ..clear()
         ..addAll(recibidos);
     } on ApiException catch (e) {
+      _huespedes.clear();
       error = e.message;
     } on FormatException catch (e) {
+      _huespedes.clear();
       error =
           'La respuesta de huéspedes no tiene el formato esperado: ${e.message}';
     } catch (_) {
+      _huespedes.clear();
       error = 'No se pudieron cargar los huéspedes desde el servidor.';
     } finally {
       cargando = false;

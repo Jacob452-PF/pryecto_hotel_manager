@@ -1,27 +1,172 @@
 import 'package:flutter/foundation.dart';
 
-import '../datos/productos_inventario_mock.dart';
+import '../../servicios/api_client.dart';
 import '../modelos/compra_inventario.dart';
 import '../modelos/movimiento_inventario.dart';
 import '../modelos/producto_inventario.dart';
 
-/// Guarda los productos del inventario y avisa a la pantalla cuando cambian.
-/// Vive en memoria; cuando haya base de datos, solo se cambia este archivo.
+/// Lee el inventario compartido del API y conserva temporalmente los cambios
+/// recibidos en memoria para que las pantallas se actualicen.
 class ServicioInventario extends ChangeNotifier {
   ServicioInventario._();
 
   static final ServicioInventario instancia = ServicioInventario._();
 
-  final List<ProductoInventario> _productos = List.of(productosInventarioMock);
+  final List<ProductoInventario> _productos = [];
   final List<ProductoInventario> _eliminados = [];
   final List<MovimientoInventario> _movimientos = [];
   final List<CompraInventario> _compras = [];
+  final Map<CategoriaInventario, int> _categoriasApi = {};
   DateTime _ultimaActualizacion = DateTime.now();
+  String? error;
+  bool cargando = false;
 
   List<ProductoInventario> get productos => List.unmodifiable(_productos);
   List<ProductoInventario> get eliminados => List.unmodifiable(_eliminados);
   List<MovimientoInventario> get movimientos => List.unmodifiable(_movimientos);
   DateTime get ultimaActualizacion => _ultimaActualizacion;
+
+  Future<void> sincronizar() async {
+    cargando = true;
+    error = null;
+    notifyListeners();
+    try {
+      final responses = await Future.wait([
+        ApiClient.instance.products(),
+        ApiClient.instance.categories(),
+      ]);
+      final products = responses[0] as List<Product>;
+      final categories = responses[1] as List<dynamic>;
+      _categoriasApi.clear();
+      for (final raw in categories) {
+        if (raw is! Map) continue;
+        final category = Map<String, dynamic>.from(raw);
+        final id = int.tryParse(category['id']?.toString() ?? '');
+        if (id == null) continue;
+        final value = (category['name'] ?? '').toString().trim().toLowerCase();
+        final local = switch (value) {
+          'alimentos' || 'alimento' || 'food' => CategoriaInventario.alimentos,
+          'bebidas' || 'bebida' || 'drinks' => CategoriaInventario.bebidas,
+          'aseo' || 'limpieza' || 'cleaning' => CategoriaInventario.aseo,
+          _ => CategoriaInventario.otros,
+        };
+        _categoriasApi.putIfAbsent(local, () => id);
+      }
+      _productos
+        ..clear()
+        ..addAll(products.where((p) => p.active).map((p) {
+          final category = switch ((p.category ?? '').trim().toLowerCase()) {
+            'alimentos' || 'alimento' || 'food' => CategoriaInventario.alimentos,
+            'bebidas' || 'bebida' || 'drinks' => CategoriaInventario.bebidas,
+            'aseo' || 'limpieza' || 'cleaning' => CategoriaInventario.aseo,
+            _ => CategoriaInventario.otros,
+          };
+          return ProductoInventario(
+            id: p.id.toString(),
+            nombre: p.name,
+            precio: p.price,
+            categoria: category,
+            categoriaIdApi: p.categoryId,
+            stock: p.stock,
+            stockMinimo: p.minStock,
+          );
+        }));
+      _ultimaActualizacion = DateTime.now();
+    } on Object catch (e) {
+      _productos.clear();
+      error = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      cargando = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> crearProductoRemoto(ProductoInventario producto, {
+    required int paquetes,
+    required int unidadesPorPaquete,
+    required double costoPaquete,
+  }) async {
+    final categoryId = producto.categoriaIdApi ?? _categoriasApi[producto.categoria];
+    if (categoryId == null) {
+      throw StateError('La categoría no existe en el catálogo del servidor.');
+    }
+    final created = await ApiClient.instance.createProduct({
+      'category_id': categoryId,
+      'name': producto.nombre,
+      'price': producto.precio,
+      'stock': 0,
+      'min_stock': producto.stockMinimo,
+    });
+    final productId = int.parse(created['id'].toString());
+    try {
+      if (paquetes > 0) {
+        await ApiClient.instance.createPurchase([
+          {
+            'product_id': productId,
+            'quantity': paquetes * unidadesPorPaquete,
+            'unit_cost': unidadesPorPaquete > 0
+                ? costoPaquete / unidadesPorPaquete
+                : costoPaquete,
+          },
+        ]);
+      }
+    } finally {
+      await sincronizar();
+    }
+  }
+
+  Future<void> desactivarRemoto(String id) async {
+    final productId = int.tryParse(id);
+    if (productId == null) throw StateError('El producto no tiene ID de API.');
+    await ApiClient.instance.deleteProduct(productId);
+    await sincronizar();
+  }
+
+  Future<void> restaurarRemoto(String id) async {
+    final productId = int.tryParse(id);
+    if (productId == null) throw StateError('El producto no tiene ID de API.');
+    await ApiClient.instance.updateProduct(productId, {'active': true}, partial: true);
+    await sincronizar();
+  }
+
+  Future<void> actualizarStockRemoto(
+    String id, {
+    required int stock,
+    required String motivo,
+  }) async {
+    final productId = int.tryParse(id);
+    if (productId == null) throw StateError('El producto no tiene ID de API.');
+    await ApiClient.instance.updateProduct(productId, {
+      'stock': stock,
+      'reason': motivo,
+    }, partial: true);
+    await sincronizar();
+  }
+
+  Future<void> reponerStockRemoto(
+    String id, {
+    required int cantidad,
+    required double costoUnitario,
+    double? precioVenta,
+  }) async {
+    final productId = int.tryParse(id);
+    if (productId == null) throw StateError('El producto no tiene ID de API.');
+    await ApiClient.instance.createPurchase([
+      {
+        'product_id': productId,
+        'quantity': cantidad,
+        'unit_cost': costoUnitario,
+      },
+    ]);
+    if (precioVenta != null) {
+      await ApiClient.instance.updateProduct(
+        productId,
+        {'price': precioVenta},
+        partial: true,
+      );
+    }
+    await sincronizar();
+  }
 
   /// Todo lo que el hotel ha gastado en mercadería.
   List<CompraInventario> get compras => List.unmodifiable(_compras);

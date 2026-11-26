@@ -34,6 +34,7 @@ class ProductoInventario {
   /// Precio de venta de una unidad (costo por unidad + 30%).
   final double precio;
   final CategoriaInventario categoria;
+  final int? categoriaIdApi;
   final int stock;
   final int stockMaximo;
   final int stockMinimo;
@@ -51,6 +52,7 @@ class ProductoInventario {
     required this.nombre,
     required this.precio,
     required this.categoria,
+    this.categoriaIdApi,
     required this.stock,
     this.stockMaximo = 50,
     this.stockMinimo = 5,
@@ -82,6 +84,7 @@ class ProductoInventario {
       nombre: nombre,
       precio: precio ?? this.precio,
       categoria: categoria,
+      categoriaIdApi: categoriaIdApi,
       stock: stock ?? this.stock,
       stockMaximo: stockMaximo ?? this.stockMaximo,
       stockMinimo: stockMinimo ?? this.stockMinimo,

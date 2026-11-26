@@ -90,9 +90,6 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
       _error = null;
       var nuevo = (int.tryParse(_stock.text.trim()) ?? 0) + delta;
       if (nuevo < 0) nuevo = 0;
-      if (nuevo > widget.producto.stockMaximo) {
-        nuevo = widget.producto.stockMaximo;
-      }
       _stock.text = '$nuevo';
     });
   }
@@ -111,7 +108,7 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
     });
   }
 
-  void _guardar() {
+  Future<void> _guardar() async {
     final servicio = ServicioInventario.instancia;
     final p = widget.producto;
 
@@ -134,16 +131,17 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
         setState(() => _error = 'Escribe un precio de venta válido.');
         return;
       }
-      servicio.reponerStock(
-        p.id,
-        paquetes: _numPaquetes,
-        unidadesPorPaquete: 1,
-        costoPaquete: costo,
-        actualizarPrecio: _actualizarPrecio,
-        precioVenta: precio,
-        nota: _nota.text.trim(),
-      );
-      Navigator.of(context).pop();
+      try {
+        await servicio.reponerStockRemoto(
+          p.id,
+          cantidad: _numPaquetes,
+          costoUnitario: costo,
+          precioVenta: _actualizarPrecio ? precio : null,
+        );
+        if (mounted) Navigator.of(context).pop();
+      } on Object catch (error) {
+        if (mounted) setState(() => _error = error.toString());
+      }
       return;
     }
 
@@ -165,18 +163,18 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
         );
         return;
       }
-      final guardado = servicio.registrarDevolucion(
-        p.id,
-        cantidad: cantidad,
-        precioUnitario: precio,
-        deCliente: _esDevolucionCliente,
-        nota: _nota.text.trim(),
-      );
-      if (!guardado) {
-        setState(() => _error = 'No se pudo registrar la devolución.');
-        return;
+      try {
+        await servicio.actualizarStockRemoto(
+          p.id,
+          stock: _esDevolucionCliente ? p.stock + cantidad : p.stock - cantidad,
+          motivo: _nota.text.trim().isEmpty
+              ? 'Devolución ${_esDevolucionCliente ? 'de cliente' : 'a proveedor'}'
+              : _nota.text.trim(),
+        );
+        if (mounted) Navigator.of(context).pop();
+      } on Object catch (error) {
+        if (mounted) setState(() => _error = error.toString());
       }
-      Navigator.of(context).pop();
       return;
     }
 
@@ -185,19 +183,16 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
       setState(() => _error = 'Escribe un número válido.');
       return;
     }
-    if (stock > p.stockMaximo) {
-      setState(
-        () => _error = 'No puede superar el stock máximo (${p.stockMaximo}).',
+    try {
+      await servicio.actualizarStockRemoto(
+        p.id,
+        stock: stock,
+        motivo: _nota.text.trim().isEmpty ? _motivo : _nota.text.trim(),
       );
-      return;
+      if (mounted) Navigator.of(context).pop();
+    } on Object catch (error) {
+      if (mounted) setState(() => _error = error.toString());
     }
-    servicio.actualizarStock(
-      p.id,
-      stock: stock,
-      motivo: _motivo,
-      nota: _nota.text.trim(),
-    );
-    Navigator.of(context).pop();
   }
 
   InputDecoration _decoracion({
@@ -310,11 +305,6 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
             style: const TextStyle(fontSize: 13),
           ),
         ),
-        if (_stockResultante > p.stockMaximo)
-          Text(
-            'El stock máximo subirá a $_stockResultante.',
-            style: const TextStyle(fontSize: 12, color: Color(0xFF55555F)),
-          ),
       ],
     );
   }
@@ -617,7 +607,7 @@ class _EstadoActual extends StatelessWidget {
             punto(),
             const SizedBox(width: 5),
             Text(
-              'Stock actual: ${producto.stock}/${producto.stockMaximo}',
+              'Stock actual: ${producto.stock} · mínimo ${producto.stockMinimo}',
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],

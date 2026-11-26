@@ -21,21 +21,30 @@ Future<void> _agregarDesdePantalla(BuildContext context) async {
 
   final servicio = ServicioInventario.instancia;
   final stock = datos.paquetes * datos.unidadesPorPaquete;
-  servicio.agregar(
-    ProductoInventario(
-      id: servicio.nuevoId(),
+  try {
+    await servicio.crearProductoRemoto(
+      ProductoInventario(
+      id: '',
       nombre: datos.nombre,
       precio: datos.precioVenta,
       categoria: datos.categoria,
       stock: stock,
-      stockMaximo: datos.stockMaximo,
       stockMinimo: datos.stockMinimo,
       imagenBytes: datos.foto,
       unidadesPorPaquete: datos.unidadesPorPaquete,
       costoPaquete: datos.costoPaquete,
-    ),
-    paquetes: datos.paquetes,
-  );
+      ),
+      paquetes: datos.paquetes,
+      unidadesPorPaquete: datos.unidadesPorPaquete,
+      costoPaquete: datos.costoPaquete,
+    );
+  } on Object catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
 }
 
 class _DialogoAgregar extends StatefulWidget {

@@ -1,63 +1,108 @@
 import 'package:flutter/material.dart';
 
-import '../historial/historial.dart';
+import '../servicios/api_client.dart';
 import '../servicios/servicio_estadias.dart';
 import '../servicios/servicio_habitaciones.dart';
-import '../servicios/servicio_tareas.dart';
-import '../modelos/solicitud_limpieza.dart';
 import '../utilidades/formato.dart';
-import '../servicios/servicio_abonos.dart';
-import '../modelos/abono.dart';
 import '../widgets/dialogo_cobro.dart';
 
 class PantallaFinalizarEstadia extends StatefulWidget {
   final String habitacion;
   final String huesped;
-  const PantallaFinalizarEstadia({
-    super.key,
-    required this.habitacion,
-    required this.huesped,
-  });
+  const PantallaFinalizarEstadia({super.key, required this.habitacion, required this.huesped});
+
   @override
-  State<PantallaFinalizarEstadia> createState() =>
-      _PantallaFinalizarEstadiaState();
+  State<PantallaFinalizarEstadia> createState() => _PantallaFinalizarEstadiaState();
 }
 
 class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
   bool _pagada = false;
-  double _total = 0;
+  bool _enviando = false;
+  double _cobroFinal = 0;
   double _precioHabitacion = 0;
   String _restante = '';
-  List<CargoEstadia> _lineasFinales = [];
+  List<CargoEstadia> _cargosCobrados = [];
 
   @override
   void initState() {
     super.initState();
-    // Las habitaciones ocupadas de ejemplo no tienen estadía creada: sin esto
-    // el total sale en $0.00. Si ya existe, no hace nada.
-    ServicioEstadias.instancia.asegurarEstadiaPredeterminada(widget.habitacion);
+    ServicioEstadias.instancia.sincronizar();
+  }
+
+  Future<void> _finalizar(DatosEstadia estadia) async {
+    if (_enviando) return;
+    final saldo = estadia.saldoCargos;
+    final pago = saldo > .001
+        ? await mostrarDialogoCobro(context, saldo: saldo)
+        : null;
+    if (saldo > .001 && pago == null || !mounted) return;
+
+    setState(() => _enviando = true);
+    try {
+      await ApiClient.instance.checkoutStay(
+        estadia.id,
+        paymentMethod: saldo > .001 ? pago!.metodo.name : null,
+      );
+      await Future.wait([
+        ServicioHabitaciones.instancia.sincronizar(),
+        ServicioEstadias.instancia.sincronizar(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _cobroFinal = saldo;
+        _precioHabitacion = estadia.precioEstadia;
+        _cargosCobrados = [
+          ...estadia.cargosIniciales,
+          ...estadia.cargosTienda,
+        ].where((charge) => !charge.pagado).toList();
+        _restante = _tiempo(estadia.salida);
+        _pagada = true;
+      });
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(_pagada ? 'Pago realizado' : 'Finalizar estadía'),
-    ),
+    appBar: AppBar(title: Text(_pagada ? 'Estadía finalizada' : 'Finalizar estadía')),
     body: ListenableBuilder(
       listenable: ServicioEstadias.instancia,
       builder: (context, _) {
         final estadia = ServicioEstadias.instancia.buscar(widget.habitacion);
-        final total = estadia?.total ?? 0;
-        final facturaId = ServicioConsumos.instancia.facturaIdParaHabitacion(
-          widget.habitacion,
-          widget.huesped,
-        );
-        final abonado = ServicioAbonos.instancia.abonado(facturaId);
-        final saldo = (total - abonado).clamp(0.0, total).toDouble();
-        final lineas = estadia == null
-            ? <CargoEstadia>[]
-            : [...estadia.cargosIniciales, ...estadia.cargosTienda];
-        if (_pagada) return _resultado(context, _lineasFinales, _total);
+        if (_pagada) return _resultado(context);
+        if (estadia == null) {
+          final servicio = ServicioEstadias.instancia;
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(servicio.cargando
+                      ? 'Cargando estadía del servidor…'
+                      : servicio.error == null
+                          ? 'No hay una estadía activa del servidor en esta habitación.'
+                          : 'No se pudo cargar la estadía: ${servicio.error}'),
+                  if (!servicio.cargando)
+                    TextButton.icon(
+                      onPressed: servicio.sincronizar,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reintentar'),
+                    ),
+                ],
+              ),
+            ),
+          );
+        }
+        final cargos = [...estadia.cargosIniciales, ...estadia.cargosTienda];
+        final saldo = estadia.saldoCargos;
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -67,99 +112,25 @@ class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Resumen de pago',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
+                    Text('Resumen de estadía', style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 8),
-                    _fila(
-                      'Habitación ${widget.habitacion}',
-                      estadia?.precioEstadia ?? 0,
-                    ),
-                    const SizedBox(height: 8),
-                    for (final c in lineas)
+                    _fila('Habitación ${widget.habitacion} · pagada al ingreso', estadia.precioEstadia),
+                    for (final cargo in cargos)
                       _fila(
-                        '${c.nombre}${c.cantidad > 1 ? ' × ${c.cantidad}' : ''}',
-                        c.importe,
+                        '${cargo.nombre}${cargo.cantidad > 1 ? ' × ${cargo.cantidad}' : ''}${cargo.pagado ? ' · pagado' : ''}',
+                        cargo.importe,
                       ),
-                    if (lineas.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 4),
-                        child: Text('Sin productos cargados'),
-                      ),
+                    if (cargos.isEmpty) const Text('No hay cargos adicionales.'),
                     const Divider(),
-                    _fila('Abonado anteriormente', abonado),
-                    _fila('Saldo a pagar', saldo, negrita: true),
+                    _fila('Saldo adicional al checkout', saldo, negrita: true),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 12),
             FilledButton(
-              onPressed: () async {
-                final pago = saldo > .001
-                    ? await mostrarDialogoCobro(context, saldo: saldo)
-                    : null;
-                if (saldo > .001 && pago == null) return;
-                if (!context.mounted) return;
-                final e = ServicioEstadias.instancia.buscar(widget.habitacion);
-                final cargos = e == null
-                    ? <CargoEstadia>[]
-                    : [...e.cargosIniciales, ...e.cargosTienda];
-
-                // Se registra el cobro en el Cierre de caja (antes de
-                // borrar la estadía): el cliente pasa a "Pagado".
-                try {
-                  await ServicioConsumos.instancia.registrarPago(
-                    habitacion: widget.habitacion,
-                    cliente: widget.huesped,
-                    metodo: pago?.metodo.name ?? MetodoAbono.efectivo.name,
-                    precioEstadia: e?.precioEstadia ?? 0,
-                    cargos: [
-                      for (final c in cargos)
-                        (
-                          nombre: c.nombre,
-                          precio: c.precio,
-                          cantidad: c.cantidad,
-                        ),
-                    ],
-                    efectivoEntregado: pago?.efectivoEntregado,
-                  );
-                } catch (error) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        error.toString().replaceFirst('Bad state: ', ''),
-                      ),
-                    ),
-                  );
-                  return;
-                }
-
-                setState(() {
-                  _total = e?.total ?? total;
-                  _precioHabitacion = e?.precioEstadia ?? 0;
-                  _lineasFinales = cargos;
-                  _restante = e == null
-                      ? 'Estadía finalizada'
-                      : _tiempo(e.salida);
-                  _pagada = true;
-                });
-                ServicioHabitaciones.instancia.terminarEstadia(
-                  widget.habitacion,
-                );
-                try {
-                  await ServicioTareas.instancia.solicitarLimpieza(
-                    widget.habitacion,
-                    origen: OrigenLimpieza.recepcion,
-                  );
-                } on StateError {
-                  // Una solicitud previa conserva su asignación.
-                }
-                ServicioEstadias.instancia.limpiar(widget.habitacion);
-              },
-              child: const Text('Confirmar pago'),
+              onPressed: _enviando ? null : () => _finalizar(estadia),
+              child: Text(_enviando ? 'Finalizando…' : saldo > .001 ? 'Cobrar saldo y finalizar' : 'Finalizar estadía'),
             ),
           ],
         );
@@ -167,40 +138,23 @@ class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
     ),
   );
 
-  Widget _resultado(
-    BuildContext context,
-    List<CargoEstadia> lineas,
-    double total,
-  ) => ListView(
+  Widget _resultado(BuildContext context) => ListView(
     padding: const EdgeInsets.all(20),
     children: [
       const SizedBox(height: 24),
       const Icon(Icons.check_circle_outline, size: 82, color: Colors.green),
-      const Center(
-        child: Text(
-          '¡Pago realizado!',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-      ),
-      const Center(child: Text('La estadía se ha finalizado correctamente')),
+      const Center(child: Text('Estadía finalizada', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
       const SizedBox(height: 24),
       Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              _fila(
-                'Habitación ${widget.habitacion}',
-                _precioHabitacion,
-                negrita: true,
-              ),
-              for (final c in lineas)
-                _fila(
-                  '${c.nombre}${c.cantidad > 1 ? ' × ${c.cantidad}' : ''}',
-                  c.importe,
-                ),
+              _fila('Habitación pagada al ingreso', _precioHabitacion),
+              for (final cargo in _cargosCobrados)
+                _fila('${cargo.nombre}${cargo.cantidad > 1 ? ' × ${cargo.cantidad}' : ''}', cargo.importe),
               const Divider(),
-              _fila('Total pagado', _total, negrita: true),
+              _fila('Cobrado al finalizar', _cobroFinal, negrita: true),
             ],
           ),
         ),
@@ -212,10 +166,7 @@ class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
         ),
       ),
       const SizedBox(height: 20),
-      FilledButton(
-        onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
-        child: const Text('Volver al inicio'),
-      ),
+      FilledButton(onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst), child: const Text('Volver al inicio')),
     ],
   );
 
@@ -223,19 +174,12 @@ class _PantallaFinalizarEstadiaState extends State<PantallaFinalizarEstadia> {
     padding: const EdgeInsets.symmetric(vertical: 5),
     child: Row(
       children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(fontWeight: negrita ? FontWeight.bold : null),
-          ),
-        ),
-        Text(
-          formatearDinero(amount),
-          style: TextStyle(fontWeight: negrita ? FontWeight.bold : null),
-        ),
+        Expanded(child: Text(label, style: TextStyle(fontWeight: negrita ? FontWeight.bold : null))),
+        Text(formatearDinero(amount), style: TextStyle(fontWeight: negrita ? FontWeight.bold : null)),
       ],
     ),
   );
+
   String _tiempo(DateTime salida) {
     final d = salida.difference(DateTime.now());
     if (d.isNegative) return 'Estadía vencida';
