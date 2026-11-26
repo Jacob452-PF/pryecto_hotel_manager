@@ -19,7 +19,7 @@ class PantallaAcercaApp extends StatelessWidget {
             SizedBox(height: 18),
             _BloqueTexto(
               titulo: 'Misión',
-              texto: 'Proporcionar una plataforma digital eficiente e intuitiva que optimice la administración integral del hotel y eleve la experiencia de los huéspedes. Nos enfocamos en centralizar la gestión de reservas, el control de habitaciones y la atención al cliente en una sola herramienta, agilizando los procesos operativos para garantizar un servicio de hospitalidad ágil, moderno y de excelencia bajo el estándar de la familia López.',
+              texto: 'Proporcionar una plataforma digital eficiente e intuitiva que optimice la administración integral de Hotel Manager, elevando la experiencia de los huéspedes. Nos enfocamos en centralizar la gestión de reservas, el control de habitaciones y la atención al cliente en una sola herramienta, agilizando los procesos operativos para garantizar un servicio de hospitalidad ágil, moderno y de excelencia.',
             ),
             SizedBox(height: 18),
             _BloqueTexto(
