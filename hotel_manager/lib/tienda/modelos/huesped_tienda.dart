@@ -6,8 +6,11 @@ class HuespedTienda {
   final String habitacion;
   final String? estadiaIdApi;
   final String? huespedIdApi;
+<<<<<<< Updated upstream
   final String? documento;
   final String? telefono;
+=======
+>>>>>>> Stashed changes
 
   const HuespedTienda({
     required this.id,
@@ -15,7 +18,10 @@ class HuespedTienda {
     required this.habitacion,
     this.estadiaIdApi,
     this.huespedIdApi,
+<<<<<<< Updated upstream
     this.documento,
     this.telefono,
+=======
+>>>>>>> Stashed changes
   });
 }

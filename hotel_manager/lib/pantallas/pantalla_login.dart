@@ -2,18 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../modelos/usuario.dart';
 import '../servicios/api_client.dart';
-import '../servicios/servicio_habitaciones.dart';
-import '../servicios/servicio_huespedes.dart';
-import '../servicios/servicio_reservas.dart';
-import '../servicios/servicio_caja.dart';
-import '../inventario/servicios/servicio_inventario.dart';
-import '../servicios/servicio_tareas.dart';
-import '../servicios/servicio_estadias.dart';
+import '../servicios/servicio_actualizacion.dart';
 import '../servicios/servicio_sesion.dart';
 import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
 import '../tema/estilos_texto.dart';
 import 'contenedor_principal.dart';
+<<<<<<< Updated upstream
+=======
+import 'pantalla_tutorial.dart';
+>>>>>>> Stashed changes
 
 class PantallaLogin extends StatefulWidget {
   const PantallaLogin({super.key});
@@ -47,6 +45,14 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    ApiClient.instance.rememberedEmail().then((email) {
+      if (mounted && email.isNotEmpty) _controladorUsuario.text = email;
+    });
+  }
+
   Future<void> _iniciarSesion() async {
     if (_cargando || !_claveFormulario.currentState!.validate()) return;
     setState(() {
@@ -54,14 +60,21 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
       _errorAcceso = null;
     });
     try {
-      await ApiClient.instance.login(
-        _controladorUsuario.text.trim(),
+      final correo = _controladorUsuario.text.trim();
+      await ApiClient.instance.rememberEmail(correo);
+      final data = await ApiClient.instance.login(
+        correo,
         _controladorContrasena.text,
       );
+<<<<<<< Updated upstream
       await ServicioSesion.instancia.recordarCorreo(
         _controladorUsuario.text.trim(),
       );
       final data = await ApiClient.instance.me();
+=======
+      await ApiClient.instance.saveSessionUser(data);
+      ApiClient.instance.startConnectionMonitor();
+>>>>>>> Stashed changes
       if (!mounted) {
         return;
       }
@@ -83,6 +96,7 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
           cargo: role,
         ),
       );
+<<<<<<< Updated upstream
       await ServicioSesion.instancia.guardarUsuario(
         ServicioSesion.instancia.usuario!,
       );
@@ -96,6 +110,10 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
           ServicioInventario.instancia.sincronizar(),
         ServicioCaja.instancia.sincronizar().catchError((_) {}),
       ]);
+=======
+      await ServicioActualizacion.instancia.sincronizarAhora();
+      ServicioActualizacion.instancia.iniciarAutomatico();
+>>>>>>> Stashed changes
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -223,6 +241,19 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                               : const Text('Iniciar sesión'),
                         ),
                       ),
+<<<<<<< Updated upstream
+=======
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PantallaTutorial(),
+                          ),
+                        ),
+                        child: const Text('Cómo usar la app'),
+                      ),
+>>>>>>> Stashed changes
                     ],
                   ),
                 ),

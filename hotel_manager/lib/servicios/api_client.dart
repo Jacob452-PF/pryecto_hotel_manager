@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// URL base de la API. Puede cambiarse por entorno al compilar:
 /// flutter run --dart-define=API_BASE_URL=https://.../api
@@ -53,6 +55,7 @@ class ApiClient {
   static final ApiClient instance = ApiClient._();
 
   static const _tokenKey = 'auth_token';
+  static const _userKey = 'auth_user';
 
   // Render y Aiven se duermen por inactividad: la primera petición puede
   // tardar cerca de un minuto, por eso el timeout es largo.
@@ -63,11 +66,60 @@ class ApiClient {
   /// Se ejecuta cuando la API responde 401 (token vencido o inválido).
   /// Úsalo para mandar al usuario de vuelta al login.
   void Function()? onUnauthorized;
+  final ValueNotifier<bool> connectionLost = ValueNotifier(false);
+  Timer? _connectionMonitor;
+  bool _checkingConnection = false;
 
   Future<String?> getToken() => _storage.read(key: _tokenKey);
   Future<void> _saveToken(String token) =>
       _storage.write(key: _tokenKey, value: token);
   Future<void> clearToken() => _storage.delete(key: _tokenKey);
+
+  Future<Map<String, dynamic>?> getCachedUser() async {
+    final raw = await _storage.read(key: _userKey);
+    if (raw == null) return null;
+    try {
+      return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      await _storage.delete(key: _userKey);
+      return null;
+    }
+  }
+
+  Future<void> saveSessionUser(Map<String, dynamic> user) =>
+      _storage.write(key: _userKey, value: jsonEncode(user));
+
+  Future<void> rememberEmail(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_email', email.trim());
+  }
+
+  Future<String> rememberedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_email') ?? '';
+  }
+
+  void startConnectionMonitor() {
+    _connectionMonitor?.cancel();
+    _connectionMonitor = Timer.periodic(const Duration(seconds: 12), (_) async {
+      if (_checkingConnection || await getToken() == null) return;
+      _checkingConnection = true;
+      try {
+        await _request('GET', '/me');
+        if (connectionLost.value) connectionLost.value = false;
+      } on ApiException catch (e) {
+        if (e.statusCode == null) connectionLost.value = true;
+      } finally {
+        _checkingConnection = false;
+      }
+    });
+  }
+
+  void stopConnectionMonitor() {
+    _connectionMonitor?.cancel();
+    _connectionMonitor = null;
+    connectionLost.value = false;
+  }
 
   // ---------------------------------------------------------------------------
   // Petición base
@@ -108,10 +160,12 @@ class ApiClient {
         res = await http.get(uri, headers: headers).timeout(_timeout);
       }
     } on TimeoutException {
+      connectionLost.value = true;
       throw ApiException(
         'El servidor tardó demasiado en responder. Intenta de nuevo.',
       );
     } catch (_) {
+      connectionLost.value = true;
       throw ApiException(
         'No se pudo conectar con el servidor. Revisa tu conexión a internet.',
       );
@@ -130,12 +184,16 @@ class ApiClient {
 
     if (res.statusCode == 401 && path != '/login') {
       await clearToken();
+      await _storage.delete(key: _userKey);
+      stopConnectionMonitor();
       onUnauthorized?.call();
     }
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
+      if (res.statusCode >= 500) connectionLost.value = true;
       throw ApiException(_errorMessage(data, res.statusCode), res.statusCode);
     }
+    if (connectionLost.value) connectionLost.value = false;
     return data;
   }
 
@@ -210,12 +268,14 @@ class ApiClient {
   }
 
   Future<void> logout() async {
+    stopConnectionMonitor();
     try {
       await _request('POST', '/logout');
     } catch (_) {
       // Aunque falle, se cierra la sesión del lado del teléfono.
     }
     await clearToken();
+    await _storage.delete(key: _userKey);
   }
 
   Future<Map<String, dynamic>> me() async => _map(await _request('GET', '/me'));
@@ -339,6 +399,26 @@ class ApiClient {
       body: {if (supplierId != null) 'supplier_id': supplierId, 'items': items},
     ),
   );
+<<<<<<< Updated upstream
+=======
+
+  Future<List<dynamic>> suppliers() async =>
+      _list(await _request('GET', '/suppliers'));
+
+  Future<Map<String, dynamic>> createSupplier({
+    required String name,
+    String? phone,
+  }) async => _map(
+    await _request(
+      'POST',
+      '/suppliers',
+      body: {
+        'name': name,
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+      },
+    ),
+  );
+>>>>>>> Stashed changes
 
   Future<dynamic> purchases({int page = 1}) =>
       _request('GET', '/purchases?page=$page');

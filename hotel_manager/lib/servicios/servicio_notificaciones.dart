@@ -9,7 +9,12 @@ import '../modelos/reserva.dart';
 import 'servicio_configuracion.dart';
 import 'servicio_habitaciones.dart';
 import 'servicio_estadias.dart';
+<<<<<<< Updated upstream
 import '../utilidades/tiempo_hotel.dart';
+=======
+import 'servicio_huespedes.dart';
+import 'servicio_reservas.dart';
+>>>>>>> Stashed changes
 
 /// Vigila estadías e inventario mientras la app está abierta.
 class ServicioNotificaciones extends ChangeNotifier {
@@ -62,6 +67,7 @@ class ServicioNotificaciones extends ChangeNotifier {
     _agregar(id: id, titulo: titulo, mensaje: mensaje, severidad: severidad);
   }
 
+<<<<<<< Updated upstream
   /// Se llama al abrir caja para avisar de reservas que comienzan en 24 horas.
   void notificarReservasAlAbrirCaja(Iterable<Reserva> reservas) {
     final ahora = TiempoHotel.ahoraUtc();
@@ -85,6 +91,39 @@ class ServicioNotificaciones extends ChangeNotifier {
   String _fechaYHora(DateTime instanteUtc) {
     final local = TiempoHotel.relojElSalvador(instanteUtc);
     return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')} a las ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+=======
+  /// Avisa al abrir caja si hay reservas activas con entrada mañana.
+  void notificarReservasParaManana() {
+    final ahora = DateTime.now();
+    final manana = DateTime(ahora.year, ahora.month, ahora.day + 1);
+    final fechaId = '${manana.year}-${manana.month.toString().padLeft(2, '0')}-${manana.day.toString().padLeft(2, '0')}';
+
+    final reservasManana = ServicioReservas.instancia.reservas.where((reserva) {
+      final entrada = reserva.inicio;
+      return reserva.estado == EstadoReserva.activa &&
+          entrada.year == manana.year &&
+          entrada.month == manana.month &&
+          entrada.day == manana.day;
+    }).toList()..sort((a, b) => a.inicio.compareTo(b.inicio));
+    if (reservasManana.isEmpty) return;
+
+    final detalles = reservasManana.take(4).map((reserva) {
+      final huesped = ServicioHuespedes.instancia.huespedes
+          .where((h) => h.id == reserva.huespedId)
+          .map((h) => h.nombre)
+          .firstOrNull ?? 'Huésped';
+      final entrada = reserva.inicio;
+      final hora = '${entrada.hour.toString().padLeft(2, '0')}:${entrada.minute.toString().padLeft(2, '0')}';
+      return '$huesped · $hora · ${reserva.tipoCuarto.etiqueta}';
+    }).join(' | ');
+    final restantes = reservasManana.length - 4;
+    notificarEvento(
+      id: 'reservas-proximas-$fechaId',
+      titulo: 'Reservas para mañana (${reservasManana.length})',
+      mensaje: '$detalles${restantes > 0 ? ' | y $restantes más' : ''}',
+      severidad: SeveridadNotificacion.leve,
+    );
+>>>>>>> Stashed changes
   }
 
   void _revisar() {

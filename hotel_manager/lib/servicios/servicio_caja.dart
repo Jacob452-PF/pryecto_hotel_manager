@@ -12,8 +12,12 @@ class ServicioCaja extends ChangeNotifier {
   ServicioCaja._();
   static final instancia = ServicioCaja._();
   final List<Caja> _cajas = [];
+<<<<<<< Updated upstream
   bool _consultada = false;
   bool get consultada => _consultada;
+=======
+  bool _sincronizacionEnCurso = false;
+>>>>>>> Stashed changes
   List<Caja> get cajas => List.unmodifiable(_cajas);
   List<Caja> get cajasCerradas =>
       List.unmodifiable(_cajas.where((c) => !c.abierta));
@@ -43,7 +47,10 @@ class ServicioCaja extends ChangeNotifier {
         usuario?.rol != RolUsuario.recepcion) {
       return;
     }
+    if (_sincronizacionEnCurso) return;
+    _sincronizacionEnCurso = true;
 
+<<<<<<< Updated upstream
     final shift = await ApiClient.instance.currentShift();
     _consultada = true;
     if (shift != null) {
@@ -71,16 +78,48 @@ class ServicioCaja extends ChangeNotifier {
       );
       if (existente < 0) {
         _cajas.add(caja);
+=======
+    try {
+      final shift = await ApiClient.instance.currentShift();
+      if (shift != null) {
+        final id = 'api-shift-${shift['id']}';
+        final existente = _cajas.indexWhere((caja) => caja.id == id);
+        final desgloseExistente = existente < 0
+            ? null
+            : _cajas[existente].desgloseApertura;
+        _cajas.removeWhere(
+          (caja) =>
+              caja.id.startsWith('api-shift-') && caja.abierta && caja.id != id,
+        );
+        final caja = Caja(
+          id: id,
+          usuarioId: (shift['user_id'] ?? usuario!.id).toString(),
+          aperturaAt: DateTime.parse(shift['opened_at'].toString()),
+          montoApertura: double.parse(shift['opening_amount'].toString()),
+          desgloseApertura:
+              desgloseExistente ??
+              DesgloseEfectivo(
+                montoNoDesglosado: double.parse(
+                  shift['opening_amount'].toString(),
+                ),
+              ),
+        );
+        if (existente < 0) {
+          _cajas.add(caja);
+        } else {
+          _cajas[_cajas.indexWhere((item) => item.id == id)] = caja;
+        }
+>>>>>>> Stashed changes
       } else {
-        _cajas[_cajas.indexWhere((item) => item.id == id)] = caja;
+        _cajas.removeWhere(
+          (caja) => caja.id.startsWith('api-shift-') && caja.abierta,
+        );
       }
-    } else {
-      _cajas.removeWhere(
-        (caja) => caja.id.startsWith('api-shift-') && caja.abierta,
-      );
+      await _guardar();
+      notifyListeners();
+    } finally {
+      _sincronizacionEnCurso = false;
     }
-    await _guardar();
-    notifyListeners();
   }
 
   bool _puedeOperar() =>
@@ -92,7 +131,19 @@ class ServicioCaja extends ChangeNotifier {
     if (cajaActual != null) throw StateError('Ya tienes una caja abierta.');
     final u = ServicioSesion.instancia.usuario!;
     final now = DateTime.now();
-    final remoto = await ApiClient.instance.openShift(desglose.total);
+    Map<String, dynamic> remoto;
+    try {
+      remoto = await ApiClient.instance.openShift(desglose.total);
+    } on ApiException {
+      // Si ya existe un turno en el servidor (por ejemplo tras reinstalar o
+      // limpiar datos locales), recupera ese turno en vez de abrir otro.
+      try {
+        await sincronizar();
+        final existente = cajaActual;
+        if (existente != null) return existente;
+      } catch (_) {}
+      rethrow;
+    }
     final cajaApi = Caja(
       id: 'api-shift-${remoto['id']}',
       usuarioId: (remoto['user_id'] ?? u.id).toString(),

@@ -41,6 +41,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
   final _controladorDui = TextEditingController();
   final _controladorTelefono = TextEditingController();
   String? _huespedSeleccionadoId;
+  bool _registrarDatosHuesped = false;
 
   // Parte 4: selección de la reserva
   TipoTarifa _tarifa = TipoTarifa.porNoche;
@@ -183,12 +184,18 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     if (_guardando) return;
     final mensajero = ScaffoldMessenger.of(context);
 
+<<<<<<< Updated upstream
     final hayDatosCliente =
         _controladorNombre.text.trim().isNotEmpty ||
         _controladorDui.text.trim().isNotEmpty ||
         _controladorTelefono.text.trim().isNotEmpty;
     final guardarCliente = _huespedSeleccionadoId != null || hayDatosCliente;
     if (guardarCliente && !_claveFormulario.currentState!.validate()) {
+=======
+    if (_registrarDatosHuesped &&
+        _huespedSeleccionadoId == null &&
+        !_claveFormulario.currentState!.validate()) {
+>>>>>>> Stashed changes
       mensajero.showSnackBar(
         const SnackBar(content: Text('Revisa los datos del huésped')),
       );
@@ -241,6 +248,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     if (pago == null || !mounted) return;
     setState(() => _guardando = true);
 
+<<<<<<< Updated upstream
     Huesped? huesped;
     if (guardarCliente) {
       try {
@@ -261,9 +269,20 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
         if (mounted) setState(() => _guardando = false);
         return;
       }
+=======
+    final roomId = int.tryParse(habitacionElegida.id);
+    if (roomId == null) {
+      setState(() => _guardando = false);
+      mensajero.showSnackBar(
+        const SnackBar(
+          content: Text('La habitación no tiene un ID válido del servidor.'),
+        ),
+      );
+      return;
+>>>>>>> Stashed changes
     }
-    if (!mounted) return;
 
+<<<<<<< Updated upstream
     final roomId = int.tryParse(habitacionElegida.id);
     final guestId = huesped == null ? null : int.tryParse(huesped.id);
     if (roomId == null || (huesped != null && guestId == null)) {
@@ -273,6 +292,53 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
           content: Text(
             'La habitación o el huésped no tiene un ID válido del servidor.',
           ),
+=======
+    Huesped? huesped;
+    if (_registrarDatosHuesped) {
+      try {
+        if (_huespedSeleccionadoId != null) {
+          huesped = ServicioHuespedes.instancia.huespedes
+              .where((h) => h.id == _huespedSeleccionadoId)
+              .firstOrNull;
+        } else {
+          huesped = await ServicioHuespedes.instancia.obtenerOCrear(
+            nombre: _controladorNombre.text,
+            dui: _controladorDui.text,
+            telefono: _controladorTelefono.text,
+          );
+        }
+      } on Object catch (e) {
+        mensajero.showSnackBar(
+          SnackBar(
+            content: Text(
+              'No se pudo guardar el huésped en el servidor: '
+              '${e.toString().replaceFirst('Exception: ', '')}',
+            ),
+          ),
+        );
+        if (mounted) setState(() => _guardando = false);
+        return;
+      }
+      if (huesped == null) {
+        setState(() => _guardando = false);
+        mensajero.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se encontró el huésped seleccionado en la base de datos.',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    if (!mounted) return;
+    final guestId = huesped == null ? null : int.tryParse(huesped.id);
+    if (huesped != null && guestId == null) {
+      setState(() => _guardando = false);
+      mensajero.showSnackBar(
+        const SnackBar(
+          content: Text('El huésped no tiene un ID válido del servidor.'),
+>>>>>>> Stashed changes
         ),
       );
       return;
@@ -295,12 +361,24 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
         ifAbsent: () => 1,
       );
     }
+    late double precioFactura;
+    late int cantidadFactura;
+    late DateTime fechaFactura;
+    late int horasFactura;
+    late List<Producto> productosFactura;
     try {
-      await ApiClient.instance.createStay({
+      final respuesta = await ApiClient.instance.createStay({
         'room_id': roomId,
         if (guestId != null) 'guest_id': guestId,
+<<<<<<< Updated upstream
         if (huesped != null) 'guest_name': huesped.nombre,
         if (huesped != null) 'guest_document': huesped.dui,
+=======
+        if (huesped == null && _registrarDatosHuesped)
+          'guest_name': _controladorNombre.text.trim(),
+        if (huesped == null && _registrarDatosHuesped)
+          'guest_document': _controladorDui.text.trim(),
+>>>>>>> Stashed changes
         'rate_id': tarifaRemota.id,
         'rate_units': _cantidad,
         'payment_method': pago.metodo.name,
@@ -310,10 +388,55 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
               {'product_id': entry.key, 'quantity': entry.value},
           ],
       });
+<<<<<<< Updated upstream
       await Future.wait([
         ServicioHabitaciones.instancia.sincronizar(),
         ServicioEstadias.instancia.sincronizar(),
       ]);
+=======
+      await ServicioHabitaciones.instancia.sincronizar();
+      final stayApi = respuesta['stay'] is Map
+          ? Map<String, dynamic>.from(respuesta['stay'] as Map)
+          : const <String, dynamic>{};
+      final rateApi = stayApi['rate'] is Map
+          ? Map<String, dynamic>.from(stayApi['rate'] as Map)
+          : const <String, dynamic>{};
+      precioFactura =
+          double.tryParse(rateApi['price']?.toString() ?? '') ??
+          _precioUnitario;
+      cantidadFactura =
+          int.tryParse(stayApi['rate_units']?.toString() ?? '') ?? _cantidad;
+      final saleApi = respuesta['sale'] is Map
+          ? Map<String, dynamic>.from(respuesta['sale'] as Map)
+          : const <String, dynamic>{};
+      productosFactura = <Producto>[];
+      final saleItems = saleApi['items'];
+      if (saleItems is List) {
+        for (final row in saleItems.whereType<Map>()) {
+          final item = Map<String, dynamic>.from(row);
+          final product = item['product'] is Map
+              ? Map<String, dynamic>.from(item['product'] as Map)
+              : const <String, dynamic>{};
+          final quantity =
+              int.tryParse(item['quantity']?.toString() ?? '') ?? 1;
+          final price =
+              double.tryParse(item['unit_price']?.toString() ?? '') ?? 0;
+          for (var i = 0; i < quantity; i++) {
+            productosFactura.add(
+              Producto(product['name']?.toString() ?? 'Producto', price),
+            );
+          }
+        }
+      }
+      if (productosFactura.isEmpty)
+        productosFactura.addAll(_productosAgregados);
+      fechaFactura =
+          DateTime.tryParse(stayApi['check_in_at']?.toString() ?? '') ??
+          fechaEntrada;
+      horasFactura =
+          int.tryParse(rateApi['hours']?.toString() ?? '') ??
+          tarifaRemota.horas;
+>>>>>>> Stashed changes
     } on Object catch (error) {
       if (mounted) {
         setState(() => _guardando = false);
@@ -328,15 +451,19 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     if (!mounted) return;
 
     final factura = Factura(
+<<<<<<< Updated upstream
       fecha: fechaEntrada,
+=======
+      fecha: fechaFactura,
+>>>>>>> Stashed changes
       huesped: huesped?.nombre ?? 'Cliente sin registrar',
       dui: huesped?.dui ?? '',
       telefono: huesped?.telefono ?? '',
       habitacion: habitacionElegida,
-      tarifa: _tarifa,
-      cantidad: _cantidad,
-      precioUnitario: _precioUnitario,
-      productos: List.of(_productosAgregados),
+      tarifa: horasFactura <= 6 ? TipoTarifa.porHora : TipoTarifa.porNoche,
+      cantidad: cantidadFactura,
+      precioUnitario: precioFactura,
+      productos: productosFactura,
     );
 
     // Se reemplaza esta pantalla por la factura inicial.
@@ -365,6 +492,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
         ),
     ];
 
+<<<<<<< Updated upstream
     final formulario = TarjetaSeccion(
       titulo: 'Datos del huésped (opcional)',
       icono: Icons.person_add,
@@ -383,14 +511,46 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
               _controladorNombre.text = h?.nombre ?? '';
               _controladorDui.text = h?.dui ?? '';
               _controladorTelefono.text = h?.telefono ?? '';
+=======
+    final formulario = Card(
+      child: Column(
+        children: [
+          SwitchListTile(
+            value: _registrarDatosHuesped,
+            title: const Text('Guardar los datos del cliente'),
+            subtitle: const Text(
+              'Opcional para una venta directa de habitación.',
+            ),
+            secondary: const Icon(Icons.person_add_alt_1),
+            onChanged: (value) => setState(() {
+              _registrarDatosHuesped = value;
+              if (!value) _claveFormulario.currentState?.reset();
+>>>>>>> Stashed changes
             }),
           ),
-          FormularioHuesped(
-            claveFormulario: _claveFormulario,
-            controladorNombre: _controladorNombre,
-            controladorDui: _controladorDui,
-            controladorTelefono: _controladorTelefono,
-          ),
+          if (_registrarDatosHuesped)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                children: [
+                  SelectorHuespedGuardado(
+                    seleccionadoId: _huespedSeleccionadoId,
+                    alCambiar: (Huesped? h) => setState(() {
+                      _huespedSeleccionadoId = h?.id;
+                      _controladorNombre.text = h?.nombre ?? '';
+                      _controladorDui.text = h?.dui ?? '';
+                      _controladorTelefono.text = h?.telefono ?? '';
+                    }),
+                  ),
+                  FormularioHuesped(
+                    claveFormulario: _claveFormulario,
+                    controladorNombre: _controladorNombre,
+                    controladorDui: _controladorDui,
+                    controladorTelefono: _controladorTelefono,
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -412,7 +572,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Nuevo huésped'),
+        title: const Text('Venta directa de habitación'),
       ),
       body: LayoutBuilder(
         builder: (context, restricciones) {
