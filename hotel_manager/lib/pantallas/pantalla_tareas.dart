@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../modelos/solicitud_limpieza.dart';
@@ -9,8 +11,43 @@ import '../servicios/servicio_tareas.dart';
 import '../servicios/servicio_habitaciones.dart';
 import '../modelos/habitacion.dart';
 
-class PantallaTareas extends StatelessWidget {
+class PantallaTareas extends StatefulWidget {
   const PantallaTareas({super.key});
+
+  @override
+  State<PantallaTareas> createState() => _PantallaTareasState();
+}
+
+class _PantallaTareasState extends State<PantallaTareas>
+    with WidgetsBindingObserver {
+  Timer? _actualizador;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    ServicioTareas.instancia.sincronizar();
+    _actualizador = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        ServicioTareas.instancia.sincronizar();
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ServicioTareas.instancia.sincronizar();
+    }
+  }
+
+  @override
+  void dispose() {
+    _actualizador?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
   Future<String?> _elegirEmpleado(BuildContext context, RolUsuario rol) async {
     final lista = (await ServicioAuth.instancia.usuarios())
         .where((u) => u.activo && u.rol == rol)
@@ -119,6 +156,19 @@ class PantallaTareas extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (s.error != null)
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.cloud_off_outlined),
+                    title: const Text('No se pudo actualizar la lista'),
+                    subtitle: Text(s.error!),
+                    trailing: IconButton(
+                      tooltip: 'Reintentar',
+                      onPressed: s.sincronizar,
+                      icon: const Icon(Icons.refresh),
+                    ),
+                  ),
+                ),
               if (limpiezas.isNotEmpty) ...[
                 Text('Limpieza', style: Theme.of(context).textTheme.titleLarge),
                 for (final t in limpiezas)
@@ -167,6 +217,15 @@ class PantallaTareas extends StatelessWidget {
               _accion(context, () => s.asignarLimpieza(t.id, id));
           },
           child: const Text('Asignar'),
+        ),
+      );
+    if (worker &&
+        t.estado == EstadoSolicitudLimpieza.pendiente &&
+        t.asignadoA == null)
+      actions.add(
+        TextButton(
+          onPressed: () => _accion(context, () => s.aceptarLimpieza(t.id)),
+          child: const Text('Aceptar tarea'),
         ),
       );
     if (worker &&
@@ -224,6 +283,15 @@ class PantallaTareas extends StatelessWidget {
               _accion(context, () => s.asignarMantenimiento(t.id, id));
           },
           child: const Text('Asignar'),
+        ),
+      );
+    if (worker &&
+        t.estado == EstadoSolicitudMantenimiento.pendiente &&
+        t.asignadoA == null)
+      actions.add(
+        TextButton(
+          onPressed: () => _accion(context, () => s.aceptarMantenimiento(t.id)),
+          child: const Text('Aceptar tarea'),
         ),
       );
     if (worker &&

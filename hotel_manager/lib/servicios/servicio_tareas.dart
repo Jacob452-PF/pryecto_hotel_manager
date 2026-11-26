@@ -20,12 +20,16 @@ class ServicioTareas extends ChangeNotifier {
   List<SolicitudMantenimiento> get solicitudesMantenimiento => List.unmodifiable(_mantenimiento);
   bool cargando = false;
   String? error;
+  bool _sincronizacionEnCurso = false;
+  bool _intentoInicial = false;
   Usuario? get _usuario => ServicioSesion.instancia.usuario;
 
   Future<void> cargar() => sincronizar();
 
   Future<void> sincronizar() async {
-    cargando = true;
+    if (_sincronizacionEnCurso) return;
+    _sincronizacionEnCurso = true;
+    cargando = !_intentoInicial;
     error = null;
     notifyListeners();
     try {
@@ -54,11 +58,13 @@ class ServicioTareas extends ChangeNotifier {
         ..clear()
         ..addAll(tasks.where((t) => t['type'] == 'mantenimiento').map(_aMantenimiento));
     } on Object catch (e) {
-      _limpieza.clear();
-      _mantenimiento.clear();
+      // Conserva la última respuesta válida durante fallas temporales de red.
+      // La pantalla muestra el error y permite reintentar, sin vaciar la lista.
       error = e.toString().replaceFirst('Exception: ', '');
     } finally {
       cargando = false;
+      _intentoInicial = true;
+      _sincronizacionEnCurso = false;
       notifyListeners();
     }
   }
