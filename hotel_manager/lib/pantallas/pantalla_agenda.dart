@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../modelos/reserva.dart';
-import '../modelos/abono.dart';
 import '../servicios/servicio_huespedes.dart';
 import '../servicios/servicio_habitaciones.dart';
 import '../servicios/servicio_reservas.dart';
@@ -81,7 +80,7 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
     // Una reserva ya pagada no crea un cobro en el check-in; el valor no se
     // utiliza en ese caso porque el servidor registra una venta de total cero.
     final metodoPago = pago?.metodo.name ?? 'tarjeta';
-    if (metodoPago == null || !mounted) return;
+    if (!mounted) return;
 
     try {
       await ServicioReservas.instancia.registrarCheckIn(
@@ -89,9 +88,6 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
         metodoPago: metodoPago,
       );
       await ServicioHabitaciones.instancia.sincronizar();
-      final habitacion = ServicioHabitaciones.instancia.buscar(
-        numeroHabitacion,
-      );
       await ServicioEstadias.instancia.sincronizar();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

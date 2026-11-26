@@ -52,7 +52,8 @@ class PantallaPerfilCaja extends StatelessWidget {
     if (confirmado == true && context.mounted) {
       await ApiClient.instance.logout();
       if (!context.mounted) return;
-      ServicioSesion.instancia.cerrarSesion();
+      await ServicioSesion.instancia.cerrarSesion();
+      if (!context.mounted) return;
       // Vuelve al login y borra el historial de pantallas.
       Navigator.pushAndRemoveUntil(
         context,

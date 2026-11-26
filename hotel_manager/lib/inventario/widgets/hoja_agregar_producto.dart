@@ -24,24 +24,27 @@ Future<void> _agregarDesdePantalla(BuildContext context) async {
   try {
     await servicio.crearProductoRemoto(
       ProductoInventario(
-      id: '',
-      nombre: datos.nombre,
-      precio: datos.precioVenta,
-      categoria: datos.categoria,
-      stock: stock,
-      stockMinimo: datos.stockMinimo,
-      imagenBytes: datos.foto,
-      unidadesPorPaquete: datos.unidadesPorPaquete,
-      costoPaquete: datos.costoPaquete,
+        id: '',
+        nombre: datos.nombre,
+        precio: datos.precioVenta,
+        categoria: datos.categoria,
+        stock: stock,
+        stockMinimo: datos.stockMinimo,
+        imagenBytes: datos.foto,
+        unidadesPorPaquete: datos.unidadesPorPaquete,
+        costoPaquete: datos.costoPaquete,
       ),
       paquetes: datos.paquetes,
       unidadesPorPaquete: datos.unidadesPorPaquete,
       costoPaquete: datos.costoPaquete,
+      proveedorId: datos.proveedorId,
     );
   } on Object catch (error) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
       );
     }
   }

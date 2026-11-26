@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../inventario/servicios/servicio_inventario.dart';
 import '../modelos/notificacion_app.dart';
 import '../modelos/habitacion.dart';
+import '../modelos/reserva.dart';
 import 'servicio_configuracion.dart';
 import 'servicio_habitaciones.dart';
 import 'servicio_estadias.dart';
@@ -59,6 +60,31 @@ class ServicioNotificaciones extends ChangeNotifier {
   }) {
     if (_notificaciones.any((n) => n.id == id)) return;
     _agregar(id: id, titulo: titulo, mensaje: mensaje, severidad: severidad);
+  }
+
+  /// Se llama al abrir caja para avisar de reservas que comienzan en 24 horas.
+  void notificarReservasAlAbrirCaja(Iterable<Reserva> reservas) {
+    final ahora = TiempoHotel.ahoraUtc();
+    for (final reserva in reservas) {
+      final restante = reserva.inicio.difference(ahora);
+      if (reserva.estado != EstadoReserva.activa ||
+          restante <= Duration.zero ||
+          restante > const Duration(hours: 24)) {
+        continue;
+      }
+      notificarEvento(
+        id: 'reserva-proxima-24h-${reserva.id}',
+        titulo: 'Reserva dentro de un día',
+        mensaje:
+            'La reserva de ${reserva.tipoCuarto.etiqueta} para ${reserva.camas} ${reserva.camas == 1 ? 'cama' : 'camas'} comienza el ${_fechaYHora(reserva.inicio)} (dentro de ${TiempoHotel.duracion(restante)}).',
+        severidad: SeveridadNotificacion.urgente,
+      );
+    }
+  }
+
+  String _fechaYHora(DateTime instanteUtc) {
+    final local = TiempoHotel.relojElSalvador(instanteUtc);
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')} a las ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
 
   void _revisar() {

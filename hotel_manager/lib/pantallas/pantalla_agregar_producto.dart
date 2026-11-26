@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../inventario/modelos/producto_inventario.dart';
+import '../servicios/api_client.dart';
 import '../inventario/tema_inventario.dart';
 import '../widgets/selector_foto_producto.dart';
 
@@ -16,6 +17,7 @@ class DatosNuevoProducto {
   final double costoPaquete;
   final int stockMinimo;
   final Uint8List? foto;
+  final int? proveedorId;
 
   const DatosNuevoProducto({
     required this.nombre,
@@ -26,6 +28,7 @@ class DatosNuevoProducto {
     required this.costoPaquete,
     required this.stockMinimo,
     this.foto,
+    this.proveedorId,
   });
 }
 
@@ -46,6 +49,94 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
   final _stockMinimo = TextEditingController(text: '5');
   CategoriaInventario _categoria = CategoriaInventario.alimentos;
   Uint8List? _foto;
+  List<Map<String, dynamic>> _proveedores = [];
+  int? _proveedorId;
+  bool _cargandoProveedores = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarProveedores();
+  }
+
+  Future<void> _cargarProveedores() async {
+    try {
+      final proveedores = await ApiClient.instance.suppliers();
+      if (!mounted) return;
+      setState(() {
+        _proveedores = proveedores
+            .whereType<Map>()
+            .map(Map<String, dynamic>.from)
+            .toList();
+        _cargandoProveedores = false;
+      });
+    } on Object catch (_) {
+      if (mounted) setState(() => _cargandoProveedores = false);
+    }
+  }
+
+  Future<void> _agregarProveedor() async {
+    final nombre = TextEditingController();
+    final telefono = TextEditingController();
+    final datos = await showDialog<List<String>>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Agregar proveedor'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nombre,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Nombre del proveedor',
+              ),
+            ),
+            TextField(
+              controller: telefono,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Teléfono (opcional)',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (nombre.text.trim().isEmpty) return;
+              Navigator.pop(ctx, [nombre.text.trim(), telefono.text.trim()]);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (datos == null || !mounted) return;
+    try {
+      final proveedor = await ApiClient.instance.createSupplier(
+        name: datos[0],
+        phone: datos[1],
+      );
+      if (!mounted) return;
+      setState(() {
+        _proveedores.add(proveedor);
+        _proveedorId = int.tryParse(proveedor['id'].toString());
+      });
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', '')),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -90,6 +181,7 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
         costoPaquete: _num(_costo.text)!,
         stockMinimo: int.tryParse(_stockMinimo.text) ?? 5,
         foto: _foto,
+        proveedorId: _proveedorId,
       ),
     );
   }
@@ -184,6 +276,44 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
                 teclado: decimal,
                 prefijo: '\$',
               ),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<int?>(
+                      initialValue: _proveedorId,
+                      decoration: InputDecoration(
+                        labelText: 'Proveedor de la compra inicial',
+                        border: const OutlineInputBorder(),
+                        helperText: _cargandoProveedores
+                            ? 'Cargando proveedores…'
+                            : null,
+                      ),
+                      items: [
+                        const DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text('Sin proveedor'),
+                        ),
+                        for (final proveedor in _proveedores)
+                          DropdownMenuItem<int?>(
+                            value: int.tryParse(proveedor['id'].toString()),
+                            child: Text(
+                              proveedor['name']?.toString() ?? 'Proveedor',
+                            ),
+                          ),
+                      ],
+                      onChanged: _cargandoProveedores
+                          ? null
+                          : (id) => setState(() => _proveedorId = id),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Agregar proveedor',
+                    onPressed: _agregarProveedor,
+                    icon: const Icon(Icons.person_add_alt_1),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               _campo(
                 'Stock mínimo para aviso',
                 _stockMinimo,

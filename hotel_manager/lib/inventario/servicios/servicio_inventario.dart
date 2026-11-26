@@ -35,8 +35,8 @@ class ServicioInventario extends ChangeNotifier {
         ApiClient.instance.products(),
         ApiClient.instance.categories(),
       ]);
-      final products = responses[0] as List<Product>;
-      final categories = responses[1] as List<dynamic>;
+      final products = responses[0];
+      final categories = responses[1];
       _categoriasApi.clear();
       for (final raw in categories) {
         if (raw is! Map) continue;
@@ -54,23 +54,27 @@ class ServicioInventario extends ChangeNotifier {
       }
       _productos
         ..clear()
-        ..addAll(products.where((p) => p.active).map((p) {
-          final category = switch ((p.category ?? '').trim().toLowerCase()) {
-            'alimentos' || 'alimento' || 'food' => CategoriaInventario.alimentos,
-            'bebidas' || 'bebida' || 'drinks' => CategoriaInventario.bebidas,
-            'aseo' || 'limpieza' || 'cleaning' => CategoriaInventario.aseo,
-            _ => CategoriaInventario.otros,
-          };
-          return ProductoInventario(
-            id: p.id.toString(),
-            nombre: p.name,
-            precio: p.price,
-            categoria: category,
-            categoriaIdApi: p.categoryId,
-            stock: p.stock,
-            stockMinimo: p.minStock,
-          );
-        }));
+        ..addAll(
+          products.where((p) => p.active).map((p) {
+            final category = switch ((p.category ?? '').trim().toLowerCase()) {
+              'alimentos' ||
+              'alimento' ||
+              'food' => CategoriaInventario.alimentos,
+              'bebidas' || 'bebida' || 'drinks' => CategoriaInventario.bebidas,
+              'aseo' || 'limpieza' || 'cleaning' => CategoriaInventario.aseo,
+              _ => CategoriaInventario.otros,
+            };
+            return ProductoInventario(
+              id: p.id.toString(),
+              nombre: p.name,
+              precio: p.price,
+              categoria: category,
+              categoriaIdApi: p.categoryId,
+              stock: p.stock,
+              stockMinimo: p.minStock,
+            );
+          }),
+        );
       _ultimaActualizacion = DateTime.now();
     } on Object catch (e) {
       _productos.clear();
@@ -81,12 +85,15 @@ class ServicioInventario extends ChangeNotifier {
     }
   }
 
-  Future<void> crearProductoRemoto(ProductoInventario producto, {
+  Future<void> crearProductoRemoto(
+    ProductoInventario producto, {
     required int paquetes,
     required int unidadesPorPaquete,
     required double costoPaquete,
+    int? proveedorId,
   }) async {
-    final categoryId = producto.categoriaIdApi ?? _categoriasApi[producto.categoria];
+    final categoryId =
+        producto.categoriaIdApi ?? _categoriasApi[producto.categoria];
     if (categoryId == null) {
       throw StateError('La categoría no existe en el catálogo del servidor.');
     }
@@ -108,7 +115,7 @@ class ServicioInventario extends ChangeNotifier {
                 ? costoPaquete / unidadesPorPaquete
                 : costoPaquete,
           },
-        ]);
+        ], supplierId: proveedorId);
       }
     } finally {
       await sincronizar();
@@ -125,7 +132,9 @@ class ServicioInventario extends ChangeNotifier {
   Future<void> restaurarRemoto(String id) async {
     final productId = int.tryParse(id);
     if (productId == null) throw StateError('El producto no tiene ID de API.');
-    await ApiClient.instance.updateProduct(productId, {'active': true}, partial: true);
+    await ApiClient.instance.updateProduct(productId, {
+      'active': true,
+    }, partial: true);
     await sincronizar();
   }
 
@@ -159,11 +168,9 @@ class ServicioInventario extends ChangeNotifier {
       },
     ]);
     if (precioVenta != null) {
-      await ApiClient.instance.updateProduct(
-        productId,
-        {'price': precioVenta},
-        partial: true,
-      );
+      await ApiClient.instance.updateProduct(productId, {
+        'price': precioVenta,
+      }, partial: true);
     }
     await sincronizar();
   }
@@ -251,8 +258,7 @@ class ServicioInventario extends ChangeNotifier {
         unidadesPorPaquete < 1 ||
         !costoPaquete.isFinite ||
         costoPaquete < 0 ||
-        (precioVenta != null &&
-            (!precioVenta.isFinite || precioVenta < 0))) {
+        (precioVenta != null && (!precioVenta.isFinite || precioVenta < 0))) {
       return;
     }
     final i = _productos.indexWhere((p) => p.id == id);

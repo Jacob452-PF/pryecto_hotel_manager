@@ -295,11 +295,13 @@ class ApiClient {
     int id,
     String name, {
     bool partial = false,
-  }) async => _map(await _request(
-    partial ? 'PATCH' : 'PUT',
-    '/categories/$id',
-    body: {'name': name},
-  ));
+  }) async => _map(
+    await _request(
+      partial ? 'PATCH' : 'PUT',
+      '/categories/$id',
+      body: {'name': name},
+    ),
+  );
 
   Future<void> deleteCategory(int id) async =>
       _request('DELETE', '/categories/$id');
@@ -312,28 +314,31 @@ class ApiClient {
     return list.map((e) => Product.fromJson(_map(e))).toList();
   }
 
-  Future<Map<String, dynamic>> createProduct(Map<String, dynamic> product) async =>
-      _map(await _request('POST', '/products', body: product));
+  Future<Map<String, dynamic>> createProduct(
+    Map<String, dynamic> product,
+  ) async => _map(await _request('POST', '/products', body: product));
 
   Future<Map<String, dynamic>> updateProduct(
     int id,
     Map<String, dynamic> product, {
     bool partial = false,
-  }) async => _map(await _request(
-    partial ? 'PATCH' : 'PUT',
-    '/products/$id',
-    body: product,
-  ));
+  }) async => _map(
+    await _request(partial ? 'PATCH' : 'PUT', '/products/$id', body: product),
+  );
 
-  Future<void> deleteProduct(int id) async => _request('DELETE', '/products/$id');
+  Future<void> deleteProduct(int id) async =>
+      _request('DELETE', '/products/$id');
 
   Future<Map<String, dynamic>> createPurchase(
     List<Map<String, dynamic>> items, {
     int? supplierId,
-  }) async => _map(await _request('POST', '/purchases', body: {
-    if (supplierId != null) 'supplier_id': supplierId,
-    'items': items,
-  }));
+  }) async => _map(
+    await _request(
+      'POST',
+      '/purchases',
+      body: {if (supplierId != null) 'supplier_id': supplierId, 'items': items},
+    ),
+  );
 
   Future<dynamic> purchases({int page = 1}) =>
       _request('GET', '/purchases?page=$page');
@@ -344,8 +349,7 @@ class ApiClient {
   Future<Map<String, dynamic>> dashboardReport({int days = 7}) async =>
       _map(await _request('GET', '/reports/dashboard?days=$days'));
 
-  Future<dynamic> users({int page = 1}) =>
-      _request('GET', '/users?page=$page');
+  Future<dynamic> users({int page = 1}) => _request('GET', '/users?page=$page');
 
   Future<Map<String, dynamic>> createUser(Map<String, dynamic> user) async =>
       _map(await _request('POST', '/users', body: user));
@@ -372,6 +376,23 @@ class ApiClient {
 
   Future<Map<String, dynamic>> cancelReservation(String id) async => _map(
     await _request('POST', '/reservations/${Uri.encodeComponent(id)}/cancel'),
+  );
+
+  Future<List<dynamic>> suppliers() async =>
+      _list(await _request('GET', '/suppliers'));
+
+  Future<Map<String, dynamic>> createSupplier({
+    required String name,
+    String? phone,
+  }) async => _map(
+    await _request(
+      'POST',
+      '/suppliers',
+      body: {
+        'name': name,
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+      },
+    ),
   );
 
   Future<Map<String, dynamic>> payReservation(
@@ -401,12 +422,10 @@ class ApiClient {
     ),
   );
 
-  Future<Map<String, dynamic>> createStay(
-    Map<String, dynamic> stay,
-  ) async => _map(await _request('POST', '/stays', body: stay));
+  Future<Map<String, dynamic>> createStay(Map<String, dynamic> stay) async =>
+      _map(await _request('POST', '/stays', body: stay));
 
-  Future<dynamic> stays({int page = 1}) =>
-      _request('GET', '/stays?page=$page');
+  Future<dynamic> stays({int page = 1}) => _request('GET', '/stays?page=$page');
 
   Future<Map<String, dynamic>> chargeStay(
     String id, {
@@ -443,17 +462,17 @@ class ApiClient {
   Future<dynamic> tasks({int page = 1}) =>
       _request('GET', '/tasks?page=$page&per_page=100');
 
-  Future<Map<String, dynamic>> createTask(
-    Map<String, dynamic> task,
-  ) async => _map(await _request('POST', '/tasks', body: task));
+  Future<Map<String, dynamic>> createTask(Map<String, dynamic> task) async =>
+      _map(await _request('POST', '/tasks', body: task));
 
-  Future<Map<String, dynamic>> assignTask(
-    String id,
-    String userId,
-  ) async {
+  Future<Map<String, dynamic>> assignTask(String id, String userId) async {
     final assignedTo = int.tryParse(userId);
     if (assignedTo == null) {
-      throw ArgumentError.value(userId, 'userId', 'Debe ser un ID numérico del servidor.');
+      throw ArgumentError.value(
+        userId,
+        'userId',
+        'Debe ser un ID numérico del servidor.',
+      );
     }
     return _map(
       await _request(
@@ -524,11 +543,25 @@ class ApiClient {
   Future<Map<String, dynamic>> createSale({
     required String paymentMethod,
     required List<Map<String, int>> items,
+    int? guestId,
+    String? customerName,
+    String? customerDocument,
+    String? customerPhone,
   }) async => _map(
     await _request(
       'POST',
       '/sales',
-      body: {'payment_method': paymentMethod, 'items': items},
+      body: {
+        'payment_method': paymentMethod,
+        'items': items,
+        if (guestId != null) 'guest_id': guestId,
+        if (customerName != null && customerName.trim().isNotEmpty)
+          'customer_name': customerName.trim(),
+        if (customerDocument != null && customerDocument.trim().isNotEmpty)
+          'customer_document': customerDocument.trim(),
+        if (customerPhone != null && customerPhone.trim().isNotEmpty)
+          'customer_phone': customerPhone.trim(),
+      },
     ),
   );
 

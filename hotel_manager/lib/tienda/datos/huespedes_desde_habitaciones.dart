@@ -1,8 +1,8 @@
 import '../../modelos/habitacion.dart';
 import '../modelos/huesped_tienda.dart';
 
-/// Convierte las habitaciones OCUPADAS (con huésped) en la lista de personas
-/// a las que se les puede cargar una compra en el carrito.
+/// Convierte las habitaciones con estadía activa en destinos para cargar
+/// consumos, incluidas las estadías sin huésped identificado.
 ///
 /// Es el único lugar donde la tienda lee el modelo `Habitacion`: si cambian
 /// los nombres de los campos, solo hay que ajustarlos aquí.
@@ -10,15 +10,21 @@ List<HuespedTienda> huespedesDeHabitaciones(List<Habitacion> habitaciones) {
   return habitaciones
       .where(
         (h) =>
-            h.estado == EstadoHabitacion.ocupada &&
-            (h.huesped ?? '').isNotEmpty,
+            (h.estado == EstadoHabitacion.ocupada ||
+                h.estado == EstadoHabitacion.ocupadaYLimpieza) &&
+            h.estadiaActivaId != null,
       )
       .map(
         (h) => HuespedTienda(
-          id: h.numero,
-          nombre: h.huesped ?? '',
+          id: h.estadiaActivaId!,
+          nombre: h.huesped?.trim().isNotEmpty == true
+              ? h.huesped!.trim()
+              : 'Cliente sin registrar',
           habitacion: h.numero,
           estadiaIdApi: h.estadiaActivaId,
+          huespedIdApi: h.huespedIdApi,
+          documento: h.huespedDocumento,
+          telefono: h.huespedTelefono,
         ),
       )
       .toList();

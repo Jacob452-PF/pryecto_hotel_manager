@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../modelos/notificacion_app.dart';
 import '../modelos/reserva.dart';
 import '../modelos/abono.dart';
+import '../utilidades/tiempo_hotel.dart';
 import '../modelos/tipo_cuarto.dart';
 import 'api_client.dart';
 import 'servicio_huespedes.dart';
@@ -109,7 +110,7 @@ class ServicioReservas extends ChangeNotifier {
     if (guestApiId == null) {
       throw StateError('El huésped no tiene un ID válido del servidor.');
     }
-    final now = DateTime.now();
+    final now = TiempoHotel.ahoraUtc();
     if (inicio.isBefore(now)) {
       throw ArgumentError('La entrada de la reserva debe ser futura.');
     }
@@ -160,7 +161,7 @@ class ServicioReservas extends ChangeNotifier {
   }
 
   Future<void> procesarVencimientos() async {
-    final now = DateTime.now();
+    final now = TiempoHotel.ahoraUtc();
     var cambio = false;
     final tolerancia = Duration(
       hours: ServicioConfiguracion

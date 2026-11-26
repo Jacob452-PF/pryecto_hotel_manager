@@ -5,10 +5,10 @@ import '../modelos/usuario.dart';
 import '../servicios/servicio_habitaciones.dart';
 import '../servicios/servicio_sesion.dart';
 import '../servicios/servicio_tareas.dart';
+import '../utilidades/tiempo_hotel.dart';
 import 'pantalla_factura_temporal.dart';
 import 'pantalla_finalizar_estadia.dart';
 import '../widgets/fila_informacion.dart';
-import '../widgets/foto_habitacion.dart';
 import '../widgets/tarjeta_seccion.dart';
 
 /// Detalle de una habitación: foto, estado, tipo, camas, huésped y acciones.
@@ -210,6 +210,11 @@ class PantallaDetalleHabitacion extends StatelessWidget {
         final ocupada =
             estado == EstadoHabitacion.ocupada ||
             estado == EstadoHabitacion.ocupadaYLimpieza;
+        String fecha(DateTime? valor) {
+          if (valor == null) return '—';
+          final salvador = TiempoHotel.relojElSalvador(valor);
+          return '${salvador.day.toString().padLeft(2, '0')}/${salvador.month.toString().padLeft(2, '0')}/${salvador.year} ${salvador.hour.toString().padLeft(2, '0')}:${salvador.minute.toString().padLeft(2, '0')}';
+        }
 
         return Scaffold(
           appBar: AppBar(title: Text('Habitación ${habitacion.numero}')),
@@ -218,53 +223,56 @@ class PantallaDetalleHabitacion extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FotoHabitacion(rutaFoto: habitacion.rutaFoto),
-                const SizedBox(height: 16),
-                TarjetaSeccion(
-                  titulo: 'Información de la habitación',
-                  icono: Icons.info_outline,
-                  hijo: Column(
-                    children: [
-                      if (estado != EstadoHabitacion.limpieza &&
-                          estado != EstadoHabitacion.ocupadaYLimpieza)
-                        FilaInformacion(
-                          icono: estado.icono,
-                          etiqueta: 'Estado',
-                          valor: estado.etiqueta,
-                          colorValor: estado.color,
-                        ),
-                      if (estado == EstadoHabitacion.limpieza ||
-                          estado == EstadoHabitacion.ocupadaYLimpieza) ...[
-                        const FilaInformacion(
-                          icono: Icons.cleaning_services,
-                          etiqueta: 'Servicio',
-                          valor: 'Limpieza solicitada',
-                        ),
-                        if (estado == EstadoHabitacion.ocupadaYLimpieza)
-                          const FilaInformacion(
-                            icono: Icons.bed,
-                            etiqueta: 'Estado',
-                            valor: 'Ocupada',
-                          ),
-                      ],
-                      if (habitacion.limpiezaSolicitada) ...[
-                        const Divider(height: 1),
-                        const FilaInformacion(
-                          icono: Icons.cleaning_services,
-                          etiqueta: 'Limpieza',
-                          valor: 'Solicitada',
-                        ),
-                      ],
-                      if (ocupada &&
-                          (usuario?.rol == RolUsuario.recepcion ||
-                              usuario?.rol == RolUsuario.admin)) ...[
-                        const Divider(height: 1),
+                if (usuario?.rol == RolUsuario.recepcion ||
+                    usuario?.rol == RolUsuario.admin) ...[
+                  TarjetaSeccion(
+                    titulo: 'Datos del cliente',
+                    icono: Icons.person_outline,
+                    hijo: Column(
+                      children: [
                         FilaInformacion(
                           icono: Icons.person,
-                          etiqueta: 'Ocupada por',
-                          valor: habitacion.huesped ?? 'Sin registrar',
+                          etiqueta: 'Nombre',
+                          valor: ocupada
+                              ? (habitacion.huesped?.trim().isNotEmpty == true
+                                    ? habitacion.huesped!.trim()
+                                    : 'Cliente sin registrar')
+                              : 'Sin cliente alojado',
                         ),
+                        if (ocupada &&
+                            habitacion.huespedDocumento?.isNotEmpty ==
+                                true) ...[
+                          const Divider(height: 1),
+                          FilaInformacion(
+                            icono: Icons.badge_outlined,
+                            etiqueta: 'Documento',
+                            valor: habitacion.huespedDocumento!,
+                          ),
+                        ],
+                        if (ocupada &&
+                            habitacion.huespedTelefono?.isNotEmpty == true) ...[
+                          const Divider(height: 1),
+                          FilaInformacion(
+                            icono: Icons.phone_outlined,
+                            etiqueta: 'Teléfono',
+                            valor: habitacion.huespedTelefono!,
+                          ),
+                        ],
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                TarjetaSeccion(
+                  titulo: 'Datos de la habitación',
+                  icono: Icons.meeting_room_outlined,
+                  hijo: Column(
+                    children: [
+                      FilaInformacion(
+                        icono: Icons.tag,
+                        etiqueta: 'Número',
+                        valor: habitacion.numero,
+                      ),
                       const Divider(height: 1),
                       FilaInformacion(
                         icono: habitacion.tipoCuarto.icono,
@@ -284,11 +292,82 @@ class PantallaDetalleHabitacion extends StatelessWidget {
                         etiqueta: 'Piso',
                         valor: '${habitacion.piso}',
                       ),
+                      if (ocupada) ...[
+                        const Divider(height: 1),
+                        FilaInformacion(
+                          icono: Icons.login,
+                          etiqueta: 'Ingreso',
+                          valor: fecha(habitacion.entradaEstadia),
+                        ),
+                        const Divider(height: 1),
+                        FilaInformacion(
+                          icono: Icons.logout,
+                          etiqueta: 'Salida prevista',
+                          valor: fecha(habitacion.salidaEstadia),
+                        ),
+                        if (habitacion.nombreTarifa?.isNotEmpty == true) ...[
+                          const Divider(height: 1),
+                          FilaInformacion(
+                            icono: Icons.payments_outlined,
+                            etiqueta: 'Tarifa',
+                            valor:
+                                '${habitacion.nombreTarifa} · ${habitacion.precioTarifa?.toStringAsFixed(2) ?? '—'} USD',
+                          ),
+                        ],
+                        if (habitacion.cantidadHuespedes != null) ...[
+                          const Divider(height: 1),
+                          FilaInformacion(
+                            icono: Icons.groups_outlined,
+                            etiqueta: 'Personas',
+                            valor: '${habitacion.cantidadHuespedes}',
+                          ),
+                        ],
+                        if (habitacion.notasEstadia?.isNotEmpty == true) ...[
+                          const Divider(height: 1),
+                          FilaInformacion(
+                            icono: Icons.sticky_note_2_outlined,
+                            etiqueta: 'Notas de estadía',
+                            valor: habitacion.notasEstadia!,
+                          ),
+                        ],
+                      ],
+                      if (habitacion.notasHabitacion?.isNotEmpty == true) ...[
+                        const Divider(height: 1),
+                        FilaInformacion(
+                          icono: Icons.notes,
+                          etiqueta: 'Notas de habitación',
+                          valor: habitacion.notasHabitacion!,
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                ..._acciones(context, habitacion),
+                TarjetaSeccion(
+                  titulo: 'Estado de la habitación',
+                  icono: estado.icono,
+                  hijo: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FilaInformacion(
+                        icono: estado.icono,
+                        etiqueta: 'Estado actual',
+                        valor: estado.etiqueta,
+                        colorValor: estado.color,
+                      ),
+                      if (habitacion.limpiezaSolicitada) ...[
+                        const Divider(height: 1),
+                        const FilaInformacion(
+                          icono: Icons.cleaning_services,
+                          etiqueta: 'Limpieza',
+                          valor: 'Solicitada',
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      ..._acciones(context, habitacion),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 8),
               ],
             ),

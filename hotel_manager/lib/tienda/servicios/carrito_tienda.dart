@@ -22,8 +22,7 @@ class CarritoTienda extends ChangeNotifier {
   HuespedTienda? _huesped;
 
   CarritoTienda({List<HuespedTienda> huespedes = const []})
-    : _huespedes = huespedes,
-      _huesped = huespedes.isEmpty ? null : huespedes.first;
+    : _huespedes = huespedes;
 
   List<HuespedTienda> get huespedes => _huespedes;
 
@@ -79,12 +78,17 @@ class CarritoTienda extends ChangeNotifier {
   void actualizarHuespedes(List<HuespedTienda> nuevos) {
     _huespedes = nuevos;
     final sigue = _huesped != null && nuevos.any((h) => h.id == _huesped!.id);
-    if (!sigue) _huesped = nuevos.isEmpty ? null : nuevos.first;
+    if (!sigue) _huesped = null;
     notifyListeners();
   }
 
   void seleccionarHuesped(HuespedTienda huesped) {
     _huesped = huesped;
+    notifyListeners();
+  }
+
+  void quitarHuespedSeleccionado() {
+    _huesped = null;
     notifyListeners();
   }
 

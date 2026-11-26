@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../inventario/servicios/servicio_inventario.dart';
@@ -10,6 +12,7 @@ import '../modelos/tipo_cuarto.dart';
 import '../servicios/servicio_huespedes.dart';
 import '../servicios/servicio_reservas.dart';
 import '../servicios/servicio_habitaciones.dart';
+import '../servicios/servicio_estadias.dart';
 import '../servicios/api_client.dart';
 import '../widgets/dialogo_cobro.dart';
 import '../tema/estilos_botones.dart';
@@ -45,6 +48,8 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
   TarifaRemota? _tarifaRemota;
   String? _errorTarifas;
   bool _cargandoTarifas = true;
+  bool _actualizandoTarifas = false;
+  Timer? _temporizadorTarifas;
   bool _guardando = false;
   int _cantidad = 1; // horas o noches, según la tarifa
   TipoCuarto _cuarto = TipoCuarto.comun;
@@ -58,7 +63,10 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       .instancia
       .productos
       .where((producto) => producto.stock > 0)
-      .map((producto) => Producto(producto.nombre, producto.precio, idApi: producto.id))
+      .map(
+        (producto) =>
+            Producto(producto.nombre, producto.precio, idApi: producto.id),
+      )
       .toList(growable: false);
 
   @override
@@ -66,25 +74,42 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     super.initState();
     ServicioInventario.instancia.addListener(_actualizarCatalogo);
     _cargarTarifas();
+    _temporizadorTarifas = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _cargarTarifas(),
+    );
   }
 
   Future<void> _cargarTarifas() async {
+    if (_actualizandoTarifas) return;
+    _actualizandoTarifas = true;
+    final tarifaAnteriorId = _tarifaRemota?.id;
     try {
       final response = await ApiClient.instance.rates();
-      final rates = ApiClient.instance.listFromResponse(response)
-          .map((row) => TarifaRemota.fromJson(Map<String, dynamic>.from(row as Map)))
+      final rates = ApiClient.instance
+          .listFromResponse(response)
+          .map(
+            (row) =>
+                TarifaRemota.fromJson(Map<String, dynamic>.from(row as Map)),
+          )
           .toList();
       if (!mounted) return;
       setState(() {
         _tarifas
           ..clear()
           ..addAll(rates);
-        _tarifaRemota = _tarifasCompatibles.firstOrNull;
+        _tarifaRemota =
+            _tarifasCompatibles
+                .where((tarifa) => tarifa.id == tarifaAnteriorId)
+                .firstOrNull ??
+            _tarifasCompatibles.firstOrNull;
         _tarifa = (_tarifaRemota?.horas ?? 24) <= 6
             ? TipoTarifa.porHora
             : TipoTarifa.porNoche;
         _cargandoTarifas = false;
-        _errorTarifas = rates.isEmpty ? 'No hay tarifas activas en el servidor.' : null;
+        _errorTarifas = rates.isEmpty
+            ? 'No hay tarifas activas en el servidor.'
+            : null;
       });
     } on Object catch (error) {
       if (!mounted) return;
@@ -92,6 +117,8 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
         _cargandoTarifas = false;
         _errorTarifas = error.toString().replaceFirst('Exception: ', '');
       });
+    } finally {
+      _actualizandoTarifas = false;
     }
   }
 
@@ -101,6 +128,7 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
 
   @override
   void dispose() {
+    _temporizadorTarifas?.cancel();
     ServicioInventario.instancia.removeListener(_actualizarCatalogo);
     _controladorNombre.dispose();
     _controladorDui.dispose();
@@ -109,14 +137,15 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
   }
 
   /// Las comunes tienen una cama; las especiales admiten de una a cuatro.
-  int get _camasSeleccionadas =>
-      _cuarto == TipoCuarto.comun ? 1 : _camas;
+  int get _camasSeleccionadas => _cuarto == TipoCuarto.comun ? 1 : _camas;
 
   /// El precio por hora o por noche depende de la cantidad de camas.
   List<TarifaRemota> get _tarifasCompatibles => _tarifas
-      .where((t) =>
-          t.tipoHabitacion == _cuarto.valorApi &&
-          t.camas == _camasSeleccionadas)
+      .where(
+        (t) =>
+            t.tipoHabitacion == _cuarto.valorApi &&
+            t.camas == _camasSeleccionadas,
+      )
       .toList();
 
   double get _precioUnitario => _tarifaRemota?.precio ?? 0;
@@ -154,7 +183,12 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     if (_guardando) return;
     final mensajero = ScaffoldMessenger.of(context);
 
-    if (!_claveFormulario.currentState!.validate()) {
+    final hayDatosCliente =
+        _controladorNombre.text.trim().isNotEmpty ||
+        _controladorDui.text.trim().isNotEmpty ||
+        _controladorTelefono.text.trim().isNotEmpty;
+    final guardarCliente = _huespedSeleccionadoId != null || hayDatosCliente;
+    if (guardarCliente && !_claveFormulario.currentState!.validate()) {
       mensajero.showSnackBar(
         const SnackBar(content: Text('Revisa los datos del huésped')),
       );
@@ -170,11 +204,19 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     }
     final tarifaRemota = _tarifaRemota;
     if (tarifaRemota == null || !_tarifasCompatibles.contains(tarifaRemota)) {
-      mensajero.showSnackBar(SnackBar(content: Text(_errorTarifas ?? 'Selecciona una tarifa del servidor.')));
+      mensajero.showSnackBar(
+        SnackBar(
+          content: Text(_errorTarifas ?? 'Selecciona una tarifa del servidor.'),
+        ),
+      );
       return;
     }
     if (_total <= 0) {
-      mensajero.showSnackBar(const SnackBar(content: Text('El total de la estadía debe ser mayor que cero.')));
+      mensajero.showSnackBar(
+        const SnackBar(
+          content: Text('El total de la estadía debe ser mayor que cero.'),
+        ),
+      );
       return;
     }
 
@@ -199,32 +241,40 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     if (pago == null || !mounted) return;
     setState(() => _guardando = true);
 
-    late final Huesped huesped;
-    try {
-      huesped = await ServicioHuespedes.instancia.obtenerOCrear(
-        nombre: _controladorNombre.text,
-        dui: _controladorDui.text,
-        telefono: _controladorTelefono.text,
-      );
-    } on Object catch (e) {
-      mensajero.showSnackBar(
-        SnackBar(
-          content: Text(
-            'No se pudo guardar el huésped en el servidor: '
-            '${e.toString().replaceFirst('Exception: ', '')}',
+    Huesped? huesped;
+    if (guardarCliente) {
+      try {
+        huesped = await ServicioHuespedes.instancia.obtenerOCrear(
+          nombre: _controladorNombre.text,
+          dui: _controladorDui.text,
+          telefono: _controladorTelefono.text,
+        );
+      } on Object catch (e) {
+        mensajero.showSnackBar(
+          SnackBar(
+            content: Text(
+              'No se pudo guardar el huésped en el servidor: '
+              '${e.toString().replaceFirst('Exception: ', '')}',
+            ),
           ),
-        ),
-      );
-      if (mounted) setState(() => _guardando = false);
-      return;
+        );
+        if (mounted) setState(() => _guardando = false);
+        return;
+      }
     }
     if (!mounted) return;
 
     final roomId = int.tryParse(habitacionElegida.id);
-    final guestId = int.tryParse(huesped.id);
-    if (roomId == null || guestId == null) {
+    final guestId = huesped == null ? null : int.tryParse(huesped.id);
+    if (roomId == null || (huesped != null && guestId == null)) {
       setState(() => _guardando = false);
-      mensajero.showSnackBar(const SnackBar(content: Text('La habitación o el huésped no tiene un ID válido del servidor.')));
+      mensajero.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La habitación o el huésped no tiene un ID válido del servidor.',
+          ),
+        ),
+      );
       return;
     }
     final itemsPorProducto = <int, int>{};
@@ -232,15 +282,25 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
       final id = int.tryParse(producto.idApi ?? '');
       if (id == null) {
         setState(() => _guardando = false);
-        mensajero.showSnackBar(const SnackBar(content: Text('Un producto no pertenece al catálogo del servidor.')));
+        mensajero.showSnackBar(
+          const SnackBar(
+            content: Text('Un producto no pertenece al catálogo del servidor.'),
+          ),
+        );
         return;
       }
-      itemsPorProducto.update(id, (cantidad) => cantidad + 1, ifAbsent: () => 1);
+      itemsPorProducto.update(
+        id,
+        (cantidad) => cantidad + 1,
+        ifAbsent: () => 1,
+      );
     }
     try {
       await ApiClient.instance.createStay({
         'room_id': roomId,
-        'guest_id': guestId,
+        if (guestId != null) 'guest_id': guestId,
+        if (huesped != null) 'guest_name': huesped.nombre,
+        if (huesped != null) 'guest_document': huesped.dui,
         'rate_id': tarifaRemota.id,
         'rate_units': _cantidad,
         'payment_method': pago.metodo.name,
@@ -250,12 +310,17 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
               {'product_id': entry.key, 'quantity': entry.value},
           ],
       });
-      await ServicioHabitaciones.instancia.sincronizar();
+      await Future.wait([
+        ServicioHabitaciones.instancia.sincronizar(),
+        ServicioEstadias.instancia.sincronizar(),
+      ]);
     } on Object catch (error) {
       if (mounted) {
         setState(() => _guardando = false);
         mensajero.showSnackBar(
-          SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', '')),
+          ),
         );
       }
       return;
@@ -264,9 +329,9 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
 
     final factura = Factura(
       fecha: fechaEntrada,
-      huesped: huesped.nombre,
-      dui: huesped.dui,
-      telefono: huesped.telefono,
+      huesped: huesped?.nombre ?? 'Cliente sin registrar',
+      dui: huesped?.dui ?? '',
+      telefono: huesped?.telefono ?? '',
       habitacion: habitacionElegida,
       tarifa: _tarifa,
       cantidad: _cantidad,
@@ -301,10 +366,16 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
     ];
 
     final formulario = TarjetaSeccion(
-      titulo: 'Datos del huésped',
+      titulo: 'Datos del huésped (opcional)',
       icono: Icons.person_add,
       hijo: Column(
         children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Puedes dejar estos campos vacíos para registrar la estadía sin identificar al cliente. Si ingresas datos o eliges un huésped guardado, aparecerán en la habitación.',
+            ),
+          ),
           SelectorHuespedGuardado(
             seleccionadoId: _huespedSeleccionadoId,
             alCambiar: (Huesped? h) => setState(() {
@@ -380,18 +451,25 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                       if (_cargandoTarifas)
                         const LinearProgressIndicator()
                       else if (_tarifasCompatibles.isEmpty)
-                        Text(_errorTarifas ?? 'No hay tarifas para ${_cuarto.etiqueta.toLowerCase()} de $_camasSeleccionadas ${_camasSeleccionadas == 1 ? 'cama' : 'camas'}.')
+                        Text(
+                          _errorTarifas ??
+                              'No hay tarifas para ${_cuarto.etiqueta.toLowerCase()} de $_camasSeleccionadas ${_camasSeleccionadas == 1 ? 'cama' : 'camas'}.',
+                        )
                       else
                         DropdownButtonFormField<TarifaRemota>(
                           value: _tarifasCompatibles.contains(_tarifaRemota)
                               ? _tarifaRemota
                               : _tarifasCompatibles.first,
-                          decoration: const InputDecoration(labelText: 'Tarifa del servidor'),
+                          decoration: const InputDecoration(
+                            labelText: 'Tarifa del servidor',
+                          ),
                           items: [
                             for (final tarifa in _tarifasCompatibles)
                               DropdownMenuItem(
                                 value: tarifa,
-                                child: Text('${tarifa.etiquetaDuracion} · ${formatearDinero(tarifa.precio)}'),
+                                child: Text(
+                                  '${tarifa.etiquetaDuracion} · ${formatearDinero(tarifa.precio)}',
+                                ),
                               ),
                           ],
                           onChanged: (tarifa) => setState(() {
@@ -404,7 +482,8 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                         ),
                       const SizedBox(height: 16),
                       ContadorCantidad(
-                        etiqueta: 'Bloques de ${_tarifaRemota?.horas ?? 0} horas',
+                        etiqueta:
+                            'Bloques de ${_tarifaRemota?.horas ?? 0} horas',
                         valor: _cantidad,
                         alCambiar: (n) => setState(() => _cantidad = n),
                       ),
@@ -498,10 +577,15 @@ class _EstadoPantallaNuevoHuesped extends State<PantallaNuevoHuesped> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton(
-                        onPressed: _guardando || _cargandoTarifas || _tarifaRemota == null
+                        onPressed:
+                            _guardando ||
+                                _cargandoTarifas ||
+                                _tarifaRemota == null
                             ? null
                             : _confirmar,
-                        child: Text(_guardando ? 'Registrando…' : 'Confirmar y cobrar'),
+                        child: Text(
+                          _guardando ? 'Registrando…' : 'Confirmar y cobrar',
+                        ),
                       ),
                     ),
                   ],

@@ -1,13 +1,35 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'api_client.dart';
 
 /// Comprueba el estado de la conexión.
-class ServicioConexion {
-  ServicioConexion._();
+class ServicioConexion extends ChangeNotifier {
+  ServicioConexion._() {
+    verificar();
+    _reloj = Timer.periodic(const Duration(seconds: 12), (_) => verificar());
+  }
+
+  static final ServicioConexion instancia = ServicioConexion._();
+  Timer? _reloj;
+  bool _sinConexion = false;
+  bool _verificando = false;
+  bool get sinConexion => _sinConexion;
+  bool get verificando => _verificando;
+
+  Future<void> verificar() async {
+    if (_verificando) return;
+    _verificando = true;
+    notifyListeners();
+    final disponible = await servidorDisponible();
+    final cambio = _sinConexion != !disponible;
+    _sinConexion = !disponible;
+    _verificando = false;
+    if (cambio || _sinConexion) notifyListeners();
+  }
 
   /// Intenta resolver un nombre de internet. Si responde, hay conexión.
   static Future<bool> hayInternet() async {
@@ -41,11 +63,17 @@ class ServicioConexion {
             Uri.parse('$base/me'),
             headers: const {'Accept': 'application/json'},
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 6));
     } on TimeoutException {
       return null;
     } catch (_) {
       return null;
     }
+  }
+
+  @override
+  void dispose() {
+    _reloj?.cancel();
+    super.dispose();
   }
 }

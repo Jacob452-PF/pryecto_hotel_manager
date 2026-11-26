@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../modelos/tarifa.dart';
@@ -7,6 +9,7 @@ import '../servicios/servicio_huespedes.dart';
 import '../servicios/servicio_reservas.dart';
 import '../modelos/huesped.dart';
 import '../utilidades/formato.dart';
+import '../utilidades/tiempo_hotel.dart';
 import '../widgets/contador_cantidad.dart';
 import '../widgets/formulario_huesped.dart';
 import '../widgets/selector_opciones.dart';
@@ -28,46 +31,67 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
   final List<TarifaRemota> _tarifas = [];
   TarifaRemota? _tarifa;
   bool _cargandoTarifas = true;
+  bool _actualizandoTarifas = false;
+  Timer? _temporizadorTarifas;
   String? _errorTarifas;
   int _camas = 1;
   int _cantidad = 1;
   String? _huespedSeleccionadoId;
-  DateTime _inicio = DateTime.now().add(const Duration(hours: 1));
+  DateTime _inicio = TiempoHotel.relojElSalvador(
+    TiempoHotel.ahoraUtc(),
+  ).add(const Duration(hours: 1));
   bool _guardando = false;
 
-  DateTime get _fin => _inicio.add(
-    Duration(hours: (_tarifa?.horas ?? 12) * _cantidad),
-  );
+  DateTime get _fin =>
+      _inicio.add(Duration(hours: (_tarifa?.horas ?? 12) * _cantidad));
 
   int get _camasSeleccionadas => _tipo == TipoCuarto.comun ? 1 : _camas;
   double get _total => (_tarifa?.precio ?? 0) * _cantidad;
   List<TarifaRemota> get _tarifasCompatibles => _tarifas
-      .where((t) =>
-          t.tipoHabitacion == _tipo.valorApi &&
-          t.camas == _camasSeleccionadas)
+      .where(
+        (t) =>
+            t.tipoHabitacion == _tipo.valorApi &&
+            t.camas == _camasSeleccionadas,
+      )
       .toList();
 
   @override
   void initState() {
     super.initState();
     _cargarTarifas();
+    _temporizadorTarifas = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _cargarTarifas(),
+    );
   }
 
   Future<void> _cargarTarifas() async {
+    if (_actualizandoTarifas) return;
+    _actualizandoTarifas = true;
+    final tarifaAnteriorId = _tarifa?.id;
     try {
       final response = await ApiClient.instance.rates();
       final rates = ApiClient.instance
           .listFromResponse(response)
-          .map((row) => TarifaRemota.fromJson(Map<String, dynamic>.from(row as Map)))
+          .map(
+            (row) =>
+                TarifaRemota.fromJson(Map<String, dynamic>.from(row as Map)),
+          )
           .toList();
       if (!mounted) return;
       setState(() {
         _tarifas
           ..clear()
           ..addAll(rates);
-        _tarifa = _tarifasCompatibles.firstOrNull;
+        _tarifa =
+            _tarifasCompatibles
+                .where((tarifa) => tarifa.id == tarifaAnteriorId)
+                .firstOrNull ??
+            _tarifasCompatibles.firstOrNull;
         _cargandoTarifas = false;
-        _errorTarifas = rates.isEmpty ? 'No hay tarifas activas en el servidor.' : null;
+        _errorTarifas = rates.isEmpty
+            ? 'No hay tarifas activas en el servidor.'
+            : null;
       });
     } on Object catch (e) {
       if (!mounted) return;
@@ -75,11 +99,14 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
         _cargandoTarifas = false;
         _errorTarifas = e.toString().replaceFirst('Exception: ', '');
       });
+    } finally {
+      _actualizandoTarifas = false;
     }
   }
 
   @override
   void dispose() {
+    _temporizadorTarifas?.cancel();
     _nombre.dispose();
     _dui.dispose();
     _telefono.dispose();
@@ -87,7 +114,9 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
   }
 
   Future<void> _elegirFecha() async {
-    final hoy = DateUtils.dateOnly(DateTime.now());
+    final hoy = DateUtils.dateOnly(
+      TiempoHotel.relojElSalvador(TiempoHotel.ahoraUtc()),
+    );
     final fecha = await showDatePicker(
       context: context,
       initialDate: DateUtils.dateOnly(_inicio).isBefore(hoy)
@@ -98,7 +127,7 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
     );
     if (fecha == null || !mounted) return;
     setState(() {
-      _inicio = DateTime(
+      _inicio = DateTime.utc(
         fecha.year,
         fecha.month,
         fecha.day,
@@ -115,7 +144,7 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
     );
     if (hora == null || !mounted) return;
     setState(() {
-      _inicio = DateTime(
+      _inicio = DateTime.utc(
         _inicio.year,
         _inicio.month,
         _inicio.day,
@@ -127,7 +156,7 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
 
   Future<void> _guardar() async {
     if (!_form.currentState!.validate()) return;
-    if (_inicio.isBefore(DateTime.now())) {
+    if (_inicio.isBefore(TiempoHotel.ahoraUtc())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('La entrada de la reserva debe ser futura.'),
@@ -151,7 +180,9 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
           );
       final tarifa = _tarifa;
       if (tarifa == null) {
-        throw StateError(_errorTarifas ?? 'Selecciona una tarifa del servidor.');
+        throw StateError(
+          _errorTarifas ?? 'Selecciona una tarifa del servidor.',
+        );
       }
       await ServicioReservas.instancia.crear(
         huespedId: huesped.id,
@@ -267,15 +298,21 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                     if (_cargandoTarifas)
                       const Center(child: CircularProgressIndicator())
                     else if (_errorTarifas != null)
-                      Text(_errorTarifas!, style: const TextStyle(color: Colors.red))
+                      Text(
+                        _errorTarifas!,
+                        style: const TextStyle(color: Colors.red),
+                      )
                     else if (_tarifasCompatibles.isEmpty)
-                      Text('No hay tarifas para ${_tipo.etiqueta.toLowerCase()} de $_camasSeleccionadas ${_camasSeleccionadas == 1 ? 'cama' : 'camas'}.')
+                      Text(
+                        'No hay tarifas para ${_tipo.etiqueta.toLowerCase()} de $_camasSeleccionadas ${_camasSeleccionadas == 1 ? 'cama' : 'camas'}.',
+                      )
                     else
                       SelectorOpciones<TarifaRemota>(
                         opciones: _tarifasCompatibles,
                         seleccionada: _tarifa,
                         etiqueta: (t) => t.etiquetaDuracion,
-                        icono: (t) => t.horas <= 6 ? Icons.schedule : Icons.nights_stay,
+                        icono: (t) =>
+                            t.horas <= 6 ? Icons.schedule : Icons.nights_stay,
                         detalle: (t) => formatearDinero(t.precio),
                         alCambiar: (t) => setState(() {
                           _tarifa = t;

@@ -94,8 +94,8 @@ class Reserva {
     ),
     tarifaNombre: j['tarifaNombre'] as String?,
     cantidad: j['cantidad'] as int? ?? 1,
-    inicio: DateTime.parse(j['inicio'] as String),
-    fin: DateTime.parse(j['fin'] as String),
+    inicio: TiempoHotel.desdeApi(j['inicio'] as String),
+    fin: TiempoHotel.desdeApi(j['fin'] as String),
     total: (j['total'] as num?)?.toDouble() ?? 0,
     montoAbonado: (j['montoAbonado'] as num?)?.toDouble() ?? 0,
     saldoPendiente: (j['saldoPendiente'] as num?)?.toDouble() ?? 0,
@@ -104,7 +104,7 @@ class Reserva {
       orElse: () => EstadoReserva.activa,
     ),
     notificadaVencida: j['notificadaVencida'] as bool? ?? false,
-    createdAt: DateTime.parse(j['createdAt'] as String),
+    createdAt: TiempoHotel.desdeApi(j['createdAt'] as String),
   );
 
   factory Reserva.fromApiJson(Map<String, dynamic> json) {

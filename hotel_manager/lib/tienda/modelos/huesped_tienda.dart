@@ -5,11 +5,17 @@ class HuespedTienda {
   final String nombre;
   final String habitacion;
   final String? estadiaIdApi;
+  final String? huespedIdApi;
+  final String? documento;
+  final String? telefono;
 
   const HuespedTienda({
     required this.id,
     required this.nombre,
     required this.habitacion,
     this.estadiaIdApi,
+    this.huespedIdApi,
+    this.documento,
+    this.telefono,
   });
 }

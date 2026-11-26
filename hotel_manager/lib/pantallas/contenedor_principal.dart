@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'pantalla_inicio.dart';
@@ -10,6 +12,12 @@ import '../modelos/usuario.dart';
 import '../servicios/servicio_notificaciones.dart';
 import '../servicios/servicio_sesion.dart';
 import '../servicios/servicio_caja.dart';
+import '../servicios/servicio_habitaciones.dart';
+import '../servicios/servicio_huespedes.dart';
+import '../servicios/servicio_reservas.dart';
+import '../servicios/servicio_estadias.dart';
+import '../servicios/servicio_tareas.dart';
+import '../servicios/servicio_conexion.dart';
 import 'pantalla_notificaciones.dart';
 import 'pantalla_tareas.dart';
 import 'pantalla_agenda.dart';
@@ -23,11 +31,14 @@ class ContenedorPrincipal extends StatefulWidget {
   State<ContenedorPrincipal> createState() => _EstadoContenedorPrincipal();
 }
 
-class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
+class _EstadoContenedorPrincipal extends State<ContenedorPrincipal>
+    with WidgetsBindingObserver {
   int _indice = 0;
   final ServicioNotificaciones _notificaciones =
       ServicioNotificaciones.instancia;
   String? _ultimaNotificacionId;
+  Timer? _temporizadorActualizacion;
+  bool _actualizandoDatos = false;
 
   static final List<Widget> _paginas = <Widget>[
     PantallaInicio(),
@@ -41,18 +52,13 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _temporizadorActualizacion = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _actualizarDatos(),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final sesion = ServicioSesion.instancia.usuario;
-      if (!mounted ||
-          sesion?.rol != RolUsuario.recepcion ||
-          ServicioCaja.instancia.cajaActual != null) {
-        return;
-      }
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const PantallaAperturaCaja(),
-        ),
-      );
+      _actualizarDatos();
     });
     _ultimaNotificacionId = _notificaciones.notificaciones.isEmpty
         ? null
@@ -62,8 +68,63 @@ class _EstadoContenedorPrincipal extends State<ContenedorPrincipal> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _temporizadorActualizacion?.cancel();
     _notificaciones.removeListener(_mostrarAvisoNuevo);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _actualizarDatos();
+  }
+
+  Future<void> _intentar(Future<void> operacion) async {
+    try {
+      await operacion;
+    } on Object catch (_) {
+      // Cada servicio conserva su propio error; una falla no detiene los demás.
+    }
+  }
+
+  Future<void> _actualizarDatos() async {
+    if (_actualizandoDatos || !mounted) return;
+    _actualizandoDatos = true;
+    final rol = ServicioSesion.instancia.usuario?.rol;
+    final tareas = <Future<void>>[
+      _intentar(ServicioHabitaciones.instancia.sincronizar()),
+      _intentar(ServicioHuespedes.instancia.sincronizar()),
+      _intentar(ServicioReservas.instancia.sincronizar()),
+      _intentar(ServicioEstadias.instancia.sincronizar()),
+      _intentar(ServicioTareas.instancia.sincronizar()),
+      if (rol == RolUsuario.admin || rol == RolUsuario.recepcion) ...[
+        _intentar(ServicioInventario.instancia.sincronizar()),
+        _intentar(ServicioCaja.instancia.sincronizar()),
+      ],
+    ];
+    try {
+      await Future.wait(tareas);
+    } finally {
+      _actualizandoDatos = false;
+      _abrirCajaSiNecesaria();
+    }
+  }
+
+  bool _aperturaOfrecida = false;
+
+  void _abrirCajaSiNecesaria() {
+    if (!mounted ||
+        _aperturaOfrecida ||
+        ServicioSesion.instancia.usuario?.rol != RolUsuario.recepcion ||
+        !ServicioCaja.instancia.consultada ||
+        ServicioCaja.instancia.cajaActual != null ||
+        ServicioConexion.instancia.sinConexion) {
+      return;
+    }
+    _aperturaOfrecida = true;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const PantallaAperturaCaja()),
+    );
   }
 
   void _mostrarAvisoNuevo() {

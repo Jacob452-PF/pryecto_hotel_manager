@@ -1,6 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../modelos/usuario.dart';
+import '../servicios/api_client.dart';
+import '../servicios/servicio_sesion.dart';
+import 'contenedor_principal.dart';
 import 'pantalla_login.dart';
 
 /// Presenta el tutorial una sola vez en el dispositivo, antes del primer login.
@@ -13,30 +19,101 @@ class PantallaInicioApp extends StatefulWidget {
 
 class _PantallaInicioAppState extends State<PantallaInicioApp> {
   static const _claveTutorial = 'tutorial_inicio_completado_v1';
-  late final Future<bool> _tutorialCompletado = _leerEstado();
+  bool _cargando = true;
+  bool _mostrarTutorial = false;
+  bool _sesionRestaurada = false;
 
-  Future<bool> _leerEstado() async {
+  @override
+  void initState() {
+    super.initState();
+    _inicializar();
+  }
+
+  Future<void> _inicializar() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_claveTutorial) ?? false;
+    final completado = prefs.getBool(_claveTutorial) ?? false;
+    if (!completado) {
+      if (mounted) {
+        setState(() {
+          _mostrarTutorial = true;
+          _cargando = false;
+        });
+      }
+      return;
+    }
+    await _restaurarSesion();
   }
 
   Future<void> _finalizarTutorial() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_claveTutorial, true);
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {
+        _mostrarTutorial = false;
+        _cargando = true;
+      });
+      await _restaurarSesion();
+    }
+  }
+
+  Future<void> _restaurarSesion() async {
+    final token = await ApiClient.instance.getToken();
+    Usuario? guardado;
+    var validarEnFondo = true;
+    if (token != null) {
+      guardado = await ServicioSesion.instancia.usuarioGuardado();
+      if (guardado == null) {
+        try {
+          final remoto = await ApiClient.instance.me().timeout(
+            const Duration(seconds: 8),
+          );
+          guardado = Usuario.fromApiJson(remoto);
+          await ServicioSesion.instancia.guardarUsuario(guardado);
+          validarEnFondo = false;
+        } on Object catch (_) {
+          // Sin perfil local ni acceso al API no hay datos suficientes para
+          // reconstruir la identidad; se conserva el token para reintentar.
+        }
+      }
+    }
+    if (!mounted) return;
+    if (guardado == null) {
+      setState(() {
+        _sesionRestaurada = false;
+        _cargando = false;
+      });
+      return;
+    }
+    ServicioSesion.instancia.iniciarSesion(guardado);
+    setState(() {
+      _sesionRestaurada = true;
+      _cargando = false;
+    });
+    if (validarEnFondo) unawaited(_validarSesionEnServidor());
+  }
+
+  Future<void> _validarSesionEnServidor() async {
+    try {
+      final remoto = Usuario.fromApiJson(await ApiClient.instance.me());
+      ServicioSesion.instancia.iniciarSesion(remoto);
+      await ServicioSesion.instancia.guardarUsuario(remoto);
+    } on Object catch (_) {
+      // Un corte de red conserva la sesión local; un 401 activa el cierre
+      // centralizado del token desde ApiClient.
+    }
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<bool>(
-    future: _tutorialCompletado,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState != ConnectionState.done) {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
-      }
-      if (snapshot.data == true) return const PantallaLogin();
+  Widget build(BuildContext context) {
+    if (_cargando) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_mostrarTutorial)
       return TutorialInicio(onFinalizar: _finalizarTutorial);
-    },
-  );
+    return _sesionRestaurada
+        ? const ContenedorPrincipal()
+        : const PantallaLogin();
+  }
 }
 
 class _PasoTutorial {

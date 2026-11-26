@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../tema/colores_app.dart';
+import '../utilidades/tiempo_hotel.dart';
 import 'tipo_cuarto.dart';
 
 enum EstadoHabitacion {
@@ -48,6 +49,16 @@ class Habitacion {
 
   /// Nombre del huésped que la ocupa (solo si el estado es ocupada).
   final String? huesped;
+  final String? huespedDocumento;
+  final String? huespedTelefono;
+  final String? huespedIdApi;
+  final DateTime? entradaEstadia;
+  final DateTime? salidaEstadia;
+  final String? nombreTarifa;
+  final double? precioTarifa;
+  final int? cantidadHuespedes;
+  final String? notasHabitacion;
+  final String? notasEstadia;
 
   /// Servicio de limpieza solicitado durante una estadía activa.
   final bool limpiezaSolicitada;
@@ -71,6 +82,16 @@ class Habitacion {
     this.estado, {
     this.camas = 1,
     this.huesped,
+    this.huespedDocumento,
+    this.huespedTelefono,
+    this.huespedIdApi,
+    this.entradaEstadia,
+    this.salidaEstadia,
+    this.nombreTarifa,
+    this.precioTarifa,
+    this.cantidadHuespedes,
+    this.notasHabitacion,
+    this.notasEstadia,
     this.limpiezaSolicitada = false,
     this.rutaFoto,
     String? id,
@@ -93,6 +114,16 @@ class Habitacion {
       nuevoEstado,
       camas: camas,
       huesped: huesped,
+      huespedDocumento: huespedDocumento,
+      huespedTelefono: huespedTelefono,
+      huespedIdApi: huespedIdApi,
+      entradaEstadia: entradaEstadia,
+      salidaEstadia: salidaEstadia,
+      nombreTarifa: nombreTarifa,
+      precioTarifa: precioTarifa,
+      cantidadHuespedes: cantidadHuespedes,
+      notasHabitacion: notasHabitacion,
+      notasEstadia: notasEstadia,
       limpiezaSolicitada:
           nuevoEstado == EstadoHabitacion.ocupadaYLimpieza ||
           (nuevoEstado == EstadoHabitacion.limpieza && limpiezaSolicitada),
@@ -115,6 +146,16 @@ class Habitacion {
     'estado': estado.valor,
     'camas': camas,
     'huesped': huesped,
+    'huespedDocumento': huespedDocumento,
+    'huespedTelefono': huespedTelefono,
+    'huespedIdApi': huespedIdApi,
+    'entradaEstadia': entradaEstadia?.toIso8601String(),
+    'salidaEstadia': salidaEstadia?.toIso8601String(),
+    'nombreTarifa': nombreTarifa,
+    'precioTarifa': precioTarifa,
+    'cantidadHuespedes': cantidadHuespedes,
+    'notasHabitacion': notasHabitacion,
+    'notasEstadia': notasEstadia,
     'limpiezaSolicitada': limpiezaSolicitada,
     'rutaFoto': rutaFoto,
     'descripcionLimpieza': descripcionLimpieza,
@@ -165,13 +206,31 @@ class Habitacion {
       ),
     };
 
-    final rawStay = json['active_stay'] ?? json['activeStay'];
+    final rawStay =
+        json['current_stay'] ??
+        json['currentStay'] ??
+        json['active_stay'] ??
+        json['activeStay'];
+    final stay = rawStay is Map
+        ? Map<String, dynamic>.from(rawStay)
+        : const <String, dynamic>{};
+    final rawRate = stay['rate'];
+    final rate = rawRate is Map
+        ? Map<String, dynamic>.from(rawRate)
+        : const <String, dynamic>{};
     final tasks = json['tasks'] is List
-        ? (json['tasks'] as List).whereType<Map>().map(Map<String, dynamic>.from).toList()
+        ? (json['tasks'] as List)
+              .whereType<Map>()
+              .map(Map<String, dynamic>.from)
+              .toList()
         : const <Map<String, dynamic>>[];
-    final cleaningTask = tasks.where((task) => task['type'] == 'limpieza').firstOrNull;
-    final maintenanceTask = tasks.where((task) => task['type'] == 'mantenimiento').firstOrNull;
-    final stayGuest = rawStay is Map ? rawStay['guest'] : null;
+    final cleaningTask = tasks
+        .where((task) => task['type'] == 'limpieza')
+        .firstOrNull;
+    final maintenanceTask = tasks
+        .where((task) => task['type'] == 'mantenimiento')
+        .firstOrNull;
+    final stayGuest = stay['guest'];
     final rawGuest = json['guest'] ?? stayGuest ?? json['huesped'];
     final guestName = rawGuest is Map
         ? (rawGuest['name'] ?? rawGuest['nombre'])?.toString()
@@ -185,23 +244,46 @@ class Habitacion {
       tipo,
       estado,
       camas: int.tryParse(rawCamas?.toString() ?? '') ?? 1,
-      huesped: guestName,
+      huesped: guestName ?? stay['guest_name']?.toString(),
+      huespedDocumento:
+          (rawGuest is Map ? rawGuest['document'] : null)?.toString() ??
+          stay['guest_document']?.toString(),
+      huespedTelefono: (rawGuest is Map ? rawGuest['phone'] : null)?.toString(),
+      huespedIdApi:
+          (stay['guest_id'] ?? (rawGuest is Map ? rawGuest['id'] : null))
+              ?.toString(),
+      entradaEstadia: TiempoHotel.intentarDesdeApi(
+        stay['check_in_at']?.toString(),
+      ),
+      salidaEstadia: TiempoHotel.intentarDesdeApi(
+        stay['expected_checkout_at']?.toString(),
+      ),
+      nombreTarifa: rate['name']?.toString(),
+      precioTarifa: double.tryParse(rate['price']?.toString() ?? ''),
+      cantidadHuespedes: int.tryParse(stay['guests']?.toString() ?? ''),
+      notasHabitacion: json['notes']?.toString(),
+      notasEstadia: stay['notes']?.toString(),
       limpiezaSolicitada:
           json['cleaning_requested'] as bool? ??
           json['limpiezaSolicitada'] as bool? ??
           cleaningTask != null || estado == EstadoHabitacion.ocupadaYLimpieza,
       id: rawId.toString(),
       asignadoLimpiezaId:
-          (json['assigned_cleaner_id'] ?? json['asignadoLimpiezaId'] ?? cleaningTask?['assigned_to'])
+          (json['assigned_cleaner_id'] ??
+                  json['asignadoLimpiezaId'] ??
+                  cleaningTask?['assigned_to'])
               ?.toString(),
       asignadoMantenimientoId:
-          (json['assigned_maintenance_id'] ?? json['asignadoMantenimientoId'] ?? maintenanceTask?['assigned_to'])
+          (json['assigned_maintenance_id'] ??
+                  json['asignadoMantenimientoId'] ??
+                  maintenanceTask?['assigned_to'])
               ?.toString(),
       reservaActivaId:
           (json['active_reservation_id'] ?? json['reservaActivaId'])
               ?.toString(),
-      estadiaActivaId: (json['active_stay_id'] ?? json['estadiaActivaId'])
-          ?.toString(),
+      estadiaActivaId:
+          (json['active_stay_id'] ?? json['estadiaActivaId'] ?? stay['id'])
+              ?.toString(),
       updatedAt: DateTime.tryParse(rawUpdatedAt?.toString() ?? ''),
     );
   }
@@ -213,6 +295,18 @@ class Habitacion {
     EstadoHabitacion.desdeJson(j['estado'] as String? ?? 'disponible'),
     camas: j['camas'] as int? ?? 1,
     huesped: j['huesped'] as String?,
+    huespedDocumento: j['huespedDocumento'] as String?,
+    huespedTelefono: j['huespedTelefono'] as String?,
+    huespedIdApi: j['huespedIdApi'] as String?,
+    entradaEstadia: TiempoHotel.intentarDesdeApi(
+      j['entradaEstadia'] as String?,
+    ),
+    salidaEstadia: TiempoHotel.intentarDesdeApi(j['salidaEstadia'] as String?),
+    nombreTarifa: j['nombreTarifa'] as String?,
+    precioTarifa: (j['precioTarifa'] as num?)?.toDouble(),
+    cantidadHuespedes: j['cantidadHuespedes'] as int?,
+    notasHabitacion: j['notasHabitacion'] as String?,
+    notasEstadia: j['notasEstadia'] as String?,
     limpiezaSolicitada: j['limpiezaSolicitada'] as bool? ?? false,
     rutaFoto: j['rutaFoto'] as String?,
     id: j['id'] as String?,

@@ -31,6 +31,16 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
   bool _cargando = false;
 
   @override
+  void initState() {
+    super.initState();
+    ServicioSesion.instancia.leerCorreoRecordado().then((correo) {
+      if (mounted && correo != null && _controladorUsuario.text.isEmpty) {
+        _controladorUsuario.text = correo;
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _controladorUsuario.dispose();
     _controladorContrasena.dispose();
@@ -47,6 +57,9 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
       await ApiClient.instance.login(
         _controladorUsuario.text.trim(),
         _controladorContrasena.text,
+      );
+      await ServicioSesion.instancia.recordarCorreo(
+        _controladorUsuario.text.trim(),
       );
       final data = await ApiClient.instance.me();
       if (!mounted) {
@@ -69,6 +82,9 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
           rol: rol,
           cargo: role,
         ),
+      );
+      await ServicioSesion.instancia.guardarUsuario(
+        ServicioSesion.instancia.usuario!,
       );
       await Future.wait([
         ServicioHabitaciones.instancia.sincronizar(),

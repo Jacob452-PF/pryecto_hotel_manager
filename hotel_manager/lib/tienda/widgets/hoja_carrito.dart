@@ -4,10 +4,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../servicios/api_client.dart';
-import '../modelos/articulo_tienda.dart';
 import '../servicios/carrito_tienda.dart';
 import '../../inventario/servicios/servicio_inventario.dart';
-import '../../modelos/abono.dart';
+import '../../servicios/servicio_huespedes.dart';
 import '../../widgets/dialogo_cobro.dart';
 
 /// Abre el carrito como hoja inferior (bottom sheet).
@@ -64,15 +63,97 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
   }
 
   Future<void> _confirmar() async {
-    final huesped = _c.huesped;
-    if (_enviando || huesped == null || _c.lineas.isEmpty) return;
+    if (_enviando || _c.lineas.isEmpty) return;
     final messenger = ScaffoldMessenger.of(context);
-    final stayId = huesped.estadiaIdApi;
-    if (stayId == null) {
+    final modo = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cómo deseas registrar la venta?'),
+        content: const Text(
+          'Puedes pagar ahora sin asignar un cliente o cargar los productos a una habitación ocupada.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'estadia'),
+            child: const Text('Cargar a habitación'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, 'ahora'),
+            child: const Text('Pagar ahora'),
+          ),
+        ],
+      ),
+    );
+    if (modo == null || !mounted) return;
+
+    if (modo == 'ahora') {
+      final cliente = await _pedirDatosFactura();
+      if (cliente == null || !mounted) return;
+      final pago = await mostrarDialogoCobro(context, saldo: _c.totalPagar);
+      if (pago == null || !mounted) return;
+      final items = <Map<String, int>>[];
+      for (final line in _c.lineas) {
+        final id = int.tryParse(line.articulo.id);
+        if (id == null) {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text(
+                'El producto no pertenece al inventario del servidor.',
+              ),
+            ),
+          );
+          return;
+        }
+        items.add({'product_id': id, 'quantity': line.cantidad});
+      }
+      final guestId = int.tryParse(cliente['guest_id']?.toString() ?? '');
+      if (cliente['guest_id'] != null && guestId == null) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('El cliente seleccionado no tiene un ID válido.'),
+          ),
+        );
+        return;
+      }
+      setState(() => _enviando = true);
+      try {
+        final venta = await ApiClient.instance.createSale(
+          paymentMethod: pago.metodo.name,
+          items: items,
+          guestId: guestId,
+          customerName: cliente['customer_name']?.toString(),
+          customerDocument: cliente['customer_document']?.toString(),
+          customerPhone: cliente['customer_phone']?.toString(),
+        );
+        await ServicioInventario.instancia.sincronizar();
+        if (!mounted) return;
+        await _mostrarFacturaVenta(venta);
+        if (!mounted) return;
+        _c.vaciar();
+        Navigator.of(context).pop();
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Venta registrada correctamente.')),
+        );
+      } on Object catch (error) {
+        if (mounted)
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(error.toString().replaceFirst('Exception: ', '')),
+            ),
+          );
+      } finally {
+        if (mounted) setState(() => _enviando = false);
+      }
+      return;
+    }
+
+    final huesped = _c.huesped;
+    final stayId = huesped?.estadiaIdApi;
+    if (huesped == null || stayId == null) {
       messenger.showSnackBar(
         const SnackBar(
           content: Text(
-            'No se encontró la estadía activa en el servidor. Actualiza las habitaciones e inténtalo de nuevo.',
+            'Selecciona una habitación ocupada para cargar el consumo.',
           ),
         ),
       );
@@ -81,14 +162,14 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
     final pagarAhora = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Pago de productos'),
-        content: const Text(
-          '¿Cobrar ahora o agregar el consumo al saldo de la estadía?',
+        title: const Text('Cobro de habitación'),
+        content: Text(
+          '¿Cobrar ahora ${_dinero(_c.totalPagar)} o agregarlo al saldo de la habitación ${huesped.habitacion}?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Pagar al final'),
+            child: const Text('Cargar al saldo'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -98,11 +179,10 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
       ),
     );
     if (pagarAhora == null || !mounted) return;
-    DatosCobro? pago;
-    if (pagarAhora) {
-      pago = await mostrarDialogoCobro(context, saldo: _c.totalPagar);
-      if (pago == null || !mounted) return;
-    }
+    final pago = pagarAhora
+        ? await mostrarDialogoCobro(context, saldo: _c.totalPagar)
+        : null;
+    if (pagarAhora && (pago == null || !mounted)) return;
 
     setState(() => _enviando = true);
     try {
@@ -135,6 +215,158 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
     } finally {
       if (mounted) setState(() => _enviando = false);
     }
+  }
+
+  Future<Map<String, dynamic>?> _pedirDatosFactura() async {
+    final huespedes = ServicioHuespedes.instancia.huespedes;
+    final nombre = TextEditingController();
+    final documento = TextEditingController();
+    final telefono = TextEditingController();
+    String? seleccionado;
+    final datos = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, actualizar) => AlertDialog(
+          title: const Text('Datos para la factura (opcional)'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: '',
+                  decoration: const InputDecoration(
+                    labelText: 'Cliente registrado',
+                  ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: '',
+                      child: Text('Sin cliente registrado'),
+                    ),
+                    for (final h in huespedes)
+                      DropdownMenuItem(
+                        value: h.id,
+                        child: Text(h.nombre, overflow: TextOverflow.ellipsis),
+                      ),
+                  ],
+                  onChanged: (id) {
+                    seleccionado = id == null || id.isEmpty ? null : id;
+                    final h = huespedes
+                        .where((x) => x.id == seleccionado)
+                        .firstOrNull;
+                    nombre.text = h?.nombre ?? '';
+                    documento.text = h?.dui ?? '';
+                    telefono.text = h?.telefono ?? '';
+                    actualizar(() {});
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: nombre,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre (opcional)',
+                  ),
+                ),
+                TextField(
+                  controller: documento,
+                  decoration: const InputDecoration(
+                    labelText: 'Documento (opcional)',
+                  ),
+                ),
+                TextField(
+                  controller: telefono,
+                  decoration: const InputDecoration(
+                    labelText: 'Teléfono (opcional)',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(ctx, <String, dynamic>{}),
+              child: const Text('Sin datos'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, {
+                if (seleccionado != null) 'guest_id': seleccionado,
+                'customer_name': nombre.text.trim(),
+                'customer_document': documento.text.trim(),
+                'customer_phone': telefono.text.trim(),
+              }),
+              child: const Text('Continuar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    nombre.dispose();
+    documento.dispose();
+    telefono.dispose();
+    return datos;
+  }
+
+  Future<void> _mostrarFacturaVenta(Map<String, dynamic> venta) async {
+    final items = venta['items'] is List ? (venta['items'] as List) : const [];
+    final guest = venta['guest'] is Map
+        ? Map<String, dynamic>.from(venta['guest'] as Map)
+        : const <String, dynamic>{};
+    final cliente =
+        guest['name'] ?? venta['customer_name'] ?? 'Cliente sin registrar';
+    final documento = guest['document'] ?? venta['customer_document'];
+    final telefono = guest['phone'] ?? venta['customer_phone'];
+    final total =
+        double.tryParse(venta['total']?.toString() ?? '') ?? _c.totalPagar;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Factura de tienda'),
+        content: SizedBox(
+          width: 440,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Factura #${venta['id'] ?? '—'}'),
+                Text('Fecha: ${venta['created_at'] ?? 'Ahora'}'),
+                Text('Cliente: $cliente'),
+                if (documento != null && documento.toString().isNotEmpty)
+                  Text('Documento: $documento'),
+                if (telefono != null && telefono.toString().isNotEmpty)
+                  Text('Teléfono: $telefono'),
+                const Divider(),
+                for (final raw in items.whereType<Map>())
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      '${(raw['product'] as Map?)?['name'] ?? 'Producto'} × ${raw['quantity'] ?? 1}  ·  ${_dinero(double.tryParse(raw['subtotal']?.toString() ?? '') ?? ((double.tryParse(raw['unit_price']?.toString() ?? '') ?? 0) * (int.tryParse(raw['quantity']?.toString() ?? '') ?? 1)))}',
+                    ),
+                  ),
+                const Divider(),
+                Text(
+                  'Total: ${_dinero(total)}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                Text('Pago: ${venta['payment_method'] ?? 'Registrado'}'),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cerrar factura'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -271,10 +503,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                               child: SizedBox(
                                 width: double.infinity,
                                 child: FilledButton(
-                                  onPressed:
-                                      (n == 0 ||
-                                          _c.huesped == null ||
-                                          _enviando)
+                                  onPressed: (n == 0 || _enviando)
                                       ? null
                                       : _confirmar,
                                   style: FilledButton.styleFrom(
@@ -290,7 +519,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                                   child: Text(
                                     _enviando
                                         ? 'Registrando…'
-                                        : 'Registrar consumo',
+                                        : 'Continuar al cobro',
                                     style: const TextStyle(fontSize: 16),
                                   ),
                                 ),
@@ -398,7 +627,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
             ),
             SizedBox(width: 10),
             Text(
-              '¿A quién se le carga?',
+              'Asignación de la compra (opcional)',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -408,11 +637,24 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
           ],
         ),
         const SizedBox(height: 12),
+        const Text(
+          'Elige una habitación si quieres cargar los productos a una estadía. Para pagar ahora no necesitas seleccionar a nadie.',
+        ),
+        const SizedBox(height: 10),
+        if (_c.huesped != null)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _c.quitarHuespedSeleccionado,
+              icon: const Icon(Icons.close),
+              label: const Text('Quitar habitación'),
+            ),
+          ),
         if (_c.huespedes.isEmpty)
           Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Text(
-              'No hay huéspedes en habitaciones ocupadas.',
+              'No hay habitaciones con estadía activa para cargar consumos.',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),

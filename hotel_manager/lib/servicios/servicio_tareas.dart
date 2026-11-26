@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../modelos/habitacion.dart';
-import '../modelos/notificacion_app.dart';
 import '../modelos/solicitud_limpieza.dart';
 import '../modelos/solicitud_mantenimiento.dart';
 import '../modelos/usuario.dart';
@@ -116,8 +115,6 @@ class ServicioTareas extends ChangeNotifier {
   }
 
   bool _puedeRecepcion() => _usuario?.rol == RolUsuario.recepcion || _usuario?.rol == RolUsuario.admin;
-  bool _esAdmin() => _usuario?.rol == RolUsuario.admin;
-
   Future<SolicitudLimpieza> solicitarLimpieza(
     String habitacionId, {
     String? descripcion,

@@ -5,11 +5,15 @@ import '../modelos/usuario.dart';
 import 'api_client.dart';
 import 'servicio_sesion.dart';
 import 'servicio_storage.dart';
+import 'servicio_reservas.dart';
+import 'servicio_notificaciones.dart';
 
 class ServicioCaja extends ChangeNotifier {
   ServicioCaja._();
   static final instancia = ServicioCaja._();
   final List<Caja> _cajas = [];
+  bool _consultada = false;
+  bool get consultada => _consultada;
   List<Caja> get cajas => List.unmodifiable(_cajas);
   List<Caja> get cajasCerradas =>
       List.unmodifiable(_cajas.where((c) => !c.abierta));
@@ -17,9 +21,7 @@ class ServicioCaja extends ChangeNotifier {
     final u = ServicioSesion.instancia.usuario;
     if (u == null) return null;
     for (final c in _cajas) {
-      if (c.usuarioId == u.id &&
-          c.abierta &&
-          c.id.startsWith('api-shift-')) {
+      if (c.usuarioId == u.id && c.abierta && c.id.startsWith('api-shift-')) {
         return c;
       }
     }
@@ -35,6 +37,7 @@ class ServicioCaja extends ChangeNotifier {
   }
 
   Future<void> sincronizar() async {
+    _consultada = false;
     final usuario = ServicioSesion.instancia.usuario;
     if (usuario?.rol != RolUsuario.admin &&
         usuario?.rol != RolUsuario.recepcion) {
@@ -42,6 +45,7 @@ class ServicioCaja extends ChangeNotifier {
     }
 
     final shift = await ApiClient.instance.currentShift();
+    _consultada = true;
     if (shift != null) {
       final id = 'api-shift-${shift['id']}';
       final existente = _cajas.indexWhere((caja) => caja.id == id);
@@ -57,10 +61,13 @@ class ServicioCaja extends ChangeNotifier {
         usuarioId: (shift['user_id'] ?? usuario!.id).toString(),
         aperturaAt: DateTime.parse(shift['opened_at'].toString()),
         montoApertura: double.parse(shift['opening_amount'].toString()),
-        desgloseApertura: desgloseExistente ?? DesgloseEfectivo(
-          montoNoDesglosado:
-              double.parse(shift['opening_amount'].toString()),
-        ),
+        desgloseApertura:
+            desgloseExistente ??
+            DesgloseEfectivo(
+              montoNoDesglosado: double.parse(
+                shift['opening_amount'].toString(),
+              ),
+            ),
       );
       if (existente < 0) {
         _cajas.add(caja);
@@ -89,7 +96,8 @@ class ServicioCaja extends ChangeNotifier {
     final cajaApi = Caja(
       id: 'api-shift-${remoto['id']}',
       usuarioId: (remoto['user_id'] ?? u.id).toString(),
-      aperturaAt: DateTime.tryParse(remoto['opened_at']?.toString() ?? '') ?? now,
+      aperturaAt:
+          DateTime.tryParse(remoto['opened_at']?.toString() ?? '') ?? now,
       montoApertura:
           double.tryParse(remoto['opening_amount']?.toString() ?? '') ??
           desglose.total,
@@ -99,6 +107,9 @@ class ServicioCaja extends ChangeNotifier {
     _cajas.add(cajaApi);
     await _guardar();
     notifyListeners();
+    ServicioNotificaciones.instancia.notificarReservasAlAbrirCaja(
+      ServicioReservas.instancia.reservas,
+    );
     return cajaApi;
   }
 
