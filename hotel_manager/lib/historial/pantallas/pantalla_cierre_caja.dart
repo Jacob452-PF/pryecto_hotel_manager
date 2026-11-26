@@ -5,6 +5,7 @@ import '../servicios/servicio_consumos.dart';
 import '../servicios/servicio_historial.dart';
 import '../utilidades/estilos_historial.dart';
 import '../utilidades/formato.dart';
+import '../../utilidades/tiempo_hotel.dart';
 import '../widgets/aviso_ediciones_gastos.dart';
 import '../widgets/boton_pildora.dart';
 import '../widgets/resumen_turno.dart';
@@ -19,13 +20,45 @@ import '../modelos/turno_caja.dart';
 
 /// Pantalla "Cierre de caja": revisa ventas, gastos y los clientes del turno
 /// (quiénes ya pagaron y quiénes no), y cierra el turno.
-class PantallaCierreCaja extends StatelessWidget {
+class PantallaCierreCaja extends StatefulWidget {
   const PantallaCierreCaja({super.key});
 
+  @override
+  State<PantallaCierreCaja> createState() => _PantallaCierreCajaState();
+}
+
+class _PantallaCierreCajaState extends State<PantallaCierreCaja> {
+  late final Future<void> _cargaInicial = ServicioCaja.instancia.sincronizar();
+
   Future<void> _confirmarCierre(BuildContext context) async {
+    final cajaService = ServicioCaja.instancia;
+    try {
+      await cajaService.sincronizar();
+    } on Object catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No se pudo actualizar la caja: ${error.toString().replaceFirst('Exception: ', '')}',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    if (!context.mounted) return;
+    if (cajaService.cajaActual == null || cajaService.resumenServidor == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'El servidor no devolvió una caja abierta con su resumen. Actualiza o vuelve a iniciar la caja.',
+          ),
+        ),
+      );
+      return;
+    }
     final servicio = ServicioHistorial.instancia;
     final turno = servicio.turnoActual;
-    final cajaService = ServicioCaja.instancia;
     final efectivoDelTurno =
         ServicioAbonos.instancia.efectivoRecibidoEnCaja(
           cajaService.cajaActual?.id ?? '',
@@ -109,7 +142,7 @@ class PantallaCierreCaja extends StatelessWidget {
           false;
     }
     if (!confirmarDiferencia || !context.mounted) return;
-    final cierreAt = DateTime.now();
+    final cierreAt = TiempoHotel.ahoraUtc();
     final cajaCerrada = await cajaService.cerrar(
       desglose: conteo,
       netoTurno: efectivoDelTurno,
@@ -120,7 +153,7 @@ class PantallaCierreCaja extends StatelessWidget {
       numero: cajaCerrada.id,
       totalRegistrado: cajaCerrada.montoCierre,
       aperturaAt: cajaCerrada.aperturaAt,
-      cierreAt: cierreAt,
+      cierreAt: cajaCerrada.cierreAt ?? cierreAt,
     );
     navegador.pop();
     messenger.showSnackBar(
@@ -131,14 +164,17 @@ class PantallaCierreCaja extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Se redibuja sola si se registra un cliente o cambia el turno.
-    return AnimatedBuilder(
-      animation: Listenable.merge([
-        ServicioConsumos.instancia,
-        ServicioHistorial.instancia,
-        ServicioCaja.instancia,
-        ServicioAbonos.instancia,
-      ]),
-      builder: (context, _) => _construir(context),
+    return FutureBuilder<void>(
+      future: _cargaInicial,
+      builder: (context, snapshot) => AnimatedBuilder(
+        animation: Listenable.merge([
+          ServicioConsumos.instancia,
+          ServicioHistorial.instancia,
+          ServicioCaja.instancia,
+          ServicioAbonos.instancia,
+        ]),
+        builder: (context, _) => _construir(context),
+      ),
     );
   }
 
@@ -203,13 +239,250 @@ class PantallaCierreCaja extends StatelessWidget {
     );
   }
 
+  Widget _resumenPersistido(BuildContext context) {
+    final caja = ServicioCaja.instancia;
+    final resumen = caja.resumenServidor;
+    final ventas = caja.ventasServidor;
+    final gastos = caja.gastosServidor;
+    final compras = caja.comprasServidor;
+    double importe(Map<String, dynamic> fila, String campo) =>
+        double.tryParse(fila[campo]?.toString() ?? '') ?? 0;
+    String detalleLineas(dynamic valor) {
+      if (valor is! List || valor.isEmpty) return '';
+      return valor
+          .whereType<Map>()
+          .map((linea) {
+            final producto = linea['product'] is Map
+                ? (linea['product'] as Map)['name']?.toString()
+                : null;
+            final nombre = producto ?? linea['name']?.toString() ?? 'Artículo';
+            return '$nombre × ${linea['quantity'] ?? 1}';
+          })
+          .join(', ');
+    }
+
+    String fecha(dynamic valor) {
+      final instante = DateTime.tryParse(valor?.toString() ?? '');
+      if (instante == null) return '';
+      final local = TiempoHotel.relojElSalvador(instante);
+      return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')} ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    }
+
+    final color = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.receipt_long_outlined),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Movimientos desde la apertura',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Actualizar movimientos',
+                  onPressed: caja.sincronizando ? null : caja.sincronizar,
+                  icon: caja.sincronizando
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                ),
+              ],
+            ),
+            if (resumen == null)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'No se pudo cargar el resumen de caja del servidor.',
+                ),
+              )
+            else ...[
+              Text(
+                'Caja abierta: ${fecha(caja.cajaActual?.aperturaAt.toIso8601String())} · ${ventas.length} ventas',
+                style: TextStyle(color: color.onSurfaceVariant, fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              _filaImporte(
+                'Efectivo inicial',
+                importe(resumen, 'opening_amount'),
+              ),
+              _filaImporte(
+                'Ventas en efectivo',
+                importe(resumen, 'cash_sales'),
+              ),
+              _filaImporte(
+                'Ventas con tarjeta',
+                importe(resumen, 'card_sales'),
+              ),
+              _filaImporte(
+                'Ventas por transferencia',
+                importe(resumen, 'transfer_sales'),
+              ),
+              _filaImporte(
+                'Ventas totales',
+                importe(resumen, 'cash_sales') +
+                    importe(resumen, 'card_sales') +
+                    importe(resumen, 'transfer_sales'),
+              ),
+              _filaImporte('Gastos', importe(resumen, 'expenses')),
+              _filaImporte(
+                'Compras de inventario',
+                importe(resumen, 'inventory_purchases'),
+              ),
+              const Divider(),
+              _filaImporte(
+                'Efectivo esperado',
+                importe(resumen, 'expected_amount'),
+                destacado: true,
+              ),
+              if (caja.datosTurnoServidor?['opening_breakdown'] is Map) ...[
+                const SizedBox(height: 8),
+                const Text('Desglose registrado al abrir'),
+                for (final e in DesgloseEfectivo.fromJson(
+                  Map<String, dynamic>.from(
+                    caja.datosTurnoServidor!['opening_breakdown'] as Map,
+                  ),
+                ).valores.entries.where((e) => e.value > 0))
+                  _filaImporte(e.key, e.value),
+                if ((caja.datosTurnoServidor!['opening_breakdown']
+                            as Map)['montoNoDesglosado']
+                        is num &&
+                    ((caja.datosTurnoServidor!['opening_breakdown']
+                                as Map)['montoNoDesglosado']
+                            as num) >
+                        0)
+                  _filaImporte(
+                    'Otro efectivo inicial',
+                    ((caja.datosTurnoServidor!['opening_breakdown']
+                                as Map)['montoNoDesglosado']
+                            as num)
+                        .toDouble(),
+                  ),
+              ],
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: Text('Detalle de ventas (${ventas.length})'),
+                children: [
+                  if (ventas.isEmpty)
+                    const ListTile(
+                      title: Text('No hay ventas registradas en esta caja.'),
+                    ),
+                  for (final venta in ventas)
+                    ListTile(
+                      dense: true,
+                      title: Text(
+                        '${venta['customer_name'] ?? (venta['guest'] is Map ? (venta['guest'] as Map)['name'] : null) ?? venta['concept'] ?? 'Venta'} · ${dinero(importe(venta, 'total'))}',
+                      ),
+                      subtitle: Text(
+                        '${fecha(venta['created_at'])} · ${venta['payment_method'] ?? ''} · ${venta['concept'] ?? ''}${detalleLineas(venta['items']).isEmpty ? '' : '\n${detalleLineas(venta['items'])}'}',
+                      ),
+                    ),
+                ],
+              ),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: Text('Gastos (${gastos.length})'),
+                children: [
+                  if (gastos.isEmpty)
+                    const ListTile(title: Text('No hay gastos registrados.')),
+                  for (final gasto in gastos)
+                    ListTile(
+                      dense: true,
+                      title: Text(gasto['description']?.toString() ?? 'Gasto'),
+                      subtitle: Text(fecha(gasto['created_at'])),
+                      trailing: Text(dinero(importe(gasto, 'amount'))),
+                    ),
+                ],
+              ),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: Text('Compras de inventario (${compras.length})'),
+                children: [
+                  if (compras.isEmpty)
+                    const ListTile(
+                      title: Text('No hay compras asociadas a esta caja.'),
+                    ),
+                  for (final compra in compras)
+                    ListTile(
+                      dense: true,
+                      title: Text(
+                        (compra['supplier'] is Map
+                                    ? (compra['supplier'] as Map)['name']
+                                    : null)
+                                ?.toString() ??
+                            'Compra de inventario',
+                      ),
+                      subtitle: Text(
+                        '${fecha(compra['created_at'])}${detalleLineas(compra['items']).isEmpty ? '' : '\n${detalleLineas(compra['items'])}'}',
+                      ),
+                      trailing: Text(dinero(importe(compra, 'total'))),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filaImporte(String titulo, double monto, {bool destacado = false}) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                titulo,
+                style: destacado
+                    ? const TextStyle(fontWeight: FontWeight.bold)
+                    : null,
+              ),
+            ),
+            Text(
+              dinero(monto),
+              style: destacado
+                  ? const TextStyle(fontWeight: FontWeight.bold)
+                  : null,
+            ),
+          ],
+        ),
+      );
+
   Widget _construir(BuildContext context) {
     final turno = ServicioHistorial.instancia.turnoActual;
     final cajaActual = ServicioCaja.instancia.cajaActual;
-    final ahora = DateTime.now();
-    final cobrosEnEfectivo = ServicioAbonos.instancia.efectivoRecibidoEnCaja(
-      cajaActual?.id ?? '',
+    final ahora = TiempoHotel.relojElSalvador(TiempoHotel.ahoraUtc());
+    double resumenNumero(String key, double alternativo) =>
+        double.tryParse(
+          ServicioCaja.instancia.resumenServidor?[key]?.toString() ?? '',
+        ) ??
+        alternativo;
+    final cobrosEnEfectivo = resumenNumero(
+      'cash_sales',
+      ServicioAbonos.instancia.efectivoRecibidoEnCaja(cajaActual?.id ?? ''),
     );
+    final comprasServidor = resumenNumero(
+      'inventory_purchases',
+      turno.totalGastosInventario,
+    );
+    final gastosServidor = resumenNumero('expenses', turno.totalGastos);
+    final ventasServidor = ServicioCaja.instancia.ventasServidor;
+    final comprasDetalle = ServicioCaja.instancia.comprasServidor;
+    final gastosDetalle = ServicioCaja.instancia.gastosServidor;
+    final totalVentasServidor =
+        resumenNumero('cash_sales', turno.totalVentas) +
+        resumenNumero('card_sales', 0) +
+        resumenNumero('transfer_sales', 0);
     final efectivoEsperado = ServicioCaja.instancia.esperadoAlCerrar(
       cobrosEnEfectivo - turno.gastosTotales,
     );
@@ -217,6 +490,12 @@ class PantallaCierreCaja extends StatelessWidget {
     final pendientes = turno.clientes.where((c) => !c.pagado).toList();
     final pagados = turno.clientes.where((c) => c.pagado).toList();
     double suma(List<ConsumoCliente> l) => l.fold(0.0, (s, c) => s + c.total);
+    String fechaTabla(dynamic valor) {
+      final instante = DateTime.tryParse(valor?.toString() ?? '');
+      if (instante == null) return '—';
+      final local = TiempoHotel.relojElSalvador(instante);
+      return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')} ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    }
 
     Widget tarjeta(ConsumoCliente c) => TarjetaConsumoCliente(
       consumo: c,
@@ -321,8 +600,8 @@ class PantallaCierreCaja extends StatelessWidget {
                               child: _DesgloseCaja(
                                 apertura: cajaActual?.montoApertura ?? 0,
                                 cobrosEnEfectivo: cobrosEnEfectivo,
-                                compras: turno.totalGastosInventario,
-                                otrosGastos: turno.totalGastos,
+                                compras: comprasServidor,
+                                otrosGastos: gastosServidor,
                                 esperado: efectivoEsperado,
                               ),
                             ),
@@ -335,8 +614,8 @@ class PantallaCierreCaja extends StatelessWidget {
                       _DesgloseCaja(
                         apertura: cajaActual?.montoApertura ?? 0,
                         cobrosEnEfectivo: cobrosEnEfectivo,
-                        compras: turno.totalGastosInventario,
-                        otrosGastos: turno.totalGastos,
+                        compras: comprasServidor,
+                        otrosGastos: gastosServidor,
                         esperado: efectivoEsperado,
                       ),
                     ],
@@ -345,11 +624,13 @@ class PantallaCierreCaja extends StatelessWidget {
               },
             ),
             const SizedBox(height: 12),
+            _resumenPersistido(context),
+            const SizedBox(height: 12),
             ResumenTurno(
-              ventas: turno.totalVentas,
-              cantidadVentas: turno.cantidadVentas,
-              gastos: turno.gastosTotales,
-              cantidadGastos: turno.cantidadGastos,
+              ventas: totalVentasServidor,
+              cantidadVentas: ventasServidor.length,
+              gastos: gastosServidor + comprasServidor,
+              cantidadGastos: gastosDetalle.length + comprasDetalle.length,
               habitacionesOcupadas: turno.habitacionesOcupadas,
               habitacionesTotal: turno.habitacionesTotal,
               totalEnCaja: efectivoEsperado,
@@ -358,34 +639,58 @@ class PantallaCierreCaja extends StatelessWidget {
             SeccionTabla(
               icono: Icons.shopping_cart,
               titulo: 'Detalle de ventas',
-              encabezados: const ['Tipo', 'Cantidad', 'Monto'],
+              encabezados: const ['Cliente / concepto', 'Pago', 'Monto'],
               filas: [
-                for (final v in turno.ventas)
+                for (final v in ventasServidor)
                   FilaTabla(
-                    CeldaIcono(v.tipo.icono, v.tipo.etiqueta),
-                    '${v.cantidad}',
-                    dinero(v.monto),
+                    CeldaIcono(
+                      Icons.receipt_long_outlined,
+                      v['customer_name']?.toString() ??
+                          (v['guest'] is Map
+                              ? (v['guest'] as Map)['name']?.toString()
+                              : null) ??
+                          v['concept']?.toString() ??
+                          'Venta',
+                    ),
+                    v['payment_method']?.toString() ?? '—',
+                    dinero(double.tryParse(v['total']?.toString() ?? '') ?? 0),
                   ),
               ],
               etiquetaTotal: 'Total',
-              total: dinero(turno.totalVentas),
+              total: dinero(totalVentasServidor),
             ),
             const SizedBox(height: 12),
-            // Lo que el hotel gastó comprando productos o reponiendo stock
+            // Gastos y compras persistidos en la caja actual.
             SeccionTabla(
               icono: Icons.inventory_2_outlined,
               titulo: 'Detalle de gastos',
-              encabezados: const ['Producto', 'Detalle', 'Monto'],
+              encabezados: const ['Gasto / compra', 'Fecha', 'Monto'],
               filas: [
-                for (final g in turno.gastosInventario)
+                for (final g in gastosDetalle)
                   FilaTabla(
-                    CeldaIcono(Icons.inventory_2_outlined, g.producto),
-                    g.detalle,
-                    dinero(g.monto),
+                    CeldaIcono(
+                      Icons.money_off_outlined,
+                      g['description']?.toString() ?? 'Gasto',
+                    ),
+                    fechaTabla(g['created_at']),
+                    dinero(double.tryParse(g['amount']?.toString() ?? '') ?? 0),
+                  ),
+                for (final g in comprasDetalle)
+                  FilaTabla(
+                    CeldaIcono(
+                      Icons.inventory_2_outlined,
+                      (g['supplier'] is Map
+                                  ? (g['supplier'] as Map)['name']
+                                  : null)
+                              ?.toString() ??
+                          'Compra de inventario',
+                    ),
+                    fechaTabla(g['created_at']),
+                    dinero(double.tryParse(g['total']?.toString() ?? '') ?? 0),
                   ),
               ],
-              etiquetaTotal: 'Total inventario',
-              total: dinero(turno.totalGastosInventario),
+              etiquetaTotal: 'Total de gastos y compras',
+              total: dinero(gastosServidor + comprasServidor),
             ),
             // Si se corrigió algún gasto: lo que se anotó antes y lo que quedó
             const SizedBox(height: 8),

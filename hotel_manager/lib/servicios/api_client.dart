@@ -501,6 +501,14 @@ class ApiClient {
 
   /// Devuelve el turno abierto del usuario, o null si no tiene ninguno.
   Future<Map<String, dynamic>?> currentShift() async {
+    final details = await currentShiftDetails();
+    if (details == null) return null;
+    final shift = details['shift'];
+    return shift is Map ? Map<String, dynamic>.from(shift) : details;
+  }
+
+  /// Resumen y movimientos persistidos desde la apertura del turno.
+  Future<Map<String, dynamic>?> currentShiftDetails() async {
     try {
       return _map(await _request('GET', '/shifts/current'));
     } on ApiException catch (e) {
@@ -509,11 +517,17 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> openShift(double openingAmount) async => _map(
+  Future<Map<String, dynamic>> openShift(
+    double openingAmount, {
+    Map<String, dynamic>? breakdown,
+  }) async => _map(
     await _request(
       'POST',
       '/shifts/open',
-      body: {'opening_amount': openingAmount},
+      body: {
+        'opening_amount': openingAmount,
+        if (breakdown != null) 'opening_breakdown': breakdown,
+      },
     ),
   );
 
@@ -522,12 +536,14 @@ class ApiClient {
   Future<Map<String, dynamic>> closeShift(
     double countedAmount, {
     String? notes,
+    Map<String, dynamic>? breakdown,
   }) async => _map(
     await _request(
       'POST',
       '/shifts/close',
       body: {
         'counted_amount': countedAmount,
+        if (breakdown != null) 'counted_breakdown': breakdown,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
       },
     ),
