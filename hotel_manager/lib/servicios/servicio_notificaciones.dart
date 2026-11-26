@@ -8,6 +8,7 @@ import '../modelos/habitacion.dart';
 import 'servicio_configuracion.dart';
 import 'servicio_habitaciones.dart';
 import 'servicio_estadias.dart';
+import '../utilidades/tiempo_hotel.dart';
 
 /// Vigila estadías e inventario mientras la app está abierta.
 class ServicioNotificaciones extends ChangeNotifier {
@@ -61,7 +62,7 @@ class ServicioNotificaciones extends ChangeNotifier {
   }
 
   void _revisar() {
-    final ahora = DateTime.now();
+    final ahora = TiempoHotel.ahoraUtc();
     for (final entrada in ServicioEstadias.instancia.todas.entries) {
       final habitacion = entrada.key;
       final estadia = entrada.value;
@@ -124,9 +125,12 @@ class ServicioNotificaciones extends ChangeNotifier {
       final clave = estadia == null
           ? null
           : '$habitacion-${estadia.entrada.microsecondsSinceEpoch}';
-      final sigueOcupada = ServicioHabitaciones.instancia.buscar(habitacion)
-          ?.estado == EstadoHabitacion.ocupada;
-      return clave == null || !idsEstadiaActiva.contains(clave) || !sigueOcupada;
+      final sigueOcupada =
+          ServicioHabitaciones.instancia.buscar(habitacion)?.estado ==
+          EstadoHabitacion.ocupada;
+      return clave == null ||
+          !idsEstadiaActiva.contains(clave) ||
+          !sigueOcupada;
     });
     if (_notificaciones.length != cantidadAntes) notifyListeners();
 

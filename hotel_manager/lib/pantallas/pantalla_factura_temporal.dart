@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../servicios/servicio_estadias.dart';
 import '../utilidades/formato.dart';
+import '../utilidades/tiempo_hotel.dart';
 
 /// Consulta la instantánea remota de la estadía. Los abonos no aplican aquí:
 /// la habitación se paga al ingreso y los cargos adicionales al checkout.
@@ -28,7 +29,7 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
   void initState() {
     super.initState();
     ServicioEstadias.instancia.sincronizar();
-    _reloj = Timer.periodic(const Duration(minutes: 1), (_) {
+    _reloj = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
   }
@@ -40,9 +41,9 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
   }
 
   String _restante(DateTime salida) {
-    final d = salida.difference(DateTime.now());
-    if (d.isNegative) return 'Estadía vencida';
-    return '${d.inHours}h ${d.inMinutes.remainder(60).toString().padLeft(2, '0')}m restantes';
+    final d = salida.difference(TiempoHotel.ahoraUtc());
+    if (d.isNegative) return 'Vencida hace ${TiempoHotel.duracion(d)}';
+    return '${TiempoHotel.duracion(d)} restantes';
   }
 
   @override
@@ -60,11 +61,13 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(service.cargando
-                      ? 'Cargando datos del servidor…'
-                      : service.error == null
-                          ? 'No hay una estadía activa en esta habitación.'
-                          : 'No se pudo cargar la estadía: ${service.error}'),
+                  Text(
+                    service.cargando
+                        ? 'Cargando datos del servidor…'
+                        : service.error == null
+                        ? 'No hay una estadía activa en esta habitación.'
+                        : 'No se pudo cargar la estadía: ${service.error}',
+                  ),
                   if (!service.cargando)
                     TextButton.icon(
                       onPressed: service.sincronizar,
@@ -77,10 +80,12 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
           );
         }
         final charges = [...stay.cargosIniciales, ...stay.cargosTienda];
-        final progress = stay.salida.difference(stay.entrada).inSeconds <= 0
+        final ahora = TiempoHotel.ahoraUtc();
+        final duracionTotal = stay.salida.difference(stay.entrada).inSeconds;
+        final transcurrido = ahora.difference(stay.entrada).inSeconds;
+        final progress = duracionTotal <= 0
             ? 0.0
-            : DateTime.now().difference(stay.entrada).inSeconds /
-                  stay.salida.difference(stay.entrada).inSeconds;
+            : transcurrido / duracionTotal;
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -90,9 +95,15 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Habitación ${widget.habitacion} · ${widget.huesped}',
-                        style: Theme.of(context).textTheme.titleLarge),
+                    Text(
+                      'Habitación ${widget.habitacion} · ${widget.huesped}',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                     const SizedBox(height: 8),
+                    Text(
+                      'Cronómetro: ${TiempoHotel.duracion(Duration(seconds: transcurrido))} transcurridos',
+                    ),
+                    const SizedBox(height: 4),
                     Text(_restante(stay.salida)),
                     const SizedBox(height: 12),
                     LinearProgressIndicator(value: progress.clamp(0.0, 1.0)),
@@ -106,25 +117,38 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Cuenta del servidor', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Cuenta del servidor',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     _fila('Habitación · pagada al ingreso', stay.precioEstadia),
                     const Divider(),
-                    Text('Cargos adicionales', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Cargos adicionales',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     for (final charge in charges)
                       _fila(
                         '${charge.nombre}${charge.cantidad > 1 ? ' × ${charge.cantidad}' : ''}${charge.pagado ? ' · pagado' : ''}',
                         charge.importe,
                       ),
-                    if (charges.isEmpty) const Text('Todavía no hay cargos adicionales.'),
+                    if (charges.isEmpty)
+                      const Text('Todavía no hay cargos adicionales.'),
                     const Divider(),
-                    _fila('Saldo adicional al checkout', stay.saldoCargos, negrita: true),
+                    _fila(
+                      'Saldo adicional al checkout',
+                      stay.saldoCargos,
+                      negrita: true,
+                    ),
                   ],
                 ),
               ),
             ),
             const Padding(
               padding: EdgeInsets.all(8),
-              child: Text('La habitación se cobra al ingreso; los cargos pendientes se pagan al finalizar.'),
+              child: Text(
+                'La habitación se cobra al ingreso; los cargos pendientes se pagan al finalizar.',
+              ),
             ),
           ],
         );
@@ -136,8 +160,16 @@ class _PantallaFacturaTemporalState extends State<PantallaFacturaTemporal> {
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: Row(
       children: [
-        Expanded(child: Text(label, style: TextStyle(fontWeight: negrita ? FontWeight.bold : null))),
-        Text(formatearDinero(amount), style: TextStyle(fontWeight: negrita ? FontWeight.bold : null)),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(fontWeight: negrita ? FontWeight.bold : null),
+          ),
+        ),
+        Text(
+          formatearDinero(amount),
+          style: TextStyle(fontWeight: negrita ? FontWeight.bold : null),
+        ),
       ],
     ),
   );

@@ -7,6 +7,8 @@ import '../../servicios/api_client.dart';
 import '../modelos/articulo_tienda.dart';
 import '../servicios/carrito_tienda.dart';
 import '../../inventario/servicios/servicio_inventario.dart';
+import '../../modelos/abono.dart';
+import '../../widgets/dialogo_cobro.dart';
 
 /// Abre el carrito como hoja inferior (bottom sheet).
 Future<void> mostrarCarrito(BuildContext context, CarritoTienda carrito) {
@@ -68,7 +70,11 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
     final stayId = huesped.estadiaIdApi;
     if (stayId == null) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('No se encontró la estadía activa en el servidor. Actualiza las habitaciones e inténtalo de nuevo.')),
+        const SnackBar(
+          content: Text(
+            'No se encontró la estadía activa en el servidor. Actualiza las habitaciones e inténtalo de nuevo.',
+          ),
+        ),
       );
       return;
     }
@@ -76,30 +82,26 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Pago de productos'),
-        content: const Text('¿Cobrar ahora o agregar el consumo al saldo de la estadía?'),
+        content: const Text(
+          '¿Cobrar ahora o agregar el consumo al saldo de la estadía?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Pagar al final')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cobrar ahora')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Pagar al final'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Cobrar ahora'),
+          ),
         ],
       ),
     );
     if (pagarAhora == null || !mounted) return;
-    String? metodoPago;
+    DatosCobro? pago;
     if (pagarAhora) {
-      metodoPago = await showDialog<String>(
-        context: context,
-        builder: (ctx) => SimpleDialog(
-          title: const Text('Forma de pago'),
-          children: [
-            for (final metodo in const ['efectivo', 'tarjeta', 'transferencia'])
-              SimpleDialogOption(
-                onPressed: () => Navigator.pop(ctx, metodo),
-                child: Text(metodo[0].toUpperCase() + metodo.substring(1)),
-              ),
-          ],
-        ),
-      );
-      if (metodoPago == null || !mounted) return;
+      pago = await mostrarDialogoCobro(context, saldo: _c.totalPagar);
+      if (pago == null || !mounted) return;
     }
 
     setState(() => _enviando = true);
@@ -114,7 +116,7 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
             },
         ],
         payNow: pagarAhora,
-        paymentMethod: metodoPago,
+        paymentMethod: pago?.metodo.name,
       );
       await ServicioInventario.instancia.sincronizar();
       if (!mounted) return;
@@ -269,7 +271,10 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                               child: SizedBox(
                                 width: double.infinity,
                                 child: FilledButton(
-                                  onPressed: (n == 0 || _c.huesped == null || _enviando)
+                                  onPressed:
+                                      (n == 0 ||
+                                          _c.huesped == null ||
+                                          _enviando)
                                       ? null
                                       : _confirmar,
                                   style: FilledButton.styleFrom(
@@ -283,7 +288,9 @@ class _EstadoHojaCarrito extends State<HojaCarrito> {
                                     ),
                                   ),
                                   child: Text(
-                                    _enviando ? 'Registrando…' : 'Registrar consumo',
+                                    _enviando
+                                        ? 'Registrando…'
+                                        : 'Registrar consumo',
                                     style: const TextStyle(fontSize: 16),
                                   ),
                                 ),

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../modelos/habitacion.dart';
+import '../utilidades/tiempo_hotel.dart';
 import 'api_client.dart';
 
 class CargoEstadia {
@@ -9,7 +9,12 @@ class CargoEstadia {
   final int cantidad;
   final bool pagado;
 
-  const CargoEstadia(this.nombre, this.precio, {this.cantidad = 1, this.pagado = false});
+  const CargoEstadia(
+    this.nombre,
+    this.precio, {
+    this.cantidad = 1,
+    this.pagado = false,
+  });
   double get importe => precio * cantidad;
 
   factory CargoEstadia.fromApi(Map<String, dynamic> json) => CargoEstadia(
@@ -38,7 +43,8 @@ class DatosEstadia {
     this.huespedId,
   });
 
-  double get totalProductos => [...cargosIniciales, ...cargosTienda].fold(0, (s, c) => s + c.importe);
+  double get totalProductos =>
+      [...cargosIniciales, ...cargosTienda].fold(0, (s, c) => s + c.importe);
   double get total => precioEstadia + totalProductos;
   double get saldoCargos => [...cargosIniciales, ...cargosTienda]
       .where((charge) => !charge.pagado)
@@ -53,16 +59,19 @@ class DatosEstadia {
         : const <String, dynamic>{};
     final charges = json['charges'] is List
         ? (json['charges'] as List)
-            .whereType<Map>()
-            .map((row) => CargoEstadia.fromApi(Map<String, dynamic>.from(row)))
-            .toList()
+              .whereType<Map>()
+              .map(
+                (row) => CargoEstadia.fromApi(Map<String, dynamic>.from(row)),
+              )
+              .toList()
         : <CargoEstadia>[];
     final units = int.tryParse(json['rate_units']?.toString() ?? '') ?? 1;
     return DatosEstadia(
       id: json['id'].toString(),
-      entrada: DateTime.parse(json['check_in_at'].toString()),
-      salida: DateTime.parse(json['expected_checkout_at'].toString()),
-      precioEstadia: (double.tryParse(rate['price']?.toString() ?? '') ?? 0) * units,
+      entrada: TiempoHotel.desdeApi(json['check_in_at'].toString()),
+      salida: TiempoHotel.desdeApi(json['expected_checkout_at'].toString()),
+      precioEstadia:
+          (double.tryParse(rate['price']?.toString() ?? '') ?? 0) * units,
       cargosIniciales: const [],
       cargosTienda: charges,
       huespedId: (json['guest_id'] ?? guest['id'])?.toString(),
@@ -106,9 +115,14 @@ class ServicioEstadias extends ChangeNotifier {
         }
         if (response is Map) {
           final meta = response['meta'];
-          lastPage = int.tryParse(
-                (response['last_page'] ?? (meta is Map ? meta['last_page'] : null))?.toString() ?? '',
-              ) ?? page;
+          lastPage =
+              int.tryParse(
+                (response['last_page'] ??
+                            (meta is Map ? meta['last_page'] : null))
+                        ?.toString() ??
+                    '',
+              ) ??
+              page;
         }
         page++;
       } while (page <= lastPage);

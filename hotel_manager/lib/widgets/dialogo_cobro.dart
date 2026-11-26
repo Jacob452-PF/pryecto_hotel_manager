@@ -29,7 +29,7 @@ Future<DatosCobro?> mostrarDialogoCobro(
     return (monto: monto, metodo: metodo, efectivoEntregado: efectivo);
   }
 
-  final result = await showDialog<DatosCobro>(
+  final cobroCapturado = await showDialog<DatosCobro>(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, refresh) {
@@ -96,7 +96,7 @@ Future<DatosCobro?> mostrarDialogoCobro(
             ),
             FilledButton(
               onPressed: cobro == null ? null : () => Navigator.pop(ctx, cobro),
-              child: Text(permitirAbono ? 'Registrar abono' : 'Confirmar pago'),
+              child: const Text('Continuar'),
             ),
           ],
         );
@@ -105,5 +105,54 @@ Future<DatosCobro?> mostrarDialogoCobro(
   );
   montoCtrl.dispose();
   efectivoCtrl.dispose();
-  return result;
+  if (cobroCapturado == null || !context.mounted) return null;
+
+  final cambio = cobroCapturado.efectivoEntregado - cobroCapturado.monto;
+  final confirmado = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Confirmar cobro'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Monto a cobrar: ${formatearDinero(cobroCapturado.monto)}'),
+          const SizedBox(height: 6),
+          Text('Forma de pago: ${cobroCapturado.metodo.etiqueta}'),
+          if (cobroCapturado.metodo == MetodoAbono.efectivo) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Efectivo recibido: ${formatearDinero(cobroCapturado.efectivoEntregado)}',
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'VUELTO A DEVOLVER\n${formatearDinero(cambio)}',
+                textAlign: TextAlign.center,
+                style: Theme.of(ctx).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Volver'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Confirmar cobro'),
+        ),
+      ],
+    ),
+  );
+  return confirmado == true ? cobroCapturado : null;
 }

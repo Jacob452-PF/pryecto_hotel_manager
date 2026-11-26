@@ -1,11 +1,13 @@
 import 'tipo_cuarto.dart';
 import 'tarifa.dart';
+import '../utilidades/tiempo_hotel.dart';
 
 enum EstadoReserva { activa, vencida, cancelada, convertida }
 
 class Reserva {
   final String id;
   final String huespedId;
+
   /// Las solicitudes nuevas no asignan habitación; se conserva nullable para
   /// leer reservas antiguas que sí guardaban un número.
   final String? habitacionId;
@@ -84,9 +86,7 @@ class Reserva {
     id: j['id'] as String,
     huespedId: j['huespedId'] as String,
     habitacionId: j['habitacionId'] as String?,
-    tipoCuarto: TipoCuarto.desdeNombre(
-      j['tipoCuarto'] as String? ?? 'comun',
-    ),
+    tipoCuarto: TipoCuarto.desdeNombre(j['tipoCuarto'] as String? ?? 'comun'),
     camas: j['camas'] as int? ?? 1,
     tarifa: TipoTarifa.values.firstWhere(
       (e) => e.name == j['tarifa'],
@@ -115,8 +115,10 @@ class Reserva {
         ? Map<String, dynamic>.from(json['rate'] as Map)
         : null;
     final guestId = json['guest_id'] ?? (json['guest'] as Map?)?['id'];
-    final checkIn = DateTime.parse(json['check_in_at'].toString());
-    final checkout = DateTime.parse(json['expected_checkout_at'].toString());
+    final checkIn = TiempoHotel.desdeApi(json['check_in_at'].toString());
+    final checkout = TiempoHotel.desdeApi(
+      json['expected_checkout_at'].toString(),
+    );
     final hours = int.tryParse(rate?['hours']?.toString() ?? '') ?? 12;
     final status = json['status']?.toString();
 
@@ -133,12 +135,12 @@ class Reserva {
       cantidad: int.tryParse(json['rate_units']?.toString() ?? '') ?? 1,
       inicio: checkIn,
       fin: checkout,
-      total: double.tryParse(
+      total:
+          double.tryParse(
             (json['agreed_price'] ?? rate?['price'] ?? 0).toString(),
           ) ??
           0,
-      montoAbonado:
-          double.tryParse(json['paid_amount']?.toString() ?? '') ?? 0,
+      montoAbonado: double.tryParse(json['paid_amount']?.toString() ?? '') ?? 0,
       saldoPendiente:
           double.tryParse(json['balance']?.toString() ?? '') ??
           double.tryParse((json['agreed_price'] ?? 0).toString()) ??
@@ -146,12 +148,14 @@ class Reserva {
       estado: switch (status) {
         'cancelada' => EstadoReserva.cancelada,
         'convertida' => EstadoReserva.convertida,
-        _ when status == 'vencida' || checkout.isBefore(DateTime.now()) =>
+        _
+            when status == 'vencida' ||
+                checkout.isBefore(TiempoHotel.ahoraUtc()) =>
           EstadoReserva.vencida,
         _ => EstadoReserva.activa,
       },
-      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
-          checkIn,
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ?? checkIn,
     );
   }
 }
