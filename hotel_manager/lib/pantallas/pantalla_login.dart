@@ -14,7 +14,6 @@ import '../tema/colores_app.dart';
 import '../tema/dimensiones.dart';
 import '../tema/estilos_texto.dart';
 import 'contenedor_principal.dart';
-import 'pantalla_solicitar_usuario.dart';
 
 class PantallaLogin extends StatefulWidget {
   const PantallaLogin({super.key});
@@ -207,16 +206,6 @@ class _EstadoPantallaLogin extends State<PantallaLogin> {
                                 )
                               : const Text('Iniciar sesión'),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PantallaSolicitarUsuario(),
-                          ),
-                        ),
-                        child: const Text('Solicitar un usuario nuevo'),
                       ),
                     ],
                   ),

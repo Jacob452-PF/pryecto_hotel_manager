@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'servicios/api_client.dart';
 
 import 'pantallas/pantalla_login.dart';
+import 'pantallas/pantalla_inicio_app.dart';
 import 'servicios/servicio_tema.dart';
 import 'servicios/servicio_configuracion.dart';
 import 'tema/tema_app.dart';
@@ -36,7 +37,7 @@ class MiApp extends StatelessWidget {
         navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
         theme: TemaApp.crear(ServicioTema.instancia.paleta),
-        home: const PantallaLogin(),
+        home: const PantallaInicioApp(),
         routes: {'/login': (_) => const PantallaLogin()},
       ),
     );
