@@ -106,7 +106,8 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
         final sesion = ServicioSesion.instancia.usuario;
         final todas = ServicioHabitaciones.instancia.habitaciones.where((h) {
           if (sesion?.rol == RolUsuario.limpieza) {
-            return h.asignadoLimpiezaId == sesion?.id;
+            return h.estado == EstadoHabitacion.limpieza ||
+                h.asignadoLimpiezaId == sesion?.id;
           }
           if (sesion?.rol == RolUsuario.mantenimiento) {
             return h.asignadoMantenimientoId == sesion?.id;
@@ -135,6 +136,12 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
             _contar(todas, EstadoHabitacion.mantenimiento),
             ColoresApp.mantenimiento,
             Icons.build,
+          ),
+          DatoResumen(
+            'Limpieza',
+            _contar(todas, EstadoHabitacion.limpieza),
+            ColoresApp.limpieza,
+            Icons.cleaning_services,
           ),
           DatoResumen(
             'Reservadas',
@@ -187,7 +194,8 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
                         ),
                       ),
                       if (sesion?.rol == RolUsuario.admin ||
-                          sesion?.rol == RolUsuario.recepcion)
+                          sesion?.rol == RolUsuario.recepcion ||
+                          sesion?.rol == RolUsuario.limpieza)
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton.icon(
