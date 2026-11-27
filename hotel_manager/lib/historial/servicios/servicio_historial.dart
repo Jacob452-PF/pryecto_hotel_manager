@@ -112,6 +112,33 @@ class ServicioHistorial extends ChangeNotifier {
     final locales = ServicioConsumos.instancia.clientes;
     final agrupados = <String, _ClienteTurnoServidor>{};
 
+    // Count stays independently of the guest registry and of whether the stay
+    // produced a completed sale (for example, a complimentary stay).
+    for (final estadia in ServicioCaja.instancia.estadiasServidor) {
+      final estadiaId = estadia['id']?.toString();
+      if (estadiaId == null || estadiaId.isEmpty) continue;
+      final habitacion = estadia['room'] is Map
+          ? Map<String, dynamic>.from(estadia['room'] as Map)
+          : <String, dynamic>{};
+      final numeroHabitacion = habitacion['number']?.toString();
+      final huesped = estadia['guest_name']?.toString().trim();
+      agrupados.putIfAbsent(
+        'estadia:$estadiaId',
+        () => _ClienteTurnoServidor(
+          id: 'estadia:$estadiaId',
+          cliente: huesped == null || huesped.isEmpty
+              ? 'Cliente sin registro'
+              : huesped,
+          codigo: numeroHabitacion == null || numeroHabitacion.isEmpty
+              ? 'Estadía #$estadiaId'
+              : '#$numeroHabitacion',
+          registradoPor: estadia['user'] is Map
+              ? '${(estadia['user'] as Map)['name'] ?? ''}'
+              : '',
+        ),
+      );
+    }
+
     for (final venta in ServicioCaja.instancia.ventasServidor) {
       final ventaId = venta['id']?.toString();
       if (ventaId == null || ventaId.isEmpty) continue;

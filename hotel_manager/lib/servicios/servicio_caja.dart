@@ -19,6 +19,7 @@ class ServicioCaja extends ChangeNotifier {
   Future<void>? _futuraSincronizacion;
   Map<String, dynamic>? _resumenServidor;
   List<Map<String, dynamic>> _ventasServidor = const [];
+  List<Map<String, dynamic>> _estadiasServidor = const [];
   List<Map<String, dynamic>> _gastosServidor = const [];
   List<Map<String, dynamic>> _comprasServidor = const [];
   Map<String, dynamic>? _datosTurnoServidor;
@@ -29,6 +30,8 @@ class ServicioCaja extends ChangeNotifier {
       _resumenServidor == null ? null : Map.unmodifiable(_resumenServidor!);
   List<Map<String, dynamic>> get ventasServidor =>
       List.unmodifiable(_ventasServidor);
+  List<Map<String, dynamic>> get estadiasServidor =>
+      List.unmodifiable(_estadiasServidor);
   List<Map<String, dynamic>> get gastosServidor =>
       List.unmodifiable(_gastosServidor);
   List<Map<String, dynamic>> get comprasServidor =>
@@ -87,6 +90,7 @@ class ServicioCaja extends ChangeNotifier {
           ? Map<String, dynamic>.from(detalleTurno!['summary'] as Map)
           : null;
       _ventasServidor = _mapasDe(detalleTurno?['sales']);
+      _estadiasServidor = _mapasDe(detalleTurno?['stays']);
       _gastosServidor = _mapasDe(detalleTurno?['expenses']);
       _comprasServidor = _mapasDe(detalleTurno?['purchases']);
       _consultada = true;
@@ -125,6 +129,10 @@ class ServicioCaja extends ChangeNotifier {
           _cajas[_cajas.indexWhere((item) => item.id == id)] = caja;
         }
       } else {
+        _ventasServidor = const [];
+        _estadiasServidor = const [];
+        _gastosServidor = const [];
+        _comprasServidor = const [];
         _cajas.removeWhere(
           (caja) => caja.id.startsWith('api-shift-') && caja.abierta,
         );
@@ -220,6 +228,9 @@ class ServicioCaja extends ChangeNotifier {
     _ventasServidor = _mapasDe(response['sales']).isEmpty
         ? _ventasServidor
         : _mapasDe(response['sales']);
+    _estadiasServidor = _mapasDe(response['stays']).isEmpty
+        ? _estadiasServidor
+        : _mapasDe(response['stays']);
     _gastosServidor = _mapasDe(response['expenses']).isEmpty
         ? _gastosServidor
         : _mapasDe(response['expenses']);
