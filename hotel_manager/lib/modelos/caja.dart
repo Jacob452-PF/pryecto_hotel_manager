@@ -59,6 +59,7 @@ class DesgloseEfectivo {
 class Caja {
   final String id;
   final String usuarioId;
+  final String? usuarioNombre;
   final DateTime aperturaAt;
   final DateTime? cierreAt;
   final double montoApertura;
@@ -72,6 +73,7 @@ class Caja {
   const Caja({
     required this.id,
     required this.usuarioId,
+    this.usuarioNombre,
     required this.aperturaAt,
     this.cierreAt,
     required this.montoApertura,
@@ -92,6 +94,7 @@ class Caja {
   }) => Caja(
     id: id,
     usuarioId: usuarioId,
+    usuarioNombre: usuarioNombre,
     aperturaAt: aperturaAt,
     cierreAt: fecha,
     montoApertura: montoApertura,
@@ -105,6 +108,7 @@ class Caja {
   Map<String, dynamic> toJson() => {
     'id': id,
     'usuarioId': usuarioId,
+    'usuarioNombre': usuarioNombre,
     'aperturaAt': aperturaAt.toIso8601String(),
     'cierreAt': cierreAt?.toIso8601String(),
     'montoApertura': montoApertura,
@@ -118,6 +122,7 @@ class Caja {
   factory Caja.fromJson(Map<String, dynamic> j) => Caja(
     id: j['id'] as String,
     usuarioId: j['usuarioId'] as String,
+    usuarioNombre: j['usuarioNombre'] as String?,
     aperturaAt: DateTime.parse(j['aperturaAt'] as String),
     cierreAt: DateTime.tryParse(j['cierreAt'] as String? ?? ''),
     montoApertura: (j['montoApertura'] as num).toDouble(),

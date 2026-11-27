@@ -79,7 +79,7 @@ class PantallaDetalleCaja extends StatelessWidget {
                       style: const TextStyle(fontSize: 13),
                     ),
                   Text(
-                    'Cerró: ${fechaHora(caja.fecha)}',
+                    caja.abierta ? 'Caja abierta' : 'Cerró: ${fechaHora(caja.fecha)}',
                     style: const TextStyle(fontSize: 13),
                   ),
                   const SizedBox(height: 6),
@@ -93,7 +93,7 @@ class PantallaDetalleCaja extends StatelessWidget {
                           style: const TextStyle(fontSize: 14),
                         ),
                       ),
-                      const EtiquetaPill('Cerrada'),
+                      EtiquetaPill(caja.abierta ? 'Abierta' : 'Cerrada'),
                     ],
                   ),
                 ],

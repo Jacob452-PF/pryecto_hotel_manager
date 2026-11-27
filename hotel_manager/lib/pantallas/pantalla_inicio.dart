@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../modelos/habitacion.dart';
 import '../modelos/usuario.dart';
 import '../servicios/servicio_habitaciones.dart';
+import '../servicios/servicio_reservas.dart';
 import '../servicios/servicio_sesion.dart';
 import '../tema/colores_app.dart';
 import '../tema/estilos_texto.dart';
@@ -15,6 +16,7 @@ import '../widgets/tarjeta_seccion.dart';
 import 'pantalla_nuevo_huesped.dart';
 import 'pantalla_nueva_reserva.dart';
 import 'pantalla_tareas.dart';
+import 'pantalla_agenda.dart';
 
 class PantallaInicio extends StatefulWidget {
   const PantallaInicio({super.key});
@@ -101,7 +103,7 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: ServicioHabitaciones.instancia,
+      listenable: Listenable.merge([ServicioHabitaciones.instancia, ServicioReservas.instancia]),
       builder: (context, _) {
         final sesion = ServicioSesion.instancia.usuario;
         final todas = ServicioHabitaciones.instancia.habitaciones.where((h) {
@@ -145,7 +147,7 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
           ),
           DatoResumen(
             'Reservadas',
-            _contar(todas, EstadoHabitacion.reservada),
+            ServicioReservas.instancia.reservas.where((r) => r.estado.name == 'activa').length,
             ColoresApp.reservada,
             Icons.event,
           ),
@@ -213,7 +215,21 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
                         spacing: 10,
                         runSpacing: 10,
                         children: [
-                          for (final dato in resumen) CuadroResumen(dato: dato),
+                          for (final dato in resumen)
+                            CuadroResumen(
+                              dato: dato,
+                              onTap: dato.etiqueta == 'Reservadas'
+                                  ? () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => Scaffold(
+                                          appBar: AppBar(title: const Text('Reservas pendientes')),
+                                          body: const PantallaAgenda(mostrarTodasReservas: true),
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                            ),
                         ],
                       ),
                       const SizedBox(height: 16),

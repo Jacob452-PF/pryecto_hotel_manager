@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../modelos/reserva.dart';
+import '../modelos/habitacion.dart';
 import '../servicios/servicio_huespedes.dart';
 import '../servicios/servicio_habitaciones.dart';
 import '../servicios/servicio_reservas.dart';
@@ -11,7 +12,8 @@ import '../widgets/dialogo_cobro.dart';
 import 'pantalla_nueva_reserva.dart';
 
 class PantallaAgenda extends StatefulWidget {
-  const PantallaAgenda({super.key});
+  final bool mostrarTodasReservas;
+  const PantallaAgenda({super.key, this.mostrarTodasReservas = false});
 
   @override
   State<PantallaAgenda> createState() => _PantallaAgendaState();
@@ -69,6 +71,12 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
   }
 
   Future<void> _crearEstadia(Reserva reserva) async {
+    if (reserva.inicio.isAfter(TiempoHotel.ahoraUtc())) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('La reserva sigue pendiente. Podrás crear la estadía desde la hora exacta de entrada.'),
+      ));
+      return;
+    }
     final numeroHabitacion = reserva.habitacionId;
     if (numeroHabitacion == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -112,6 +120,35 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
     }
   }
 
+  Future<void> _asignarHabitacion(Reserva reserva) async {
+    final compatibles = ServicioHabitaciones.instancia.habitaciones.where((h) =>
+      h.id != null && h.tipoCuarto == reserva.tipoCuarto && h.camas == reserva.camas &&
+      h.estado != EstadoHabitacion.mantenimiento && h.estado != EstadoHabitacion.limpieza &&
+      h.estado != EstadoHabitacion.ocupada && h.estado != EstadoHabitacion.ocupadaYLimpieza).toList();
+    if (compatibles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay habitaciones compatibles disponibles.')));
+      return;
+    }
+    final elegida = await showModalBottomSheet<Habitacion>(
+      context: context,
+      builder: (ctx) => SafeArea(child: ListView(shrinkWrap: true, children: [
+        const ListTile(title: Text('Asignar habitación')),
+        for (final h in compatibles) ListTile(
+          leading: const Icon(Icons.hotel), title: Text('Habitación ${h.numero}'),
+          subtitle: Text('Piso ${h.piso} · ${h.camas} ${h.camas == 1 ? 'cama' : 'camas'}'),
+          onTap: () => Navigator.pop(ctx, h),
+        ),
+      ])),
+    );
+    final id = int.tryParse(elegida?.id ?? '');
+    if (id == null || !mounted) return;
+    try {
+      await ServicioReservas.instancia.asignarHabitacion(reserva.id, id);
+    } on Object catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))));
+    }
+  }
+
   Future<void> _abonarReserva(Reserva reserva) async {
     final pago = await mostrarDialogoCobro(
       context,
@@ -152,7 +189,9 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
     ]),
     builder: (context, _) {
       final reservas = ServicioReservas.instancia.reservas;
-      final eventos = _reservasDelDia(_seleccionado, reservas);
+      final eventos = widget.mostrarTodasReservas
+          ? (reservas.where((r) => r.estado == EstadoReserva.activa).toList()..sort((a, b) => a.inicio.compareTo(b.inicio)))
+          : _reservasDelDia(_seleccionado, reservas);
       final primerDia = DateTime(_mes.year, _mes.month, 1);
       final desfase = primerDia.weekday - 1;
       final diasEnMes = DateTime(_mes.year, _mes.month + 1, 0).day;
@@ -170,6 +209,7 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
+            if (!widget.mostrarTodasReservas) ...[
             Row(
               children: [
                 IconButton(
@@ -285,8 +325,9 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
               },
             ),
             const SizedBox(height: 20),
+            ],
             Text(
-              'Reservas del ${_seleccionado.day} de ${_meses[_seleccionado.month - 1]}',
+              widget.mostrarTodasReservas ? 'Todas las reservas pendientes' : 'Reservas del ${_seleccionado.day} de ${_meses[_seleccionado.month - 1]}',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -295,7 +336,9 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
                 child: Padding(
                   padding: const EdgeInsets.all(18),
                   child: Text(
-                    'No hay reservaciones para este día.',
+                    widget.mostrarTodasReservas
+                        ? 'No hay reservas pendientes.'
+                        : 'No hay reservaciones para este día.',
                     style: TextStyle(color: colores.onSurfaceVariant),
                   ),
                 ),
@@ -348,8 +391,14 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
                                   icon: const Icon(Icons.payments_outlined),
                                   label: const Text('Registrar abono'),
                                 ),
+                              if (reserva.habitacionId == null)
+                                OutlinedButton.icon(
+                                  onPressed: () => _asignarHabitacion(reserva),
+                                  icon: const Icon(Icons.meeting_room_outlined),
+                                  label: const Text('Asignar habitación'),
+                                ),
                               FilledButton.icon(
-                                onPressed: () => _crearEstadia(reserva),
+                                onPressed: reserva.habitacionId == null ? null : () => _crearEstadia(reserva),
                                 icon: const Icon(Icons.login),
                                 label: const Text('Crear estadía'),
                               ),

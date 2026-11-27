@@ -77,7 +77,7 @@ class TarjetaCaja extends StatelessWidget {
                           style: const TextStyle(fontSize: 12),
                         ),
                       Text(
-                        'Cerró: ${fechaHora(caja.fecha)}',
+                        caja.abierta ? 'Abierta desde: ${fechaHora(caja.fecha)}' : 'Cerró: ${fechaHora(caja.fecha)}',
                         style: const TextStyle(fontSize: 12),
                       ),
                       const SizedBox(height: 6),
@@ -92,7 +92,7 @@ class TarjetaCaja extends StatelessWidget {
                               style: const TextStyle(fontSize: 13),
                             ),
                           ),
-                          const EtiquetaPill('Cierre'),
+                          EtiquetaPill(caja.abierta ? 'Abierta' : 'Cerrada'),
                         ],
                       ),
                     ],

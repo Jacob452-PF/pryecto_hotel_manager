@@ -90,7 +90,6 @@ class _EstadoPantallaLista extends State<PantallaListaArticulos> {
                     child: Text(
                       widget.seccion.titulo.toLowerCase(),
                       style: const TextStyle(
-                        fontFamily: 'serif',
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),

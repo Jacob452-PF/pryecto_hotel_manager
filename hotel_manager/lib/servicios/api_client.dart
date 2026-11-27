@@ -378,6 +378,9 @@ class ApiClient {
     await _request('POST', '/reservations/${Uri.encodeComponent(id)}/cancel'),
   );
 
+  Future<Map<String, dynamic>> assignReservationRoom(String id, int roomId) async =>
+      _map(await _request('PATCH', '/reservations/${Uri.encodeComponent(id)}/room', body: {'room_id': roomId}));
+
   Future<List<dynamic>> suppliers() async =>
       _list(await _request('GET', '/suppliers'));
 

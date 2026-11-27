@@ -137,6 +137,45 @@ class ServicioCaja extends ChangeNotifier {
           (caja) => caja.id.startsWith('api-shift-') && caja.abierta,
         );
       }
+      if (usuario?.rol == RolUsuario.admin) {
+        final remotos = <Caja>[];
+        var page = 1;
+        var lastPage = 1;
+        do {
+          final respuesta = await ApiClient.instance.shifts(page: page);
+          final rows = ApiClient.instance.listFromResponse(respuesta);
+          for (final raw in rows.whereType<Map>()) {
+            final item = Map<String, dynamic>.from(raw);
+            final id = 'api-shift-${item['id']}';
+            final opening = double.tryParse(item['opening_amount']?.toString() ?? '') ?? 0;
+            final closing = double.tryParse(item['counted_amount']?.toString() ?? '');
+            final openBreakdown = item['opening_breakdown'] is Map
+                ? DesgloseEfectivo.fromJson(Map<String, dynamic>.from(item['opening_breakdown'] as Map))
+                : DesgloseEfectivo(montoNoDesglosado: opening);
+            final closeBreakdown = item['counted_breakdown'] is Map
+                ? DesgloseEfectivo.fromJson(Map<String, dynamic>.from(item['counted_breakdown'] as Map))
+                : closing == null ? null : DesgloseEfectivo(montoNoDesglosado: closing);
+            remotos.add(Caja(
+              id: id,
+              usuarioId: (item['user_id'] ?? '').toString(),
+              usuarioNombre: item['user'] is Map ? (item['user'] as Map)['name']?.toString() : null,
+              aperturaAt: DateTime.tryParse(item['opened_at']?.toString() ?? '') ?? DateTime.now(),
+              cierreAt: DateTime.tryParse(item['closed_at']?.toString() ?? ''),
+              montoApertura: opening,
+              desgloseApertura: openBreakdown,
+              montoCierre: closing,
+              desgloseCierre: closeBreakdown,
+              diferencia: double.tryParse(item['difference']?.toString() ?? ''),
+              confirmada: item['closed_at'] != null,
+              notas: item['notes']?.toString(),
+            ));
+          }
+          if (respuesta is Map) lastPage = int.tryParse(respuesta['last_page']?.toString() ?? '') ?? page;
+          page++;
+        } while (page <= lastPage);
+        _cajas.removeWhere((c) => c.id.startsWith('api-shift-'));
+        _cajas.addAll(remotos);
+      }
       await _guardar();
       notifyListeners();
     } finally {

@@ -13,4 +13,5 @@ class ColoresHistorial {
 }
 
 /// Fuente de los títulos (igual que en el diseño de Figma).
-const fuenteTitulo = 'serif';
+// Deja que Flutter use la fuente nativa de cada plataforma.
+const String? fuenteTitulo = null;

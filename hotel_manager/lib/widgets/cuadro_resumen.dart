@@ -13,7 +13,8 @@ class DatoResumen {
 
 class CuadroResumen extends StatelessWidget {
   final DatoResumen dato;
-  const CuadroResumen({super.key, required this.dato});
+  final VoidCallback? onTap;
+  const CuadroResumen({super.key, required this.dato, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +23,10 @@ class CuadroResumen extends StatelessWidget {
     final ancho =
         (MediaQuery.of(context).size.width - 32 - 10 * (columnas - 1)) /
         columnas;
-    return Container(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(Dimensiones.radioTarjeta),
+      child: Container(
       width: ancho,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
@@ -46,6 +50,7 @@ class CuadroResumen extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ],
+      ),
       ),
     );
   }

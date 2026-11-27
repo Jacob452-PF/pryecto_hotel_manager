@@ -9,6 +9,7 @@ import '../utilidades/tiempo_hotel.dart';
 import '../modelos/tipo_cuarto.dart';
 import 'api_client.dart';
 import 'servicio_huespedes.dart';
+import 'servicio_habitaciones.dart';
 import 'servicio_aviso_externo.dart';
 import 'servicio_configuracion.dart';
 import '../modelos/usuario.dart';
@@ -240,6 +241,12 @@ class ServicioReservas extends ChangeNotifier {
       paymentMethod: metodo.name,
     );
     await sincronizar();
+  }
+
+  Future<void> asignarHabitacion(String id, int roomId) async {
+    await ApiClient.instance.assignReservationRoom(id, roomId);
+    await sincronizar();
+    await ServicioHabitaciones.instancia.sincronizar();
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../inventario/servicios/servicio_inventario.dart';
 import '../../inventario/modelos/compra_inventario.dart';
 import '../../modelos/habitacion.dart';
+import '../../modelos/usuario.dart';
 import '../../servicios/servicio_habitaciones.dart';
 import '../../servicios/servicio_caja.dart';
 import '../../servicios/servicio_sesion.dart';
@@ -59,17 +60,19 @@ class ServicioHistorial extends ChangeNotifier {
   /// Cierres ordenados del más reciente al más antiguo.
   List<CajaCierre> get cajas {
     final lista = List.of(_cajas);
-    for (final c in ServicioCaja.instancia.cajasCerradas) {
+    final admin = ServicioSesion.instancia.usuario?.rol == RolUsuario.admin;
+    for (final c in (admin ? ServicioCaja.instancia.cajas : ServicioCaja.instancia.cajasCerradas)) {
       if (lista.any((x) => x.numero == c.id)) continue;
       final actual = ServicioSesion.instancia.usuario;
-      final nombre = c.usuarioId == actual?.id ? actual?.nombre : c.usuarioId;
+      final nombre = c.usuarioNombre ?? (c.usuarioId == actual?.id ? actual?.nombre : c.usuarioId);
       lista.add(
         CajaCierre(
           numero: c.id,
           aperturaAt: c.aperturaAt,
-          fecha: c.cierreAt!,
+          fecha: c.cierreAt ?? c.aperturaAt,
           cajero: nombre ?? c.usuarioId,
           totalRegistrado: c.montoCierre ?? 0,
+          abierta: c.abierta,
         ),
       );
     }

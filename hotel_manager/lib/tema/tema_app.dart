@@ -28,6 +28,7 @@ class TemaApp {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: null,
       colorScheme: esquema,
       scaffoldBackgroundColor: paleta.fondo,
       canvasColor: paleta.fondo,

@@ -14,6 +14,7 @@ class CajaCierre {
 
   /// Total guardado al cerrar. Si es null, se suma el detalle de clientes.
   final double? totalRegistrado;
+  final bool abierta;
 
   const CajaCierre({
     required this.numero,
@@ -22,6 +23,7 @@ class CajaCierre {
     this.aperturaAt,
     this.clientes = const [],
     this.totalRegistrado,
+    this.abierta = false,
   });
 
   double get total =>
