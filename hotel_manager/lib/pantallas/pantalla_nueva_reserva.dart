@@ -24,6 +24,7 @@ class PantallaNuevaReserva extends StatefulWidget {
 
 class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
   final _form = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
   final _nombre = TextEditingController();
   final _dui = TextEditingController();
   final _telefono = TextEditingController();
@@ -37,6 +38,7 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
   int _camas = 1;
   int _cantidad = 1;
   String? _huespedSeleccionadoId;
+  String? _estadoGuardado;
   DateTime _inicio = TiempoHotel.relojElSalvador(
     TiempoHotel.ahoraUtc(),
   ).add(const Duration(hours: 1));
@@ -47,6 +49,14 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
 
   int get _camasSeleccionadas => _tipo == TipoCuarto.comun ? 1 : _camas;
   double get _total => (_tarifa?.precio ?? 0) * _cantidad;
+  String _soloDigitos(String valor) => valor.replaceAll(RegExp(r'\D'), '');
+
+  String _telefonoLocal(String valor) {
+    final digitos = _soloDigitos(valor);
+    return digitos.length == 11 && digitos.startsWith('503')
+        ? digitos.substring(3)
+        : digitos;
+  }
   List<TarifaRemota> get _tarifasCompatibles => _tarifas
       .where(
         (t) =>
@@ -110,6 +120,7 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
     _nombre.dispose();
     _dui.dispose();
     _telefono.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -155,7 +166,30 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
   }
 
   Future<void> _guardar() async {
-    if (!_form.currentState!.validate()) return;
+    final datosHuespedValidos = _nombre.text.trim().isNotEmpty &&
+        _soloDigitos(_dui.text).length == 9 &&
+        _telefonoLocal(_telefono.text).length == 8;
+    if (!datosHuespedValidos) {
+      if (_scrollController.hasClients) {
+        await _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+      if (!mounted) return;
+      // El ListView puede desmontar el formulario cuando se desplaza fuera
+      // de pantalla. Valida sus campos solo después de volver a montarlo.
+      _form.currentState?.validate();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Completa nombre, DUI y teléfono para registrar al huésped.',
+          ),
+        ),
+      );
+      return;
+    }
     if (TiempoHotel.aUtc(_inicio).isBefore(TiempoHotel.ahoraUtc())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -164,25 +198,40 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
       );
       return;
     }
-    setState(() => _guardando = true);
+    setState(() {
+      _guardando = true;
+      _estadoGuardado = 'Guardando huésped…';
+    });
     try {
-      final huesped = await ServicioHuespedes.instancia
-          .obtenerOCrear(
-            nombre: _nombre.text,
-            dui: _dui.text,
-            telefono: _telefono.text,
-          )
-          .timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => throw StateError(
-              'El guardado del huésped tardó demasiado. Revisa la conexión e inténtalo de nuevo.',
-            ),
-          );
       final tarifa = _tarifa;
       if (tarifa == null) {
         throw StateError(
           _errorTarifas ?? 'Selecciona una tarifa del servidor.',
         );
+      }
+      final huespedSeleccionado = _huespedSeleccionadoId == null
+          ? null
+          : ServicioHuespedes.instancia.huespedes
+                .where((h) => h.id == _huespedSeleccionadoId)
+                .firstOrNull;
+      final Huesped huesped;
+      if (huespedSeleccionado != null &&
+          _soloDigitos(huespedSeleccionado.dui) == _soloDigitos(_dui.text)) {
+        huesped = await ServicioHuespedes.instancia.completarDatosReserva(
+          huespedSeleccionado,
+          nombre: _nombre.text,
+          dui: _dui.text,
+          telefono: _telefono.text,
+        );
+      } else {
+        huesped = await ServicioHuespedes.instancia.obtenerOCrear(
+          nombre: _nombre.text,
+          dui: _dui.text,
+          telefono: _telefono.text,
+        );
+      }
+      if (mounted) {
+        setState(() => _estadoGuardado = 'Guardando reserva en la agenda…');
       }
       await ServicioReservas.instancia.crear(
         huespedId: huesped.id,
@@ -195,7 +244,7 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
         tarifaNombre: tarifa.nombre,
       );
       if (!mounted) return;
-      if (mounted) Navigator.pop(context, true);
+      Navigator.pop(context, true);
     } on Object catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -203,7 +252,12 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
         );
       }
     } finally {
-      if (mounted) setState(() => _guardando = false);
+      if (mounted) {
+        setState(() {
+          _guardando = false;
+          _estadoGuardado = null;
+        });
+      }
     }
   }
 
@@ -216,6 +270,7 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
         builder: (context) {
           final formatoFecha = MaterialLocalizations.of(context);
           return ListView(
+            controller: _scrollController,
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
             children: [
               Card(
@@ -247,8 +302,8 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                       alCambiar: (Huesped? h) => setState(() {
                         _huespedSeleccionadoId = h?.id;
                         _nombre.text = h?.nombre ?? '';
-                        _dui.text = h?.dui ?? '';
-                        _telefono.text = h?.telefono ?? '';
+                        _dui.text = _soloDigitos(h?.dui ?? '');
+                        _telefono.text = _telefonoLocal(h?.telefono ?? '');
                       }),
                     ),
                     FormularioHuesped(
@@ -408,7 +463,11 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.event_available),
-                label: Text(_guardando ? 'Guardando…' : 'Crear reserva'),
+                label: Text(
+                  _guardando
+                      ? (_estadoGuardado ?? 'Guardando…')
+                      : 'Crear reserva',
+                ),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.all(16),
                 ),

@@ -6,6 +6,7 @@ import '../servicios/servicio_habitaciones.dart';
 import '../servicios/servicio_reservas.dart';
 import '../servicios/servicio_estadias.dart';
 import '../utilidades/formato.dart';
+import '../utilidades/tiempo_hotel.dart';
 import '../widgets/dialogo_cobro.dart';
 import 'pantalla_nueva_reserva.dart';
 
@@ -17,8 +18,12 @@ class PantallaAgenda extends StatefulWidget {
 }
 
 class _PantallaAgendaState extends State<PantallaAgenda> {
-  DateTime _mes = DateUtils.dateOnly(DateTime.now());
-  DateTime _seleccionado = DateUtils.dateOnly(DateTime.now());
+  DateTime _mes = DateUtils.dateOnly(
+    TiempoHotel.relojElSalvador(TiempoHotel.ahoraUtc()),
+  );
+  DateTime _seleccionado = DateUtils.dateOnly(
+    TiempoHotel.relojElSalvador(TiempoHotel.ahoraUtc()),
+  );
 
   static const _meses = [
     'enero',
@@ -42,7 +47,9 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
   List<Reserva> _reservasDelDia(DateTime dia, List<Reserva> reservas) =>
       reservas
           .where(
-            (r) => r.estado == EstadoReserva.activa && _mismoDia(r.inicio, dia),
+            (r) =>
+                r.estado == EstadoReserva.activa &&
+                _mismoDia(TiempoHotel.relojElSalvador(r.inicio), dia),
           )
           .toList()
         ..sort((a, b) => a.inicio.compareTo(b.inicio));
@@ -216,11 +223,14 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
                 final dia = inicioCuadricula.add(Duration(days: index));
                 final dentroDelMes = dia.month == _mes.month;
                 final seleccionado = _mismoDia(dia, _seleccionado);
-                final hoy = _mismoDia(dia, DateTime.now());
+                final hoy = _mismoDia(
+                  dia,
+                  TiempoHotel.relojElSalvador(TiempoHotel.ahoraUtc()),
+                );
                 final tieneReserva = reservas.any(
                   (r) =>
                       r.estado == EstadoReserva.activa &&
-                      _mismoDia(r.inicio, dia),
+                      _mismoDia(TiempoHotel.relojElSalvador(r.inicio), dia),
                 );
                 return InkWell(
                   onTap: dentroDelMes
@@ -308,7 +318,9 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
                           '${reserva.tipoCuarto.etiqueta} · ${reserva.camas} ${reserva.camas == 1 ? 'cama' : 'camas'} solicitadas',
                         ),
                         trailing: Text(
-                          TimeOfDay.fromDateTime(reserva.inicio)
+                          TimeOfDay.fromDateTime(
+                            TiempoHotel.relojElSalvador(reserva.inicio),
+                          )
                               .format(context),
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
@@ -319,7 +331,7 @@ class _PantallaAgendaState extends State<PantallaAgenda> {
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            '${reserva.tarifaNombre ?? reserva.tarifa.etiqueta} × ${reserva.cantidad} · Habitación: ${reserva.habitacionId ?? 'pendiente de asignación'} · Salida: ${TimeOfDay.fromDateTime(reserva.fin).format(context)} · Total: ${formatearDinero(reserva.total)} · Abonado: ${formatearDinero(reserva.montoAbonado)} · Saldo: ${formatearDinero(reserva.saldoPendiente)}',
+                            '${reserva.tarifaNombre ?? reserva.tarifa.etiqueta} × ${reserva.cantidad} · Habitación: ${reserva.habitacionId ?? 'pendiente de asignación'} · Salida: ${TimeOfDay.fromDateTime(TiempoHotel.relojElSalvador(reserva.fin)).format(context)} · Total: ${formatearDinero(reserva.total)} · Abonado: ${formatearDinero(reserva.montoAbonado)} · Saldo: ${formatearDinero(reserva.saldoPendiente)}',
                           ),
                         ),
                       ),

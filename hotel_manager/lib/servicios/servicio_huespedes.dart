@@ -122,6 +122,36 @@ class ServicioHuespedes extends ChangeNotifier {
     return huesped;
   }
 
+  /// Completa datos obligatorios que falten en un huésped seleccionado para
+  /// poder asociarlo a una reserva sin crear un registro duplicado.
+  Future<Huesped> completarDatosReserva(
+    Huesped huesped, {
+    required String nombre,
+    required String dui,
+    required String telefono,
+  }) async {
+    final cambios = <String, dynamic>{};
+    if (huesped.nombre.trim().isEmpty && nombre.trim().isNotEmpty) {
+      cambios['name'] = nombre.trim();
+    }
+    if (huesped.dui.trim().isEmpty && dui.trim().isNotEmpty) {
+      cambios['document'] = dui.trim();
+    }
+    if (huesped.telefono.trim().isEmpty && telefono.trim().isNotEmpty) {
+      cambios['phone'] = telefono.trim();
+    }
+    if (cambios.isEmpty) return huesped;
+
+    final response = await ApiClient.instance.updateGuest(
+      huesped.id,
+      cambios,
+      partial: true,
+    );
+    final actualizado = Huesped.fromApiJson(_desenvolverGuest(response));
+    _agregarSiFalta(actualizado);
+    return actualizado;
+  }
+
   Map<String, dynamic> _desenvolverGuest(dynamic response) {
     if (response is! Map) {
       throw const FormatException('El servidor no devolvió el huésped creado.');
