@@ -35,6 +35,20 @@ class TiempoHotel {
   static DateTime relojElSalvador(DateTime instante) =>
       instante.toUtc().add(_desfaseElSalvador);
 
+  /// Convierte un DateTime con componentes de reloj de El Salvador a UTC real.
+  /// La interfaz conserva el reloj de pared como UTC para mostrarlo sin que lo
+  /// vuelva a desplazar la zona horaria configurada en el dispositivo.
+  static DateTime aUtc(DateTime reloj) => DateTime.utc(
+    reloj.year,
+    reloj.month,
+    reloj.day,
+    reloj.hour,
+    reloj.minute,
+    reloj.second,
+    reloj.millisecond,
+    reloj.microsecond,
+  ).subtract(_desfaseElSalvador);
+
   static String duracion(Duration duracion) {
     final segundos = duracion.inSeconds.abs();
     final dias = segundos ~/ Duration.secondsPerDay;

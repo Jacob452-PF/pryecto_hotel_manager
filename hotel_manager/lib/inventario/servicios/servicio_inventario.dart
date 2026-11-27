@@ -1,14 +1,17 @@
 import 'package:flutter/foundation.dart';
 
 import '../../servicios/api_client.dart';
+import '../../servicios/servicio_caja.dart';
 import '../modelos/compra_inventario.dart';
 import '../modelos/movimiento_inventario.dart';
 import '../modelos/producto_inventario.dart';
 
-/// Lee el inventario compartido del API y conserva temporalmente los cambios
-/// recibidos en memoria para que las pantallas se actualicen.
+/// Lee del API el inventario y las compras del turno para mostrar los registros
+/// operativos junto a los movimientos auxiliares locales.
 class ServicioInventario extends ChangeNotifier {
-  ServicioInventario._();
+  ServicioInventario._() {
+    ServicioCaja.instancia.addListener(notifyListeners);
+  }
 
   static final ServicioInventario instancia = ServicioInventario._();
 
@@ -16,6 +19,7 @@ class ServicioInventario extends ChangeNotifier {
   final List<ProductoInventario> _eliminados = [];
   final List<MovimientoInventario> _movimientos = [];
   final List<CompraInventario> _compras = [];
+  final List<CompraInventario> _comprasServidor = [];
   final Map<CategoriaInventario, int> _categoriasApi = {};
   DateTime _ultimaActualizacion = DateTime.now();
   String? error;
@@ -40,6 +44,12 @@ class ServicioInventario extends ChangeNotifier {
       ]);
       final products = responses[0];
       final categories = responses[1];
+      List<CompraInventario>? comprasServidor;
+      try {
+        comprasServidor = await _cargarComprasServidor();
+      } on Object catch (e) {
+        error = e.toString().replaceFirst('Exception: ', '');
+      }
       _categoriasApi.clear();
       for (final raw in categories) {
         if (raw is! Map) continue;
@@ -78,6 +88,11 @@ class ServicioInventario extends ChangeNotifier {
             );
           }),
         );
+      if (comprasServidor != null) {
+        _comprasServidor
+          ..clear()
+          ..addAll(comprasServidor);
+      }
       _ultimaActualizacion = DateTime.now();
     } on Object catch (e) {
       error = e.toString().replaceFirst('Exception: ', '');
@@ -86,6 +101,74 @@ class ServicioInventario extends ChangeNotifier {
       _sincronizacionEnCurso = false;
       notifyListeners();
     }
+  }
+
+  Future<List<CompraInventario>> _cargarComprasServidor() async {
+    final resultado = <CompraInventario>[];
+    var page = 1;
+    var lastPage = 1;
+
+    do {
+      final response = await ApiClient.instance.purchases(page: page);
+      final rows = ApiClient.instance.listFromResponse(response);
+      for (final rawPurchase in rows.whereType<Map>()) {
+        final purchase = Map<String, dynamic>.from(rawPurchase);
+        final purchaseId = purchase['id']?.toString() ?? 'sin-id';
+        final supplier = purchase['supplier'] is Map
+            ? (purchase['supplier'] as Map)['name']?.toString()
+            : null;
+        final fecha = DateTime.tryParse(
+          purchase['created_at']?.toString() ?? '',
+        ) ?? DateTime.now();
+        final turnoId = purchase['shift_id']?.toString();
+        final items = purchase['items'];
+        if (items is! List) continue;
+
+        for (var index = 0; index < items.length; index++) {
+          final rawItem = items[index];
+          if (rawItem is! Map) continue;
+          final item = Map<String, dynamic>.from(rawItem);
+          final product = item['product'] is Map
+              ? Map<String, dynamic>.from(item['product'] as Map)
+              : const <String, dynamic>{};
+          final cantidad =
+              int.tryParse(item['quantity']?.toString() ?? '') ?? 0;
+          final costoUnitario =
+              double.tryParse(item['unit_cost']?.toString() ?? '') ?? 0;
+          if (cantidad < 1) continue;
+
+          resultado.add(
+            CompraInventario(
+              id:
+                  'api-purchase-${item['id'] ?? '$purchaseId-$index'}',
+              productoId: item['product_id']?.toString() ?? '',
+              producto: product['name']?.toString() ?? 'Producto',
+              paquetes: cantidad,
+              unidadesPorPaquete: 1,
+              costoPaquete: costoUnitario,
+              esNuevo: false,
+              fecha: fecha,
+              descripcion: supplier == null ? '' : 'Proveedor: $supplier',
+              remota: true,
+              turnoId: turnoId,
+            ),
+          );
+        }
+      }
+
+      if (response is Map) {
+        final meta = response['meta'];
+        lastPage = int.tryParse(
+              (response['last_page'] ?? (meta is Map ? meta['last_page'] : null))
+                      ?.toString() ??
+                  '',
+            ) ??
+            page;
+      }
+      page++;
+    } while (page <= lastPage);
+
+    return resultado;
   }
 
   Future<void> crearProductoRemoto(
@@ -179,11 +262,24 @@ class ServicioInventario extends ChangeNotifier {
   }
 
   /// Todo lo que el hotel ha gastado en mercadería.
-  List<CompraInventario> get compras => List.unmodifiable(_compras);
+  List<CompraInventario> get compras =>
+      List.unmodifiable([..._compras, ..._comprasServidor]);
 
   /// Compras hechas desde el último cierre de caja.
-  List<CompraInventario> get comprasDelTurno =>
-      _compras.where((c) => c.enTurno).toList();
+  List<CompraInventario> get comprasDelTurno {
+    final turnoId = _turnoServidorId;
+    return [
+      ..._compras.where((c) => c.enTurno),
+      if (turnoId != null)
+        ..._comprasServidor.where((c) => c.turnoId == turnoId),
+    ];
+  }
+
+  String? get _turnoServidorId {
+    final shift = ServicioCaja.instancia.datosTurnoServidor;
+    if (shift == null || shift['closed_at'] != null) return null;
+    return shift['id']?.toString();
+  }
 
   /// Cuánto se ha gastado en inventario desde el último cierre de caja.
   double get gastoDelTurno => comprasDelTurno.fold(0.0, (s, c) => s + c.total);

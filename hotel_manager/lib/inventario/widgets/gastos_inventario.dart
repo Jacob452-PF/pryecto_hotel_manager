@@ -11,6 +11,11 @@ String _montoMovimiento(CompraInventario c) =>
     ? '−${_dinero(c.total.abs())}'
     : _dinero(c.total);
 
+String _etiquetaCompra(CompraInventario compra) {
+  if (compra.remota) return 'Compra sincronizada';
+  return compra.esNuevo ? 'Producto nuevo' : 'Reposición';
+}
+
 String _hora(DateTime d) {
   final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
   final min = d.minute.toString().padLeft(2, '0');
@@ -19,7 +24,8 @@ String _hora(DateTime d) {
 
 /// Apartado "Gastos de inventario": cuánto ha gastado el hotel en comprar
 /// productos nuevos o reponer stock desde el último cierre de caja.
-/// Cada compra tiene su botón de editar por si hubo un error.
+/// Las compras del servidor se muestran como sincronizadas y solo lectura;
+/// los registros locales conservan su edición auxiliar.
 class GastosInventario extends StatelessWidget {
   const GastosInventario({super.key});
 
@@ -124,7 +130,8 @@ class GastosInventario extends StatelessWidget {
                             ),
                             Text(
                               '${switch (c.tipo) {
-                                TipoMovimientoCompra.compra => c.esNuevo ? 'Producto nuevo' : 'Reposición',
+                                TipoMovimientoCompra.compra =>
+                                  _etiquetaCompra(c),
                                 TipoMovimientoCompra.devolucionCliente => 'Devolución de cliente',
                                 TipoMovimientoCompra.devolucionProveedor => 'Devolución a proveedor',
                               }} · ${c.cantidad} ${c.cantidad == 1 ? 'unidad' : 'unidades'} × ${_dinero(c.costoUnitario)} · ${_hora(c.fecha)}',
@@ -177,7 +184,7 @@ class GastosInventario extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       // Botón de editar, a la par de la compra
-                      if (c.tipo == TipoMovimientoCompra.compra)
+                      if (c.tipo == TipoMovimientoCompra.compra && !c.remota)
                         SizedBox(
                           width: 32,
                           height: 32,

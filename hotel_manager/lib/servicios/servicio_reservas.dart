@@ -109,8 +109,10 @@ class ServicioReservas extends ChangeNotifier {
     if (guestApiId == null) {
       throw StateError('El huésped no tiene un ID válido del servidor.');
     }
+    final inicioUtc = TiempoHotel.aUtc(inicio);
+    final finUtc = TiempoHotel.aUtc(fin);
     final now = TiempoHotel.ahoraUtc();
-    if (inicio.isBefore(now)) {
+    if (inicioUtc.isBefore(now)) {
       throw ArgumentError('La entrada de la reserva debe ser futura.');
     }
     final response = await ApiClient.instance.createReservation({
@@ -119,8 +121,8 @@ class ServicioReservas extends ChangeNotifier {
       'beds': camas,
       'rate_id': tarifaId,
       'rate_units': cantidad,
-      'check_in_at': inicio.toIso8601String(),
-      'expected_checkout_at': fin.toIso8601String(),
+      'check_in_at': inicioUtc.toIso8601String(),
+      'expected_checkout_at': finUtc.toIso8601String(),
       'guests': 1,
     });
     final reserva = Reserva.fromApiJson(response);

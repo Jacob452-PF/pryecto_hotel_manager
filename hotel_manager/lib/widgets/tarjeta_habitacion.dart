@@ -13,7 +13,6 @@ class TarjetaHabitacion extends StatelessWidget {
   Widget build(BuildContext context) {
     final estado = habitacion.estado;
     final estadoVisible = switch (estado) {
-      EstadoHabitacion.limpieza => EstadoHabitacion.disponible,
       EstadoHabitacion.ocupadaYLimpieza => EstadoHabitacion.ocupada,
       _ => estado,
     };

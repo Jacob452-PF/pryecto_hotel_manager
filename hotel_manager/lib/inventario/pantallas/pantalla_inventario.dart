@@ -7,6 +7,7 @@ import '../modelos/producto_inventario.dart';
 import '../tema_inventario.dart';
 import '../widgets/chip_categoria_inventario.dart';
 import '../widgets/fila_producto_inventario.dart';
+import '../widgets/gastos_inventario.dart';
 import '../widgets/hoja_agregar_producto.dart';
 import '../widgets/hoja_ajustar_stock.dart';
 import '../widgets/resumen_inventario.dart';
@@ -236,6 +237,8 @@ class _EstadoPantallaInventario extends State<PantallaInventario> {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    const GastosInventario(),
                   ],
                 ),
               ),

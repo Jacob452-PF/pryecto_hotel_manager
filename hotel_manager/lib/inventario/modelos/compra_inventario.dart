@@ -18,8 +18,7 @@ class EdicionCompra {
 
 enum TipoMovimientoCompra { compra, devolucionCliente, devolucionProveedor }
 
-/// Compra o devolución de mercadería registrada en gastos de inventario.
-/// Cuando tengan base de datos, se guarda cada movimiento en una tabla.
+/// Compra o devolución registrada localmente o sincronizada desde la API.
 class CompraInventario {
   final String id;
   final String productoId;
@@ -42,6 +41,12 @@ class CompraInventario {
   /// Motivo o nota escrita al registrar la compra.
   final String descripcion;
 
+  /// Los registros remotos vienen de la API y se muestran en modo lectura.
+  final bool remota;
+
+  /// Identificador del turno que recibió la compra en la API.
+  final String? turnoId;
+
   /// Número de la caja en que se cerró este gasto (null = todavía del turno actual).
   final String? cajaNumero;
 
@@ -59,6 +64,8 @@ class CompraInventario {
     this.tipo = TipoMovimientoCompra.compra,
     required this.fecha,
     this.descripcion = '',
+    this.remota = false,
+    this.turnoId,
     this.cajaNumero,
     this.ediciones = const [],
   });
@@ -104,6 +111,8 @@ class CompraInventario {
     tipo: tipo,
     fecha: fecha,
     descripcion: descripcion ?? this.descripcion,
+    remota: remota,
+    turnoId: turnoId,
     cajaNumero: cajaNumero ?? this.cajaNumero,
     ediciones: ediciones ?? this.ediciones,
   );

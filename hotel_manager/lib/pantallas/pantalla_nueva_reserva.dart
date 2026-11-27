@@ -156,7 +156,7 @@ class _PantallaNuevaReservaState extends State<PantallaNuevaReserva> {
 
   Future<void> _guardar() async {
     if (!_form.currentState!.validate()) return;
-    if (_inicio.isBefore(TiempoHotel.ahoraUtc())) {
+    if (TiempoHotel.aUtc(_inicio).isBefore(TiempoHotel.ahoraUtc())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('La entrada de la reserva debe ser futura.'),
