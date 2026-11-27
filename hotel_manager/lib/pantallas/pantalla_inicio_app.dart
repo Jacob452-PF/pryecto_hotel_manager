@@ -146,22 +146,22 @@ class _TutorialInicioState extends State<TutorialInicio> {
     _PasoTutorial(
       Icons.point_of_sale,
       'Abre la caja',
-      'Al comenzar tu turno, registra el efectivo inicial. La app reutiliza la caja que siga abierta después de recargarla.',
+      'Recepción o administración registra el fondo inicial al abrir el turno. Cuenta el efectivo, captura billetes y monedas y confirma. Al terminar, revisa los movimientos y cierra la caja desde Perfil o Historial.',
     ),
     _PasoTutorial(
       Icons.hotel,
       'Administra habitaciones',
-      'Consulta el estado y los datos de las habitaciones. Registra ventas directas o reservaciones desde sus apartados.',
+      'En Inicio revisa el estado de cada habitación. En Agenda selecciona la fecha, crea la reserva con los datos requeridos del huésped y revisa que aparezca en el día elegido. Desde la reserva puedes continuar con abonos o check-in.',
     ),
     _PasoTutorial(
       Icons.storefront,
       'Usa tienda e inventario',
-      'Agrega artículos al carrito, cobra o carga consumos a una estadía. El inventario se sincroniza con la información del servidor.',
+      'En Tienda agrega productos al carrito, verifica cantidades, total y forma de pago, y asocia el consumo a una habitación si aplica. En Inventario consulta existencias y movimientos; las opciones disponibles dependen de tu cargo.',
     ),
     _PasoTutorial(
       Icons.notifications_active_outlined,
       'Revisa avisos y reportes',
-      'Consulta las alertas de estadías, reservas e inventario, y revisa los movimientos al cierre de caja.',
+      'Abre la campana para consultar avisos y pulsa “Ver” para ir al detalle. Antes de cerrar caja, entra a Historial, compara ventas y gastos del turno, cuenta el efectivo y confirma el cierre.',
     ),
   ];
 

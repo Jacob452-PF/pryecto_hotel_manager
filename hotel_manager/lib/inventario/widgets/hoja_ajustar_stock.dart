@@ -202,9 +202,10 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
     String? ayuda,
     Color? relleno,
   }) {
+    final colores = Theme.of(context).colorScheme;
     final borde = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFF9A9AA5)),
+      borderSide: BorderSide(color: colores.outline),
     );
     return InputDecoration(
       labelText: etiqueta,
@@ -213,9 +214,16 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
       helperText: ayuda,
       helperMaxLines: 2,
       filled: true,
-      fillColor: relleno ?? const Color(0xFFF6F6F9),
+      fillColor: relleno ?? colores.surfaceContainerHighest,
       border: borde,
       enabledBorder: borde,
+      focusedBorder: borde.copyWith(
+        borderSide: BorderSide(color: colores.primary, width: 2),
+      ),
+      labelStyle: TextStyle(color: colores.onSurfaceVariant),
+      hintStyle: TextStyle(color: colores.onSurfaceVariant),
+      helperStyle: TextStyle(color: colores.onSurfaceVariant),
+      prefixStyle: TextStyle(color: colores.onSurface),
     );
   }
 
@@ -394,7 +402,7 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF1F5),
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -424,9 +432,9 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
                           const SizedBox(height: 2),
                           Text(
                             'Precio: ${_d(p.precio)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
-                              color: Color(0xFF55555F),
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -462,7 +470,7 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
                             FilteringTextInputFormatter.digitsOnly,
                           ],
                           style: const TextStyle(fontSize: 17),
-                          decoration: _decoracion(relleno: Colors.white),
+                          decoration: _decoracion(),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -485,7 +493,7 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
           ),
           const SizedBox(height: 8),
           InputDecorator(
-            decoration: _decoracion(relleno: const Color(0xFFF1F1F4)).copyWith(
+            decoration: _decoracion().copyWith(
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 14,
@@ -497,7 +505,10 @@ class _EstadoDialogoAjustar extends State<_DialogoAjustar> {
                 value: _motivo,
                 isExpanded: true,
                 borderRadius: BorderRadius.circular(12),
-                style: const TextStyle(fontSize: 17, color: Colors.black87),
+                style: TextStyle(
+                  fontSize: 17,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
                 items: [
                   for (final m in _motivos)
                     DropdownMenuItem(value: m, child: Text(m)),
@@ -548,7 +559,7 @@ class _BotonCuadrado extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -558,7 +569,7 @@ class _BotonCuadrado extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF9A9AA5)),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
           child: Icon(icono, size: 24),
         ),
@@ -574,21 +585,22 @@ class _EstadoActual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tema = Theme.of(context);
     final String texto;
     final Color color;
     final Color fondo;
     if (producto.agotado) {
       texto = 'Agotado';
       color = const Color(0xFFE53935);
-      fondo = const Color(0xFFFDECEC);
+      fondo = tema.colorScheme.errorContainer;
     } else if (producto.stockBajo) {
       texto = 'Stock bajo';
       color = const Color(0xFFEF8A00);
-      fondo = const Color(0xFFFFF3E0);
+      fondo = tema.colorScheme.tertiaryContainer;
     } else {
       texto = 'En stock';
       color = const Color(0xFF22A559);
-      fondo = const Color(0xFFE6F6EC);
+      fondo = tema.colorScheme.secondaryContainer;
     }
 
     Widget punto() => Container(

@@ -212,6 +212,7 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
   @override
   Widget build(BuildContext context) {
     const decimal = TextInputType.numberWithOptions(decimal: true);
+    final colores = Theme.of(context).colorScheme;
     return Theme(
       data: temaInventario(context),
       child: Scaffold(
@@ -323,11 +324,12 @@ class _EstadoPantallaAgregarProducto extends State<PantallaAgregarProducto> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F0FA),
+                  color: colores.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   'Gasto total: \$${_totalGasto.toStringAsFixed(2)}   ·   Costo por unidad: \$${_costoUnidad.toStringAsFixed(2)}',
+                  style: TextStyle(color: colores.onSurface),
                 ),
               ),
               const SizedBox(height: 16),

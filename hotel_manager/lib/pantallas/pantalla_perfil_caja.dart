@@ -12,6 +12,7 @@ import 'pantalla_estado_red.dart';
 import 'pantalla_acerca_app.dart';
 import 'pantalla_login.dart';
 import 'pantalla_tema.dart';
+import 'pantalla_tutorial.dart';
 import '../servicios/servicio_caja.dart';
 import '../historial/pantallas/pantalla_cierre_caja.dart';
 import 'pantalla_apertura_caja.dart';
@@ -130,6 +131,13 @@ class PantallaPerfilCaja extends StatelessWidget {
                 titulo: 'Acerca de la app',
                 subtitulo: 'Versión de la aplicación y soporte técnico',
                 alTocar: () => _abrir(context, const PantallaAcercaApp()),
+              ),
+              const SizedBox(height: 12),
+              TarjetaOpcionPerfil(
+                icono: Icons.menu_book_outlined,
+                titulo: 'Tutorial paso a paso',
+                subtitulo: 'Consulta cómo realizar las tareas principales',
+                alTocar: () => _abrir(context, const PantallaTutorial()),
               ),
               const SizedBox(height: 12),
               TarjetaOpcionPerfil(

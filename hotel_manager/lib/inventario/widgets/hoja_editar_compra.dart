@@ -55,17 +55,23 @@ class _EstadoDialogoEditar extends State<_DialogoEditar> {
   String _d(double v) => '\$${v.toStringAsFixed(2)}';
 
   InputDecoration _decoracion(String etiqueta, {String? prefijo}) {
+    final colores = Theme.of(context).colorScheme;
     final borde = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFF9A9AA5)),
+      borderSide: BorderSide(color: colores.outline),
     );
     return InputDecoration(
       labelText: etiqueta,
       prefixText: prefijo,
       filled: true,
-      fillColor: const Color(0xFFF6F6F9),
+      fillColor: colores.surfaceContainerHighest,
       border: borde,
       enabledBorder: borde,
+      focusedBorder: borde.copyWith(
+        borderSide: BorderSide(color: colores.primary, width: 2),
+      ),
+      labelStyle: TextStyle(color: colores.onSurfaceVariant),
+      prefixStyle: TextStyle(color: colores.onSurface),
     );
   }
 
@@ -113,7 +119,10 @@ class _EstadoDialogoEditar extends State<_DialogoEditar> {
           Text(
             '${c.esNuevo ? 'Producto nuevo' : 'Reposición'} · '
             '${c.unidadesPorPaquete} unidades por paquete',
-            style: const TextStyle(fontSize: 13, color: Color(0xFF55555F)),
+            style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -177,9 +186,12 @@ class _EstadoDialogoEditar extends State<_DialogoEditar> {
               ),
             ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'La corrección quedará anotada en Cierre de caja, con lo que se había registrado antes.',
-            style: TextStyle(fontSize: 12, color: Color(0xFF55555F)),
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           if (_error != null) ...[
             const SizedBox(height: 10),

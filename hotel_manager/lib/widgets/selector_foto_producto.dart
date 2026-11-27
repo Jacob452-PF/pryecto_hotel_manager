@@ -37,27 +37,31 @@ class SelectorFotoProducto extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: () => _elegir(context, ImageSource.camera),
-    borderRadius: BorderRadius.circular(12),
-    child: Container(
-      height: 160,
-      width: double.infinity,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: const Color(0xFFD9D9D9),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: foto == null
-          ? const Column(
+  Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: () => _elegir(context, ImageSource.camera),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: 160,
+        width: double.infinity,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: colores.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colores.outlineVariant),
+        ),
+        child: foto == null
+            ? Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.add_a_photo_outlined, size: 36),
+                Icon(Icons.add_a_photo_outlined, size: 36, color: colores.primary),
                 SizedBox(height: 8),
-                Text('Agregar foto'),
+                Text('Agregar foto', style: TextStyle(color: colores.onSurfaceVariant)),
               ],
             )
-          : Image.memory(foto!, fit: BoxFit.cover),
-    ),
-  );
+            : Image.memory(foto!, fit: BoxFit.cover),
+      ),
+    );
+  }
 }
