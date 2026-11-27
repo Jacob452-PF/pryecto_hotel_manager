@@ -12,6 +12,32 @@ import '../modelos/turno_caja.dart';
 import '../utilidades/sesion_actual.dart';
 import 'servicio_consumos.dart';
 
+class _ClienteTurnoServidor {
+  final String id;
+  final String cliente;
+  final String codigo;
+  final String registradoPor;
+  final List<LineaConsumo> lineas = [];
+  final Set<String> metodosPago = {};
+
+  _ClienteTurnoServidor({
+    required this.id,
+    required this.cliente,
+    required this.codigo,
+    required this.registradoPor,
+  });
+
+  ConsumoCliente aConsumo() => ConsumoCliente(
+    id: id,
+    cliente: cliente,
+    codigo: codigo,
+    lineas: List.unmodifiable(lineas),
+    registradoPor: registradoPor,
+    pagado: true,
+    metodoPago: metodosPago.join(', '),
+  );
+}
+
 /// Guarda el historial de cierres de caja y arma el turno actual.
 /// Vive en memoria; cuando haya base de datos, solo se cambia este archivo.
 class ServicioHistorial extends ChangeNotifier {
@@ -52,9 +78,10 @@ class ServicioHistorial extends ChangeNotifier {
   }
 
   /// Turno que se va a cerrar: ventas y clientes salen de lo que se
-  /// registró desde el último cierre.
+  /// registró desde el último cierre. Las estadías y ventas de caja se leen
+  /// del servidor, incluso cuando el cliente no dejó datos personales.
   TurnoCaja get turnoActual {
-    final clientes = ServicioConsumos.instancia.clientes;
+    final clientes = _clientesDelTurno();
     final habitaciones = ServicioHabitaciones.instancia.habitaciones;
     return TurnoCaja(
       usuario: nombreUsuarioActual(),
@@ -79,6 +106,92 @@ class ServicioHistorial extends ChangeNotifier {
           ),
       ],
     );
+  }
+
+  List<ConsumoCliente> _clientesDelTurno() {
+    final locales = ServicioConsumos.instancia.clientes;
+    final agrupados = <String, _ClienteTurnoServidor>{};
+
+    for (final venta in ServicioCaja.instancia.ventasServidor) {
+      final ventaId = venta['id']?.toString();
+      if (ventaId == null || ventaId.isEmpty) continue;
+
+      final estadia = venta['stay'] is Map
+          ? Map<String, dynamic>.from(venta['stay'] as Map)
+          : <String, dynamic>{};
+      final habitacion = estadia['room'] is Map
+          ? Map<String, dynamic>.from(estadia['room'] as Map)
+          : <String, dynamic>{};
+      final estadiaId = estadia['id'] ?? venta['stay_id'];
+      final numeroHabitacion = habitacion['number']?.toString();
+      final llave = estadiaId == null ? 'venta:$ventaId' : 'estadia:$estadiaId';
+      final huesped = estadia['guest_name']?.toString().trim();
+      final cuenta = agrupados.putIfAbsent(
+        llave,
+        () => _ClienteTurnoServidor(
+          id: llave,
+          cliente: huesped == null || huesped.isEmpty
+              ? (estadiaId == null ? 'Cliente de tienda' : 'Cliente sin registro')
+              : huesped,
+          codigo: numeroHabitacion == null || numeroHabitacion.isEmpty
+              ? 'Venta #$ventaId'
+              : '#$numeroHabitacion',
+          registradoPor: venta['user'] is Map
+              ? '${(venta['user'] as Map)['name'] ?? ''}'
+              : '',
+        ),
+      );
+
+      final montoHabitacion =
+          double.tryParse('${venta['room_amount'] ?? 0}') ?? 0;
+      if (montoHabitacion > 0) {
+        cuenta.lineas.add(
+          LineaConsumo(
+            numeroHabitacion == null
+                ? 'Habitación'
+                : 'Habitación $numeroHabitacion',
+            montoHabitacion,
+            1,
+            TipoVenta.habitaciones,
+          ),
+        );
+      }
+
+      final items = venta['items'];
+      if (items is List) {
+        for (final rawItem in items.whereType<Map>()) {
+          final cantidad = int.tryParse('${rawItem['quantity']}') ?? 1;
+          final subtotal = double.tryParse('${rawItem['subtotal']}') ??
+              ((double.tryParse('${rawItem['unit_price']}') ?? 0) * cantidad);
+          final producto = rawItem['product'] is Map
+              ? (rawItem['product'] as Map)['name']?.toString()
+              : null;
+          cuenta.lineas.add(
+            LineaConsumo(
+              producto == null || producto.isEmpty ? 'Producto' : producto,
+              cantidad > 0 ? subtotal / cantidad : subtotal,
+              cantidad,
+              TipoVenta.productos,
+            ),
+          );
+        }
+      }
+
+      final metodo = venta['payment_method']?.toString().trim();
+      if (metodo != null && metodo.isNotEmpty) cuenta.metodosPago.add(metodo);
+    }
+
+    final firmasLocales = locales
+        .map((cliente) => '${cliente.codigo}|${cliente.cliente.trim().toLowerCase()}')
+        .toSet();
+    final clientesServidor = agrupados.values
+        .map((cuenta) => cuenta.aConsumo())
+        .where(
+          (cliente) => !firmasLocales.contains(
+            '${cliente.codigo}|${cliente.cliente.trim().toLowerCase()}',
+          ),
+        );
+    return [...locales, ...clientesServidor];
   }
 
   /// Agrupa las líneas de todos los clientes por tipo de venta.
